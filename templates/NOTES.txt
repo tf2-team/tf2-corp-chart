@@ -33,6 +33,6 @@ To inspect the Ingress resource and retrieve the ALB hostname, run:
 
 Security Posture (Storefront Only):
   - ALLOWED:  / , /api/* , /images/*
-  - BLOCKED:  {{ join ", " $frontendProxy.publicAlb.blockedPrefixes }}
+  - BLOCKED:  {{ join ", " (default (list) $frontendProxy.publicAlb.blockedPrefixes) }}
               (returns 403 Access Denied)
 {{- end }}

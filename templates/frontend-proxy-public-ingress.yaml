@@ -33,5 +33,5 @@ spec:
               service:
                 name: frontend-proxy
                 port:
-                  number: 8080
+                  number: {{ dig "service" "port" 8080 $frontendProxy }}
 {{- end }}
