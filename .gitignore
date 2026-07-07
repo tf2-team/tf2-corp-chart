@@ -1,0 +1,16 @@
+# Tệp tin đóng gói Helm Chart (khi lập trình viên chạy lệnh helm package)
+*.tgz
+
+# Thư mục chứa các subcharts phụ thuộc (tương tự node_modules)
+# (Các file này được tự động tải về khi chạy lệnh: helm dependency build)
+charts/*.tgz
+charts/
+
+# Các file values ghi đè chạy thử cục bộ hoặc nhạy cảm
+*local-values.yaml
+*private*.yaml
+*.tmp.yaml
+
+# Các tệp tin hệ điều hành tự sinh
+.DS_Store
+Thumbs.db
