@@ -8,7 +8,6 @@ metadata:
     {{- $ctx := dict "Release" .Release "Chart" .Chart "Capabilities" .Capabilities "Template" .Template "name" "frontend-proxy" }}
     {{- include "techx-corp.labels" $ctx | nindent 4 }}
   annotations:
-    kubernetes.io/ingress.class: {{ $frontendProxy.publicAlb.ingressClassName | quote }}
     alb.ingress.kubernetes.io/scheme: {{ $frontendProxy.publicAlb.scheme | quote }}
     alb.ingress.kubernetes.io/target-type: {{ $frontendProxy.publicAlb.targetType | quote }}
     alb.ingress.kubernetes.io/listen-ports: {{ $frontendProxy.publicAlb.listenPorts | quote }}
