@@ -1,5 +1,13 @@
 ﻿# yaml-language-server: $schema=./values.schema.json
 default:
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 1
+    minReadySeconds: 10
+    progressDeadlineSeconds: 300
   # List of environment variables applied to all components
   env:
     - name: OTEL_SERVICE_NAME
@@ -221,6 +229,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -247,6 +258,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -279,6 +293,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -320,6 +337,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -341,6 +361,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      tcpSocket:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -397,6 +420,10 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -453,6 +480,10 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 8080
     service:
       port: 8080
     publicAlb:
@@ -616,6 +647,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -646,6 +680,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -673,6 +710,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      grpc:
+        port: 3551
     service:
       port: 3551
     podAnnotations:
@@ -717,6 +757,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      tcpSocket:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -782,6 +825,9 @@ components:
     enabled: true
     useDefault:
       env: true
+    readinessProbe:
+      tcpSocket:
+        port: 8080
     service:
       port: 8080
     podAnnotations:
@@ -806,6 +852,9 @@ components:
       tag: "v0.12.9"
     useDefault:
       env: true
+    readinessProbe:
+      tcpSocket:
+        port: 8013
     replicas: 1
     ports:
       - name: rpc
@@ -893,6 +942,16 @@ components:
     terminationGracePeriodSeconds: 60
     useDefault:
       env: true
+    # NOTE: Singleton data/broker component. Non-surge rollout is used because it relies on single-writer / non-HA storage, which does not support zero-downtime rolling updates.
+    rollout:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 0
+    readinessProbe:
+      tcpSocket:
+        port: 9092
     replicas: 1
     ports:
       - name: plaintext
@@ -953,6 +1012,16 @@ components:
     terminationGracePeriodSeconds: 60
     useDefault:
       env: false
+    # NOTE: Singleton data/broker component. Non-surge rollout is used because it relies on single-writer / non-HA storage, which does not support zero-downtime rolling updates.
+    rollout:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 0
+    readinessProbe:
+      tcpSocket:
+        port: 5432
     imageOverride:
       repository: "postgres"
       tag: "17.6"
@@ -1017,6 +1086,16 @@ components:
     terminationGracePeriodSeconds: 60
     useDefault:
       env: false
+    # NOTE: Singleton data/broker component. Non-surge rollout is used because it relies on single-writer / non-HA storage, which does not support zero-downtime rolling updates.
+    rollout:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 0
+    readinessProbe:
+      tcpSocket:
+        port: 6379
     imageOverride:
       repository: "valkey/valkey"
       tag: "9.0.1-alpine3.23"
