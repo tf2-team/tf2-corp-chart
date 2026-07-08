@@ -220,10 +220,10 @@
           "$ref": "#/definitions/ContainerResources"
         },
         "securityContext": {
-          "type": "object"
+          "$ref": "#/definitions/SecurityContext"
         },
         "podSecurityContext": {
-          "type": "object"
+          "$ref": "#/definitions/PodSecurityContext"
         },
         "ingress": {
           "$ref": "#/definitions/Ingress"
@@ -340,10 +340,13 @@
           "$ref": "#/definitions/SchedulingRules"
         },
         "securityContext": {
-          "type": "object"
+          "$ref": "#/definitions/SecurityContext"
         },
         "podSecurityContext": {
-          "type": "object"
+          "$ref": "#/definitions/PodSecurityContext"
+        },
+        "initContainerSecurityContext": {
+          "$ref": "#/definitions/SecurityContext"
         }
       },
       "required": [
@@ -859,6 +862,94 @@
         "name",
         "mountPath"
       ]
+    },
+    "PodSecurityContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runAsUser": {
+          "type": "integer"
+        },
+        "runAsGroup": {
+          "type": "integer"
+        },
+        "fsGroup": {
+          "type": "integer"
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+            },
+            "localhostProfile": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        }
+      }
+    },
+    "SecurityContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runAsUser": {
+          "type": "integer"
+        },
+        "runAsGroup": {
+          "type": "integer"
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "allowPrivilegeEscalation": {
+          "type": "boolean"
+        },
+        "readOnlyRootFilesystem": {
+          "type": "boolean"
+        },
+        "privileged": {
+          "type": "boolean"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "drop": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+            },
+            "localhostProfile": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        }
+      }
     }
   }
 }

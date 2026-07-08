@@ -33,8 +33,28 @@ default:
     nodeSelector: {}
     affinity: {}
     tolerations: []
+  # Default podSecurityContext for all components
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
   # Default securityContext for all components
-  securityContext: {}
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  # Default initContainerSecurityContext for all components
+  initContainerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -187,6 +207,11 @@ components:
     resources:
       limits:
         memory: 120Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
+      - name: otel-log-dir
+        mountPath: /var/log/opentelemetry/dotnet
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
@@ -214,6 +239,9 @@ components:
     resources:
       limits:
         memory: 300Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
 
   cart:
     enabled: true
@@ -239,6 +267,9 @@ components:
     resources:
       limits:
         memory: 160Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
     initContainers:
       - name: wait-for-valkey-cart
         image: busybox:latest
@@ -328,6 +359,9 @@ components:
     resources:
       limits:
         memory: 100Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
 
   fraud-detection:
     enabled: true
@@ -351,6 +385,9 @@ components:
     resources:
       limits:
         memory: 300Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
@@ -404,6 +441,9 @@ components:
     resources:
       limits:
         memory: 250Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
     securityContext:
       runAsUser: 1001  # nextjs
       runAsGroup: 1001
@@ -480,10 +520,18 @@ components:
     resources:
       limits:
         memory: 65Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
     securityContext:
       runAsUser: 101  # envoy
       runAsGroup: 101
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
 
   image-provider:
     enabled: true
@@ -509,6 +557,18 @@ components:
     resources:
       limits:
         memory: 50Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
+    securityContext:
+      runAsUser: 101  # nginx
+      runAsGroup: 101
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
 
   load-generator:
     enabled: true
@@ -548,6 +608,9 @@ components:
     resources:
       limits:
         memory: 1500Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
 
   payment:
     enabled: true
@@ -571,6 +634,9 @@ components:
     resources:
       limits:
         memory: 140Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
     securityContext:
       runAsUser: 1000  # node
       runAsGroup: 1000
@@ -643,6 +709,9 @@ components:
     resources:
       limits:
         memory: 100Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
 
   quote:
     enabled: true
@@ -666,10 +735,18 @@ components:
     resources:
       limits:
         memory: 40Mi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
     securityContext:
       runAsUser: 33  # www-data
       runAsGroup: 33
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
 
   recommendation:
     enabled: true
@@ -697,6 +774,9 @@ components:
     resources:
       limits:
         memory: 500Mi            # This is high to enable supporting the recommendationCache feature flag use case
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
 
   shipping:
     enabled: true
@@ -756,6 +836,8 @@ components:
     mountedEmptyDirs:
       - name: config-rw
         mountPath: /etc/flagd
+      - name: tmp-dir
+        mountPath: /tmp
     # flagd-ui as a sidecar container in the same pod so the flag json file can be shared
     sidecarContainers:
       - name: flagd-ui
@@ -777,9 +859,20 @@ components:
         resources:
           limits:
             memory: 250Mi
+        securityContext:
+          runAsUser: 10001
+          runAsGroup: 10001
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
         volumeMounts:
           - name: config-rw
             mountPath: /app/data
+          - name: tmp-dir
+            mountPath: /tmp
     initContainers:
       - name: init-config
         image: busybox
@@ -826,6 +919,11 @@ components:
       runAsUser: 1000  # appuser
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
 
   llm:
     enabled: true
@@ -891,6 +989,15 @@ components:
     resources:
       limits:
         memory: 100Mi
+    securityContext:
+      runAsUser: 999  # postgres
+      runAsGroup: 999
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
 
   valkey-cart:
     enabled: true
@@ -917,9 +1024,24 @@ components:
       runAsUser: 999  # valkey
       runAsGroup: 1000
       runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
 
 opentelemetry-collector:
   enabled: true
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
   image:
     repository: "otel/opentelemetry-collector-contrib"
   fullnameOverride: otel-collector
@@ -1051,6 +1173,16 @@ jaeger:
   enabled: true
   fullnameOverride: jaeger
   jaeger:
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
     storage:
       type: memory
     extraEnv:
@@ -1191,6 +1323,20 @@ prometheus:
     resources:
       limits:
         memory: 400Mi
+    securityContext:
+      runAsUser: 65534
+      runAsNonRoot: true
+      runAsGroup: 65534
+      fsGroup: 65534
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
 
 grafana:
   enabled: true
@@ -1224,6 +1370,20 @@ grafana:
   resources:
     limits:
       memory: 300Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
 opensearch:
   enabled: true
@@ -1244,3 +1404,15 @@ opensearch:
   resources:
     limits:
       memory: 1100Mi
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL

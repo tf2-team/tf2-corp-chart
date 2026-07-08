@@ -62,6 +62,16 @@ helm upgrade --install techx-corp ./ -n techx-tf2 -f values-public-alb.yaml --cr
    curl -i http://<ALB_DNS_NAME>/images/logo.png
    ```
 
+## SEC-04: Security Context Hardening
+
+This chart has been hardened to conform to restricted Pod Security Standards. For detailed information, see [SEC-04-notes.md](file:///E:/code-folder/xbrain_projects/phase3/techx-corp-chart/SEC-04-notes.md).
+
+### Documented Exceptions to `readOnlyRootFilesystem: true`
+- **postgresql**: Requires writing to state/database files.
+- **kafka**: Requires persistence logs.
+- **valkey-cart**: Valkey cache database dump persistence.
+- **opensearch**: Java process temp, locking, and indexes.
+
 ## License
 Apache License 2.0.
 
