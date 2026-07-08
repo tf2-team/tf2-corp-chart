@@ -207,6 +207,12 @@
         "readinessProbe": {
           "$ref": "#/definitions/ReadinessProbe"
         },
+        "startupProbe": {
+          "$ref": "#/definitions/StartupProbe"
+        },
+        "rollout": {
+          "$ref": "#/definitions/Rollout"
+        },
         "schedulingRules": {
           "$ref": "#/definitions/SchedulingRules"
         },
@@ -220,13 +226,43 @@
           "$ref": "#/definitions/ContainerResources"
         },
         "securityContext": {
-          "type": "object"
+          "$ref": "#/definitions/SecurityContext"
         },
         "podSecurityContext": {
-          "type": "object"
+          "$ref": "#/definitions/PodSecurityContext"
         },
         "ingress": {
           "$ref": "#/definitions/Ingress"
+        },
+        "publicAlb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "ingressClassName": {
+              "type": "string"
+            },
+            "scheme": {
+              "type": "string"
+            },
+            "targetType": {
+              "type": "string"
+            },
+            "listenPorts": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "blockedPrefixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         },
         "initContainers": {
           "type": "array"
@@ -313,10 +349,16 @@
           "$ref": "#/definitions/SchedulingRules"
         },
         "securityContext": {
-          "type": "object"
+          "$ref": "#/definitions/SecurityContext"
         },
         "podSecurityContext": {
-          "type": "object"
+          "$ref": "#/definitions/PodSecurityContext"
+        },
+        "initContainerSecurityContext": {
+          "$ref": "#/definitions/SecurityContext"
+        },
+        "rollout": {
+          "$ref": "#/definitions/Rollout"
         }
       },
       "required": [
@@ -655,11 +697,17 @@
       ]
     },
     "LivenessProbe": {
+      "$ref": "#/definitions/Probe"
+    },
+    "ReadinessProbe": {
+      "$ref": "#/definitions/Probe"
+    },
+    "StartupProbe": {
+      "$ref": "#/definitions/Probe"
+    },
+    "Probe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "httpGet"
-      ],
       "properties": {
         "httpGet": {
           "type": "object",
@@ -696,7 +744,52 @@
               }
             },
             "port": {
-              "type": "integer"
+              "type": ["integer", "string"]
+            }
+          }
+        },
+        "grpc": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": ["integer", "string"]
+            },
+            "service": {
+              "type": "string"
+            }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "required": [
+            "port"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": ["integer", "string"]
+            }
+          }
+        },
+        "exec": {
+          "type": "object",
+          "required": [
+            "command"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         },
@@ -717,65 +810,36 @@
         }
       }
     },
-    "ReadinessProbe": {
+    "Rollout": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "httpGet"
-      ],
       "properties": {
-        "httpGet": {
+        "strategy": {
           "type": "object",
-          "required": [
-            "port"
-          ],
           "additionalProperties": false,
           "properties": {
-            "path": {
-              "type": "string"
+            "type": {
+              "type": "string",
+              "enum": ["RollingUpdate", "Recreate"]
             },
-            "host": {
-              "type": "string"
-            },
-            "scheme": {
-              "type": "string"
-            },
-            "httpHeaders": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "value"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "value": {
-                    "type": "string"
-                  }
+            "rollingUpdate": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "maxUnavailable": {
+                  "type": ["integer", "string"]
+                },
+                "maxSurge": {
+                  "type": ["integer", "string"]
                 }
               }
-            },
-            "port": {
-              "type": "integer"
             }
           }
         },
-        "initialDelaySeconds": {
+        "minReadySeconds": {
           "type": "integer"
         },
-        "timeoutSeconds": {
-          "type": "integer"
-        },
-        "periodSeconds": {
-          "type": "integer"
-        },
-        "successThreshold": {
-          "type": "integer"
-        },
-        "failureThreshold": {
+        "progressDeadlineSeconds": {
           "type": "integer"
         }
       }
@@ -857,6 +921,94 @@
         "enabled"
       ],
       "title": "Autoscaling"
+    },
+    "PodSecurityContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runAsUser": {
+          "type": "integer"
+        },
+        "runAsGroup": {
+          "type": "integer"
+        },
+        "fsGroup": {
+          "type": "integer"
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+            },
+            "localhostProfile": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        }
+      }
+    },
+    "SecurityContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runAsUser": {
+          "type": "integer"
+        },
+        "runAsGroup": {
+          "type": "integer"
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "allowPrivilegeEscalation": {
+          "type": "boolean"
+        },
+        "readOnlyRootFilesystem": {
+          "type": "boolean"
+        },
+        "privileged": {
+          "type": "boolean"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "drop": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+            },
+            "localhostProfile": {
+              "type": "string"
+            }
+          },
+          "required": ["type"]
+        }
+      }
     }
   }
 }

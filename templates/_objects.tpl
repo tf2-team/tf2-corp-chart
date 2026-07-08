@@ -4,7 +4,7 @@ Demo component Deployment template
 {{- define "techx-corp.deployment" }}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ if .stateful }}StatefulSet{{ else }}Deployment{{ end }}
 metadata:
   name: {{ .name }}
   labels:
@@ -14,6 +14,17 @@ spec:
   replicas: {{ .replicas | default .defaultValues.replicas }}
   {{- end }}
   revisionHistoryLimit: {{ .revisionHistoryLimit | default .defaultValues.revisionHistoryLimit }}
+  {{- $rollout := mergeOverwrite (dict) (deepCopy (default dict .defaultValues.rollout)) (deepCopy (default dict .rollout)) }}
+  {{- if $rollout.strategy }}
+  strategy:
+    {{- $rollout.strategy | toYaml | nindent 4 }}
+  {{- end }}
+  {{- if not (kindIs "invalid" $rollout.minReadySeconds) }}
+  minReadySeconds: {{ $rollout.minReadySeconds }}
+  {{- end }}
+  {{- if not (kindIs "invalid" $rollout.progressDeadlineSeconds) }}
+  progressDeadlineSeconds: {{ $rollout.progressDeadlineSeconds }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "techx-corp.selectorLabels" . | nindent 6 }}
@@ -30,6 +41,9 @@ spec:
         {{- toYaml .podAnnotations | nindent 8 }}
       {{- end }}
     spec:
+      {{- if .terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
+      {{- end }}
       {{- if or .defaultValues.image.pullSecrets ((.imageOverride).pullSecrets) }}
       imagePullSecrets:
         {{- ((.imageOverride).pullSecrets) | default .defaultValues.image.pullSecrets | toYaml | nindent 8}}
@@ -48,10 +62,11 @@ spec:
       tolerations:
         {{- $schedulingRules.tolerations | default .defaultValues.schedulingRules.tolerations | toYaml | nindent 8 }}
       {{- end }}
-      {{- if or .defaultValues.podSecurityContext .podSecurityContext }}
+      {{- $podSecurityContext := mergeOverwrite (dict) (default dict .defaultValues.podSecurityContext) (default dict .podSecurityContext) }}
+      {{- if not (empty $podSecurityContext) }}
       securityContext:
-        {{- .podSecurityContext | default .defaultValues.podSecurityContext | toYaml | nindent 8 }}
-      {{- end}}
+        {{- $podSecurityContext | toYaml | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .name }}
           image: '{{ ((.imageOverride).repository) | default .defaultValues.image.repository }}:{{ ((.imageOverride).tag) | default (printf "%s-%s" (default .Chart.AppVersion .defaultValues.image.tag) .name) }}'
@@ -68,10 +83,15 @@ spec:
             {{- include "techx-corp.pod.env" . | nindent 12 }}
           resources:
             {{- .resources | toYaml | nindent 12 }}
-          {{- if or .defaultValues.securityContext .securityContext }}
+          {{- $securityContext := mergeOverwrite (dict) (default dict .defaultValues.securityContext) (default dict .securityContext) }}
+          {{- if not (empty $securityContext) }}
           securityContext:
-            {{- .securityContext | default .defaultValues.securityContext | toYaml | nindent 12 }}
-          {{- end}}
+            {{- $securityContext | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .startupProbe }}
+          startupProbe:
+            {{- .startupProbe | toYaml | nindent 12 }}
+          {{- end }}
           {{- if .livenessProbe }}
           livenessProbe:
             {{- .livenessProbe | toYaml | nindent 12 }}
@@ -120,10 +140,15 @@ spec:
           resources:
             {{- .resources | toYaml | nindent 12 }}
           {{- end }}
-          {{- if or .defaultValues.securityContext .securityContext }}
+          {{- $sidecarSecurityContext := mergeOverwrite (dict) (default dict .defaultValues.securityContext) (default dict .securityContext) }}
+          {{- if not (empty $sidecarSecurityContext) }}
           securityContext:
-            {{- .securityContext | default .defaultValues.securityContext | toYaml | nindent 12 }}
-          {{- end}}
+            {{- $sidecarSecurityContext | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .startupProbe }}
+          startupProbe:
+            {{- .startupProbe | toYaml | nindent 12 }}
+          {{- end }}
           {{- if .livenessProbe }}
           livenessProbe:
             {{- .livenessProbe | toYaml | nindent 12 }}
@@ -139,8 +164,17 @@ spec:
         {{- end }}
       {{- if .initContainers }}
       initContainers:
-        {{- tpl (toYaml .initContainers) . | nindent 8 }}
-      {{- end}}
+        {{- range $initContainer := .initContainers }}
+        {{- $mergedSecurityContext := mergeOverwrite (dict) (default dict $.defaultValues.initContainerSecurityContext) (default dict $initContainer.securityContext) }}
+        {{- $c := mergeOverwrite (dict) $initContainer }}
+        {{- if not (empty $mergedSecurityContext) }}
+        {{- $c = mergeOverwrite $c (dict "securityContext" $mergedSecurityContext) }}
+        {{- else }}
+        {{- $c = omit $c "securityContext" }}
+        {{- end }}
+        {{- tpl (toYaml (list $c)) $ | nindent 8 }}
+        {{- end }}
+      {{- end }}
       volumes:
         {{- range .mountedConfigMaps }}
         - name: {{ .name | lower}}
@@ -158,6 +192,10 @@ spec:
         {{- if .additionalVolumes }}
         {{- tpl (toYaml .additionalVolumes) . | nindent 8 }}
         {{- end }}
+  {{- if and .stateful .volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- tpl (toYaml .volumeClaimTemplates) . | nindent 4 }}
+  {{- end }}
 {{- end }}
 
 {{/*

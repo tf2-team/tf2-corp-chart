@@ -19,3 +19,20 @@
   Grafana              http://localhost:8080/grafana/
   Load Generator UI    http://localhost:8080/loadgen/
   Feature Flags UI     http://localhost:8080/feature/
+
+{{- $frontendProxy := index .Values.components "frontend-proxy" }}
+{{- if and $frontendProxy $frontendProxy.enabled $frontendProxy.publicAlb $frontendProxy.publicAlb.enabled }}
+
+=======================================================================================
+PUBLIC ALB INGRESS ACTIVE
+=======================================================================================
+
+The storefront is exposed publicly via an AWS ALB.
+To inspect the Ingress resource and retrieve the ALB hostname, run:
+  kubectl --namespace {{ .Release.Namespace }} get ingress frontend-proxy-public
+
+Security Posture (Storefront Only):
+  - ALLOWED:  / , /api/* , /images/*
+  - BLOCKED:  {{ join ", " (default (list) $frontendProxy.publicAlb.blockedPrefixes) }}
+              (returns 403 Access Denied)
+{{- end }}

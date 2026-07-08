@@ -1,0 +1,37 @@
+{{- $frontendProxy := index .Values.components "frontend-proxy" }}
+{{- if and $frontendProxy $frontendProxy.enabled $frontendProxy.publicAlb $frontendProxy.publicAlb.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-proxy-public
+  labels:
+    {{- $ctx := dict "Release" .Release "Chart" .Chart "Capabilities" .Capabilities "Template" .Template "name" "frontend-proxy" }}
+    {{- include "techx-corp.labels" $ctx | nindent 4 }}
+  annotations:
+    alb.ingress.kubernetes.io/scheme: {{ $frontendProxy.publicAlb.scheme | quote }}
+    alb.ingress.kubernetes.io/target-type: {{ $frontendProxy.publicAlb.targetType | quote }}
+    alb.ingress.kubernetes.io/listen-ports: {{ $frontendProxy.publicAlb.listenPorts | quote }}
+    alb.ingress.kubernetes.io/actions.block-public-path: '{"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"403","messageBody":"Access Denied"}}'
+spec:
+  ingressClassName: {{ $frontendProxy.publicAlb.ingressClassName | quote }}
+  rules:
+    - {{ if $frontendProxy.publicAlb.host }}host: {{ $frontendProxy.publicAlb.host | quote }}
+      {{ end }}http:
+        paths:
+          {{- range $frontendProxy.publicAlb.blockedPrefixes }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: block-public-path
+                port:
+                  name: use-annotation
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-proxy
+                port:
+                  number: {{ dig "service" "port" 8080 $frontendProxy }}
+{{- end }}
