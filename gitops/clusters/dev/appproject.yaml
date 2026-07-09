@@ -1,0 +1,43 @@
+# AppProject for development cluster Application "techx-corp".
+# Inventory (helm template + deps): ClusterRole / ClusterRoleBinding from Grafana,
+# OpenTelemetry Collector, Prometheus. First-party chart resources are namespaced.
+# Re-run inventory after subchart upgrades.
+#
+# Apply once: kubectl apply -f gitops/clusters/dev/
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: techx-corp
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: TechX Corp application workloads (development)
+
+  # Only this Git repo may be used as source.
+  sourceRepos:
+    - https://github.com/tmcmanhcuong/techx-corp-chart.git
+    - https://github.com/tmcmanhcuong/techx-corp-chart.git/*
+    # Allow SSH form if operators use deploy keys:
+    - git@github.com:tmcmanhcuong/techx-corp-chart.git
+    - git@github.com:tmcmanhcuong/techx-corp-chart.git/*
+
+  destinations:
+    # Application destination only. CreateNamespace syncOption creates NS via whitelist.
+    - server: https://kubernetes.default.svc
+      namespace: techx-corp
+
+  # Explicit cluster-scoped allow-list (from chart inventory). No wildcards.
+  clusterResourceWhitelist:
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: ""
+      kind: Namespace
+
+  # Do not allow this project to manage Argo CD itself.
+  namespaceResourceBlacklist: []
+
+  orphanedResources:
+    warn: true

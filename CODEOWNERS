@@ -1,0 +1,21 @@
+# Production-affecting paths require review (REL-09 GitOps).
+# Adjust @teams to match GitHub org teams before enforcing branch protection.
+
+# Core chart & deps
+/Chart.yaml    @tmcmanhcuong
+/Chart.lock    @tmcmanhcuong
+/charts/       @tmcmanhcuong
+/templates/    @tmcmanhcuong
+/postgresql/   @tmcmanhcuong
+
+# Values used by prod Application valueFiles
+/values.yaml              @tmcmanhcuong
+/values-prod.yaml         @tmcmanhcuong
+/values-public-alb.yaml   @tmcmanhcuong
+
+# Argo CD prod bootstrap
+/gitops/clusters/prod/    @tmcmanhcuong
+
+# Dev can be lighter; still owned for visibility
+/values-dev.yaml          @tmcmanhcuong
+/gitops/clusters/dev/     @tmcmanhcuong

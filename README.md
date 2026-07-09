@@ -6,8 +6,14 @@ microservices, AI review service + LLM, and the bundled observability stack
 
 ## Install
 
+**Preferred (GitOps / Argo CD):** see [`docs/operations/gitops-argocd.md`](docs/operations/gitops-argocd.md) and `gitops/clusters/`.  
+Env overlays: `values-dev.yaml`, `values-prod.yaml` (plus `values-public-alb.yaml`).
+
+**Break-glass Helm** (disable Argo auto-sync first after cutover):
+
 ```sh
-helm install techx-corp ./ -n techx-corp --create-namespace
+helm upgrade --install techx-corp ./ -n techx-corp --create-namespace \
+  -f values-public-alb.yaml -f values-prod.yaml
 ```
 
 ## ALB-Backed Public Ingress for frontend-proxy

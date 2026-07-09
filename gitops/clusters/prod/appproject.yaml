@@ -1,0 +1,32 @@
+# AppProject for production cluster Application "techx-corp".
+# Same inventory-based clusterResourceWhitelist as dev. Re-inventory after chart upgrades.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: techx-corp
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: TechX Corp application workloads (production)
+
+  sourceRepos:
+    - https://github.com/tmcmanhcuong/techx-corp-chart.git
+    - https://github.com/tmcmanhcuong/techx-corp-chart.git/*
+    - git@github.com:tmcmanhcuong/techx-corp-chart.git
+    - git@github.com:tmcmanhcuong/techx-corp-chart.git/*
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: techx-corp
+
+  clusterResourceWhitelist:
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: ""
+      kind: Namespace
+
+  orphanedResources:
+    warn: true

@@ -1,0 +1,39 @@
+# Production Application — start with MANUAL sync only (no automated).
+# Protect ALL prod-affecting paths in GitHub (not only values-prod.yaml):
+#   templates/**, charts/**, Chart.yaml, Chart.lock, values.yaml,
+#   values-prod.yaml, values-public-alb.yaml, gitops/clusters/prod/**, postgresql/**
+#
+# Prefer SEC-05 (ESO) before production GitOps cutover for secrets.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: techx-corp
+  namespace: argocd
+spec:
+  project: techx-corp
+
+  source:
+    repoURL: https://github.com/tmcmanhcuong/techx-corp-chart.git
+    targetRevision: main
+    path: .
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-public-alb.yaml
+        - values-prod.yaml
+      releaseName: techx-corp
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: techx-corp
+
+  # Manual sync for production Phase 5. Do not enable automated until process is proven.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

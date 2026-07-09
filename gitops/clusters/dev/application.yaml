@@ -1,0 +1,45 @@
+# Development Application — first cutover: NO automated sync, NO prune, NO ServerSideApply.
+# After stable (Phase 4): enable automated.prune=false, selfHeal=true.
+#
+# Primary rollback: git revert → merge → Argo sync.
+# History rollback: break-glass only (disable auto-sync first; then update Git).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: techx-corp
+  namespace: argocd
+  # finalizer optional; avoid cascade-delete surprises during early rollout
+spec:
+  project: techx-corp
+
+  source:
+    # Override if repo path differs; must match AppProject sourceRepos.
+    repoURL: https://github.com/tmcmanhcuong/techx-corp-chart.git
+    targetRevision: techx-dev-corp
+    path: .
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-public-alb.yaml
+        - values-dev.yaml
+      # releaseName keeps resource names aligned with historical Helm release "techx-corp"
+      releaseName: techx-corp
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: techx-corp
+
+  # First cutover: omit automated block entirely (manual sync only).
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      # Do NOT enable ServerSideApply in v1 baseline.
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore noisy fields if needed after first diff (add only with evidence).
+  # ignoreDifferences: []

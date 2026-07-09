@@ -114,33 +114,56 @@ Xác minh trước khi Helm:
 aws ecr describe-images --repository-name techx-corp/ad --region us-east-1 --max-items 3
 ```
 
-Ghi lại **VERSION** (tag) để truyền vào Helm `--set default.image.tag=...`.
+Ghi lại **VERSION** (tag) để ghi vào `values-prod.yaml` / `values-dev.yaml` (GitOps) — **không** chỉ giữ trên máy operator.
 
 ---
 
-## Phase 4: Helm Deploy (trọng tâm repo này)
+## Phase 4: Deploy (GitOps ưu tiên — REL-09)
 
-### Production
+> Chi tiết: [operations/gitops-argocd.md](./operations/gitops-argocd.md) · plan workspace `docs/gitops-argocd.md`
 
-Từ thư mục cha chứa chart (hoặc path tương đương):
+### 4A. Argo CD (sau khi control plane đã cài)
+
+1. Cập nhật tag trong Git:
+   - Prod: `values-prod.yaml` → `default.image.tag`
+   - Dev: `values-dev.yaml` → `default.image.tag`
+2. **Contract:** tag global — rebuild/push **toàn bộ** service bake với cùng tag; verify ECR trước merge PR.
+3. Sync:
+
+```bash
+argocd app diff techx-corp
+argocd app sync techx-corp --dry-run
+argocd app sync techx-corp
+argocd app wait techx-corp --sync --health --timeout 600
+```
+
+4. **Rollback chuẩn:** `git revert` commit deploy → merge → Argo sync.  
+   History rollback Argo chỉ break-glass (tắt auto-sync → rollback → **cập nhật Git**).
+5. Sau cutover: **không** `helm upgrade` thường xuyên (ownership = Argo CD).
+
+Value layer: `values.yaml` + `values-public-alb.yaml` + `values-dev|prod.yaml` (xem `gitops/clusters/`).
+
+### 4B. Helm break-glass (chỉ khẩn cấp)
+
+Tắt Argo auto-sync trước. Argo **không** chuyển Helm release state; dual-drive gây lệch.
+
+### Production (break-glass)
 
 ```bash
 helm upgrade --install techx-corp ./techx-corp-chart \
   -n techx-corp --create-namespace \
   -f ./techx-corp-chart/values-public-alb.yaml \
-  --set default.image.repository=493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-corp \
-  --set default.image.tag=sha-a1b2c3d \
+  -f ./techx-corp-chart/values-prod.yaml \
   --wait --atomic --timeout 10m --history-max 10
 ```
 
-### Development (ví dụ)
+### Development (break-glass)
 
 ```bash
 helm upgrade --install techx-corp ./techx-corp-chart \
   -n techx-corp --create-namespace \
   -f ./techx-corp-chart/values-public-alb.yaml \
-  --set default.image.repository=493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-dev-corp \
-  --set default.image.tag=sha-a1b2c3d \
+  -f ./techx-corp-chart/values-dev.yaml \
   --wait --atomic --timeout 10m --history-max 10
 ```
 
@@ -149,12 +172,10 @@ helm upgrade --install techx-corp ./techx-corp-chart \
 | Flag / value | Mục đích |
 |---|---|
 | `-f values-public-alb.yaml` | Public ALB Ingress cho `frontend-proxy` + route blocking |
-| `default.image.repository` | REGISTRY/PROJECT ECR |
-| `default.image.tag` | VERSION đồng bộ với image đã push |
-| `--wait` | Chờ Pod/PVC/Service Ready |
-| `--atomic` | Auto-rollback nếu fail/timeout |
-| `--timeout 10m` | Thời gian pull image + start DB/broker |
-| `--history-max 10` | Giới hạn revision history |
+| `-f values-dev\|prod.yaml` | REGISTRY/PROJECT + tag trong Git |
+| `--wait` / Argo `app wait` | Chờ ready / health (timeout 10m) |
+| `--atomic` | **Chỉ Helm**; Argo không có parity — partial sync có thể xảy ra |
+| `--history-max 10` | Giới hạn revision history (Helm) |
 
 ### Kiểm tra image trong Pod
 
