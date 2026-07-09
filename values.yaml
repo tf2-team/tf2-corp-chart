@@ -473,7 +473,7 @@ components:
       - name: WEB_OTEL_SERVICE_NAME
         value: frontend-web
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-        value: http://localhost:8080/otlp-http/v1/traces             # This expects users to use `kubectl port-forward ...`
+        value: /otlp-http/v1/traces             # This allows local development and production/ALB relative routing
     resources:
       limits:
         memory: 250Mi
