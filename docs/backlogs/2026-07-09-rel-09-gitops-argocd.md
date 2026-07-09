@@ -2,49 +2,81 @@
 
 ## Bối cảnh
 
-Chart `techx-corp-chart` là desired state deploy lên EKS. Cần lớp GitOps để Argo CD sync Application thay cho `helm upgrade` thủ công, kèm values theo môi trường và quy tắc promote image an toàn.
+Helm chart `techx-corp-chart` là desired state của platform trên EKS. Hiện deploy chủ yếu bằng `helm upgrade` thủ công. REL-09 yêu cầu lớp GitOps: Argo CD Application trỏ chart + valueFiles theo môi trường, kèm quy tắc promote image và rollback an toàn.
 
-Kế hoạch: [`docs/gitops-argocd.md`](../../../docs/gitops-argocd.md) · Runbook: [`docs/operations/gitops-argocd.md`](../operations/gitops-argocd.md)
+- Kế hoạch tổng: [`docs/gitops-argocd.md`](../../../docs/gitops-argocd.md)
+- Backlog tổng: [`docs/backlogs/2026-07-09-rel-09-gitops-argocd.md`](../../../docs/backlogs/2026-07-09-rel-09-gitops-argocd.md)
+- Runbook: [`docs/operations/gitops-argocd.md`](../operations/gitops-argocd.md)
+
+**Phụ thuộc:** Argo CD control plane đã cài (infra REL-09, `argocd_enabled=true`).
 
 ## Vấn đề
 
-1. Deploy phụ thuộc CLI `--set image.tag` — dễ lệch Git.  
-2. Global tag + bake thiếu service → ImagePullBackOff.  
-3. Bảo vệ chỉ `values-prod.yaml` không đủ khi Application `path: .`.  
-4. Cần quy định rollback Git-first và không dual-drive Helm.
+1. Image tag / repo không nằm ổn định trong Git theo env (`--set` rời rạc).
+2. Application `path: .` → mọi thay đổi chart (không chỉ values-prod) có thể deploy production.
+3. Global `default.image.tag` + bake thiếu service → ImagePullBackOff.
+4. Cần quy định ownership Argo sau cutover (không dual Helm).
+5. Rollback History khi auto-sync bật sẽ conflict nếu không cập nhật Git.
 
-## Giải pháp (chart)
+## Giải pháp đề xuất (chart)
 
-1. `values-dev.yaml` / `values-prod.yaml` — repository + tag + ALB posture.  
-2. `gitops/clusters/{dev,prod}/` — AppProject (whitelist CR/CRB/Namespace) + Application (sync thủ công, không SSA).  
-3. Runbook: wait 600s, Git revert primary, history break-glass.  
-4. CODEOWNERS / branch protection gợi ý cho mọi path ảnh hưởng prod.  
-5. Không app-of-apps trong v1 (Phase 7).
+1. **`values-dev.yaml` / `values-prod.yaml`**  
+   - `default.image.repository` + `tag`  
+   - ALB `blockSensitivePaths` theo env  
+   - Comment contract: rebuild-all cùng tag trước khi đổi tag  
+
+2. **`gitops/clusters/{dev,prod}/`**  
+   - `AppProject`: destination `techx-corp`; whitelist ClusterRole, ClusterRoleBinding, Namespace  
+   - `Application`: valueFiles = base + public-alb + env; **không** ServerSideApply  
+   - First cutover: **không** `automated` (manual sync); prune OFF  
+
+3. **Runbook**  
+   - `sync --dry-run` → `sync` → `wait --timeout 600` → smoke  
+   - Rollback chuẩn = git revert  
+   - History rollback = break-glass + cập nhật Git  
+
+4. **`CODEOWNERS`**  
+   - Cover templates, charts, Chart.*, values.yaml, values-prod*, values-public-alb, gitops/clusters/prod, postgresql  
+
+5. **Không app-of-apps trong v1** (đánh giá Phase 7).
 
 ## Acceptance Criteria
 
-- [ ] values-dev/prod tồn tại; comment contract rebuild-all.  
-- [ ] Application dev/prod: valueFiles đúng; auto-sync OFF; prune OFF; không ServerSideApply.  
-- [ ] AppProject: destination chỉ `techx-corp`; clusterResourceWhitelist cụ thể.  
-- [ ] Runbook có sync --dry-run, wait --timeout 600, rollback Git, break-glass history.  
-- [ ] Tài liệu prod path protection đầy đủ.
+- [ ] `values-dev.yaml` / `values-prod.yaml` tồn tại và document image contract.
+- [ ] AppProject + Application dev/prod trong `gitops/clusters/`.
+- [ ] Baseline Application: no SSA; first sync manual; prune OFF.
+- [ ] AppProject không cho destination `argocd`; whitelist cluster-scoped cụ thể.
+- [ ] Runbook đầy đủ: ownership, rollback Git, break-glass, promote verify ECR.
+- [ ] CODEOWNERS (hoặc tương đương) cho path ảnh hưởng prod.
+- [ ] DEPLOYMENT.md / README nêu GitOps là đường chính; Helm là break-glass.
 
-## Kiểm thử
+## Kiểm thử / xác minh
 
 ```sh
-helm template techx-corp . -f values-public-alb.yaml -f values-dev.yaml
+helm template techx-corp . \
+  -f values-public-alb.yaml -f values-dev.yaml >/dev/null
+
+kubectl apply -f gitops/clusters/dev/   # sau khi Argo CD sẵn sàng
+argocd app diff techx-corp
 argocd app sync techx-corp --dry-run
+argocd app sync techx-corp
 argocd app wait techx-corp --sync --health --timeout 600
+./scripts/smoke-test.sh --namespace techx-corp
 ```
 
 ## Rủi ro & rollback
 
-Dual Helm/Argo → cấm helm thường sau cutover.  
-Partial sync → Git revert + wait health.  
-**Rollback chuẩn:** git revert.
+| Rủi ro | Giảm thiểu |
+|--------|------------|
+| Drift first sync | Snapshot tag live vào values-* trước cutover |
+| Dual Helm/Argo | Cấm helm thường sau cutover |
+| Partial sync | wait health; Git revert |
+| Prod path lọt review | CODEOWNERS rộng |
+
+**Rollback chuẩn:** `git revert` → merge → Argo sync.
 
 ---
 
 ## English Summary
 
-Chart-level REL-09: env value overlays, inventory-based AppProject, manual-first Applications without SSA, and operator runbook with Git-primary rollback.
+Chart-level REL-09: env value overlays, inventory-based AppProject, manual-first Applications without ServerSideApply, CODEOWNERS for prod-affecting paths, and operator runbook with Git-primary rollback.

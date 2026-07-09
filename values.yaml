@@ -1571,7 +1571,7 @@ grafana:
         memory: 256Mi
   resources:
     limits:
-      memory: 300Mi
+      memory: 512Mi
   securityContext:
     runAsNonRoot: true
     runAsUser: 472
