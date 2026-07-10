@@ -24,17 +24,22 @@ spec:
     - git@github.com:tmcmanhcuong/tf2-corp-chart.git/*
 
   destinations:
-    # Application destination only. CreateNamespace syncOption creates NS via whitelist.
-    # Must match Application.spec.destination.namespace (techx-corp-dev).
+    # Primary app namespace (must match Application.spec.destination.namespace).
     - server: https://kubernetes.default.svc
       namespace: techx-corp-dev
+    # metrics-server subchart installs RoleBinding metrics-server-auth-reader here.
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
 
   # Explicit cluster-scoped allow-list (from chart inventory). No wildcards.
+  # Includes metrics-server APIService + RBAC ClusterRole(s) from Grafana/OTel/Prometheus.
   clusterResourceWhitelist:
     - group: rbac.authorization.k8s.io
       kind: ClusterRole
     - group: rbac.authorization.k8s.io
       kind: ClusterRoleBinding
+    - group: apiregistration.k8s.io
+      kind: APIService
     - group: ""
       kind: Namespace
 

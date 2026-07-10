@@ -639,6 +639,8 @@ kubectl -n argocd annotate application techx-corp-dev \
 | Application **OutOfSync** sau bootstrap (other diffs) | Automated sync OFF (v1) **or** real drift (values/tag/templates) | `argocd app diff` then `argocd app sync techx-corp-dev` / `techx-corp` when intentional |
 | Orphaned resources warning | Live objects không còn trong chart (release Helm cũ / rename) | Review list; prune **chỉ** khi process cho phép (v1 prune OFF) |
 | Missing `APIService` / `RoleBinding` metrics-server (`kube-system`) | Subchart metrics-server not yet applied; or cluster already has metrics-server | First sync creates them **or** set `metrics-server.enabled: false` if cluster already has Metrics Server |
+| `namespace kube-system is not permitted in project '…'` (RoleBinding `metrics-server-auth-reader`) | AppProject `destinations` only listed app namespace | Add destination `kube-system` to AppProject (see `gitops/clusters/*/appproject.yaml`) |
+| `resource apiregistration.k8s.io:APIService is not permitted in project …` | AppProject `clusterResourceWhitelist` missing APIService | Whitelist `group: apiregistration.k8s.io` / `kind: APIService` (metrics-server subchart) |
 
 > Sau khi sửa AppProject **và** Application, luôn hard-refresh nếu UI vẫn hiện error cũ.
 >

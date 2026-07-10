@@ -20,12 +20,18 @@ spec:
   destinations:
     - server: https://kubernetes.default.svc
       namespace: techx-corp
+    # metrics-server subchart installs RoleBinding metrics-server-auth-reader here.
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
 
+  # Includes metrics-server APIService + RBAC from observability subcharts.
   clusterResourceWhitelist:
     - group: rbac.authorization.k8s.io
       kind: ClusterRole
     - group: rbac.authorization.k8s.io
       kind: ClusterRoleBinding
+    - group: apiregistration.k8s.io
+      kind: APIService
     - group: ""
       kind: Namespace
 
