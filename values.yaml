@@ -520,7 +520,7 @@ components:
       - name: LOCUST_AUTOSTART
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-        value: "true"
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
