@@ -1325,16 +1325,26 @@ components:
         rollingUpdate:
           maxUnavailable: 1
           maxSurge: 0
+    # Cold start on 200m CPU / 400m heap often exceeds 60s before :9200 binds.
+    # startupProbe gates liveness so kubelet does not kill the process mid-bootstrap.
+    startupProbe:
+      tcpSocket:
+        port: 9200
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30 # 5 minutes to first listen
     readinessProbe:
       tcpSocket:
         port: 9200
-      initialDelaySeconds: 30
       periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
     livenessProbe:
       tcpSocket:
         port: 9200
-      initialDelaySeconds: 60
-      periodSeconds: 20
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 5
     replicas: 1
     ports:
       - name: http
@@ -1346,8 +1356,9 @@ components:
         value: "-Xms400m -Xmx400m"
       - name: discovery.type
         value: single-node
+      # K8s pods lack memlock ulimit / IPC_LOCK; memory_lock=true can fail bootstrap.
       - name: bootstrap.memory_lock
-        value: "true"
+        value: "false"
       - name: DISABLE_INSTALL_DEMO_CONFIG
         value: "true"
       - name: DISABLE_SECURITY_PLUGIN
