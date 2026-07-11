@@ -1,8 +1,9 @@
 # Production overlay for Argo CD / Helm GitOps (REL-09).
 # Layer order: values.yaml → values-public-alb.yaml → values-prod.yaml
 #
-# Image contract: default.image.tag is GLOBAL for all nested services.
-# Promotion: full bake all services → verify every ECR tag exists → open PR → merge → Argo sync.
+# Image contract: default.image.repository + default.image.tag is GLOBAL for all
+# nested services including opensearch (…/techx-corp/<service>:<tag>).
+# Promotion: full bake all services → verify every ECR tag → open PR → merge → Argo sync.
 # Do not open a values-prod PR while image push is still in progress.
 #
 # Secrets (SEC-05): values.yaml uses secretKeyRef. Bootstrap ASM + deploy secrets-chart first.
@@ -22,3 +23,5 @@ components:
   frontend-proxy:
     publicAlb:
       blockSensitivePaths: true
+    # Critical ingress/gateway pin lives in values.yaml hard-placement contract.
+  # flagd critical pin lives in values.yaml.

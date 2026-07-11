@@ -38,9 +38,11 @@ spec:
         {{- if .podLabels }}
         {{- toYaml .podLabels | nindent 8 }}
         {{- end }}
-      {{- if .podAnnotations }}
+      {{- /* OTEL logical service.namespace follows Helm release NS (dev/prod); values may override. */}}
+      {{- $podAnnotations := mergeOverwrite (dict "resource.opentelemetry.io/service.namespace" .Release.Namespace) (default dict .podAnnotations) }}
+      {{- if $podAnnotations }}
       annotations:
-        {{- toYaml .podAnnotations | nindent 8 }}
+        {{- toYaml $podAnnotations | nindent 8 }}
       {{- end }}
     spec:
       {{- if .terminationGracePeriodSeconds }}
@@ -51,18 +53,55 @@ spec:
         {{- ((.imageOverride).pullSecrets) | default .defaultValues.image.pullSecrets | toYaml | nindent 8}}
       {{- end }}
       serviceAccountName: {{ include "techx-corp.serviceAccountName" .}}
-      {{- $schedulingRules := .schedulingRules | default dict }}
-      {{- if or .defaultValues.schedulingRules.nodeSelector $schedulingRules.nodeSelector}}
+      {{- /* Component schedulingRules keys fully replace defaults when present (including empty maps/lists). */}}
+      {{- $schedDefaults := default dict .defaultValues.schedulingRules }}
+      {{- $schedOverrides := default dict .schedulingRules }}
+      {{- $nodeSelector := ternary $schedOverrides.nodeSelector $schedDefaults.nodeSelector (hasKey $schedOverrides "nodeSelector") | default dict }}
+      {{- $affinity := ternary $schedOverrides.affinity $schedDefaults.affinity (hasKey $schedOverrides "affinity") | default dict }}
+      {{- $tolerations := ternary $schedOverrides.tolerations $schedDefaults.tolerations (hasKey $schedOverrides "tolerations") | default list }}
+      {{- $topologySpreadConstraints := ternary $schedOverrides.topologySpreadConstraints $schedDefaults.topologySpreadConstraints (hasKey $schedOverrides "topologySpreadConstraints") | default list }}
+      {{- $componentName := .name }}
+      {{- $isStateful := .stateful }}
+      {{- if and $nodeSelector (gt (len $nodeSelector) 0) }}
       nodeSelector:
-        {{- $schedulingRules.nodeSelector | default .defaultValues.schedulingRules.nodeSelector | toYaml | nindent 8 }}
+        {{- toYaml $nodeSelector | nindent 8 }}
       {{- end }}
-      {{- if or .defaultValues.schedulingRules.affinity $schedulingRules.affinity}}
+      {{- if and $affinity (gt (len $affinity) 0) }}
       affinity:
-        {{- $schedulingRules.affinity | default .defaultValues.schedulingRules.affinity | toYaml | nindent 8 }}
+        {{- toYaml $affinity | nindent 8 }}
       {{- end }}
-      {{- if or .defaultValues.schedulingRules.tolerations $schedulingRules.tolerations}}
+      {{- if and $tolerations (gt (len $tolerations) 0) }}
       tolerations:
-        {{- $schedulingRules.tolerations | default .defaultValues.schedulingRules.tolerations | toYaml | nindent 8 }}
+        {{- toYaml $tolerations | nindent 8 }}
+      {{- end }}
+      {{- /* Soft topology balancing only; does not replace nodeSelector/tolerations hard placement. */}}
+      {{- if and $topologySpreadConstraints (gt (len $topologySpreadConstraints) 0) }}
+      topologySpreadConstraints:
+        {{- range $topologySpreadConstraints }}
+        - maxSkew: {{ .maxSkew }}
+          topologyKey: {{ .topologyKey }}
+          whenUnsatisfiable: {{ .whenUnsatisfiable }}
+          {{- if .minDomains }}
+          minDomains: {{ .minDomains }}
+          {{- end }}
+          {{- if .labelSelector }}
+          labelSelector:
+            {{- toYaml .labelSelector | nindent 12 }}
+          {{- else }}
+          labelSelector:
+            matchLabels:
+              opentelemetry.io/name: {{ $componentName }}
+          {{- end }}
+          {{- if hasKey . "matchLabelKeys" }}
+          {{- if .matchLabelKeys }}
+          matchLabelKeys:
+            {{- toYaml .matchLabelKeys | nindent 12 }}
+          {{- end }}
+          {{- else if not $isStateful }}
+          matchLabelKeys:
+            - pod-template-hash
+          {{- end }}
+        {{- end }}
       {{- end }}
       {{- $podSecurityContext := mergeOverwrite (dict) (default dict .defaultValues.podSecurityContext) (default dict .podSecurityContext) }}
       {{- if not (empty $podSecurityContext) }}
@@ -362,8 +401,13 @@ spec:
 
 {{/*
 Demo component HPA template
+Requires at least one of targetCPUUtilizationPercentage or targetMemoryUtilizationPercentage.
+Optional autoscaling.behavior is passed through as HPA v2 behavior (scaleUp/scaleDown).
 */}}
 {{- define "techx-corp.hpa" }}
+{{- if and (not .autoscaling.targetCPUUtilizationPercentage) (not .autoscaling.targetMemoryUtilizationPercentage) }}
+{{- fail (printf "components.%s.autoscaling.enabled requires targetCPUUtilizationPercentage and/or targetMemoryUtilizationPercentage" .name) }}
+{{- end }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -395,5 +439,27 @@ spec:
           type: Utilization
           averageUtilization: {{ .autoscaling.targetMemoryUtilizationPercentage }}
     {{- end }}
+  {{- if .autoscaling.behavior }}
+  behavior:
+    {{- toYaml .autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}
+
+{{/*
+PodDisruptionBudget for multi-replica HPA Deployments (minAvailable: 1).
+*/}}
+{{- define "techx-corp.pdb" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "techx-corp.selectorLabels" . | nindent 6 }}
 {{- end }}
 

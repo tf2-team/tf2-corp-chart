@@ -1,20 +1,24 @@
-# Development Application — first cutover: NO automated sync, NO prune, NO ServerSideApply.
-# After stable (Phase 4): enable automated.prune=false, selfHeal=true.
+# Development Application — automated sync + self-heal; prune OFF; NO ServerSideApply.
 #
-# Primary rollback: git revert → merge → Argo sync.
+# Primary rollback: git revert → merge → Argo auto-syncs.
 # History rollback: break-glass only (disable auto-sync first; then update Git).
+#
+# Tracking: Argo injects label argocd.argoproj.io/instance=<metadata.name>
+# on every managed object. Adopting an existing Helm release shows OutOfSync
+# for that label alone until the first sync stamps it. Expected; do not
+# ignoreDifferences on this label.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: techx-corp
+  name: techx-corp-dev
   namespace: argocd
   # finalizer optional; avoid cascade-delete surprises during early rollout
 spec:
-  project: techx-corp
+  project: techx-corp-dev
 
   source:
     # Override if repo path differs; must match AppProject sourceRepos.
-    repoURL: https://github.com/tmcmanhcuong/techx-corp-chart.git
+    repoURL: https://github.com/tmcmanhcuong/tf2-corp-chart.git
     targetRevision: techx-dev-corp
     path: .
     helm:
@@ -22,15 +26,18 @@ spec:
         - values.yaml
         - values-public-alb.yaml
         - values-dev.yaml
-      # releaseName keeps resource names aligned with historical Helm release "techx-corp"
-      releaseName: techx-corp
+      # releaseName = Helm Release.Name (app.kubernetes.io/instance on subcharts).
+      # Argo tracking label uses metadata.name above, not releaseName.
+      releaseName: techx-corp-dev
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: techx-corp
+    namespace: techx-corp-dev
 
-  # First cutover: omit automated block entirely (manual sync only).
   syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       # Do NOT enable ServerSideApply in v1 baseline.

@@ -1,9 +1,11 @@
-# Production Application — start with MANUAL sync only (no automated).
+# Production Application — automated sync + self-heal; prune OFF; NO ServerSideApply.
 # Protect ALL prod-affecting paths in GitHub (not only values-prod.yaml):
 #   templates/**, charts/**, Chart.yaml, Chart.lock, values.yaml,
 #   values-prod.yaml, values-public-alb.yaml, gitops/clusters/prod/**, postgresql/**
 #
 # Prefer SEC-05 (ESO) before production GitOps cutover for secrets.
+# Primary rollback: git revert → merge → Argo auto-syncs.
+# History rollback: break-glass only (disable auto-sync first; then update Git).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -13,7 +15,7 @@ spec:
   project: techx-corp
 
   source:
-    repoURL: https://github.com/tmcmanhcuong/techx-corp-chart.git
+    repoURL: https://github.com/tmcmanhcuong/tf2-corp-chart.git
     targetRevision: main
     path: .
     helm:
@@ -27,10 +29,13 @@ spec:
     server: https://kubernetes.default.svc
     namespace: techx-corp
 
-  # Manual sync for production Phase 5. Do not enable automated until process is proven.
   syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Do NOT enable ServerSideApply in v1 baseline.
     retry:
       limit: 3
       backoff:

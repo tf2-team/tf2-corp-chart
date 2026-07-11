@@ -64,9 +64,6 @@
         }
       }
     },
-    "opensearch": {
-      "type": "object"
-    },
     "metrics-server": {
       "type": "object",
       "description": "Kubernetes Metrics Server (required for HPA CPU/memory metrics)"
@@ -145,6 +142,9 @@
           "$ref": "#/definitions/Component"
         },
         "valkey-cart": {
+          "$ref": "#/definitions/Component"
+        },
+        "opensearch": {
           "$ref": "#/definitions/Component"
         }
       },
@@ -572,6 +572,10 @@
         "tolerations": {
           "type": "array",
           "items": {}
+        },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "items": {}
         }
       }
     },
@@ -955,6 +959,11 @@
         },
         "targetMemoryUtilizationPercentage": {
           "type": "integer"
+        },
+        "behavior": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Optional autoscaling/v2 HPA behavior (scaleUp/scaleDown policies). Passed through to the HPA spec."
         }
       },
       "required": [

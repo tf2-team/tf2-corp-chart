@@ -1,7 +1,9 @@
 # Development overlay for Argo CD / Helm GitOps (REL-09).
 # Layer order: values.yaml → values-public-alb.yaml → values-dev.yaml
 #
-# Image contract: default.image.tag is GLOBAL for all nested services.
+# Image contract: default.image.repository + default.image.tag is GLOBAL for all
+# nested services including opensearch:
+#   {{ default.image.repository }}/{{ service }}:{{ default.image.tag }}
 # Before changing tag: rebuild and push ALL bake services with that tag, then verify ECR.
 #
 # Snapshot live tag before first Argo sync so drift is minimal.
@@ -14,10 +16,12 @@ default:
   image:
     repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-dev-corp
     # Replace with currently running tag before cutover (e.g. sha-a1b2c3d).
-    tag: "latest"
+    tag: "sha-547083b"
 
 components:
   frontend-proxy:
     publicAlb:
       # Dev often leaves sensitive paths open for debugging (infra tfvars).
       blockSensitivePaths: false
+    # Critical ingress/gateway (not stateless frontend). Base values.yaml pins critical.
+    # flagd / frontend-proxy critical pins live in values.yaml hard-placement contract.

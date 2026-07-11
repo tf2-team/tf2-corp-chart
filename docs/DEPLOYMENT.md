@@ -1,34 +1,41 @@
 # Tài liệu Hướng dẫn Triển khai End-to-End (Production Runbook)
 
 > [!NOTE]
-> **Vai trò của Repository này (`techx-corp-chart`):**
-> Repository này chịu trách nhiệm quản lý **Helm chart**, cấu hình **public ALB Ingress** (`values-public-alb.yaml`), **smoke test**, và quy trình **upgrade/rollback** an toàn.  
+> **Vai trò của Repository này (chart):**
+> Repository này chịu trách nhiệm quản lý **Helm chart**, cấu hình **public ALB Ingress** (`values-public-alb.yaml`), **smoke test**, **GitOps (Argo CD)**, và quy trình **upgrade/rollback** an toàn.  
 > Chart consume image theo quy ước **`[REGISTRY]/[PROJECT]/[SERVICE]:[VERSION]`**.
+>
+> **Tên repo GitHub vs thư mục local:** remote GitHub là  
+> [`https://github.com/tmcmanhcuong/tf2-corp-chart`](https://github.com/tmcmanhcuong/tf2-corp-chart)  
+> (branch dev: `techx-dev-corp`). Thư mục monorepo local có thể vẫn tên `techx-corp-chart` — **Argo CD `repoURL` / `sourceRepos` phải dùng `tf2-corp-chart`**, không dùng tên folder.
 
 ---
 
 ## 1. Mục tiêu (Objectives)
 
-- Deploy ứng dụng TechX Corp lên EKS bằng Helm (`--wait --atomic`).
+- Deploy ứng dụng TechX Corp lên EKS (ưu tiên **GitOps / Argo CD**; Helm break-glass khi khẩn cấp).
 - Gắn đúng image từ ECR nested (`techx-corp/<service>` hoặc `techx-dev-corp/<service>`).
 - Bật public ALB cho storefront, chặn route nhạy cảm.
-- Xác minh bằng smoke test; rollback khi cần.
+- Xác minh bằng smoke test; rollback khi cần (`git revert` → Argo sync là chuẩn).
 
 ## 2. Bản đồ Repository
 
 | Repository | Vai trò |
 |---|---|
 | **`techx-corp-platform`** | Build/push images (CI/CD hoặc bake) |
-| **`techx-corp-infra`** | VPC, EKS, nested ECR, IAM (GHA OIDC, ALB Controller, ESO IRSA, ASM shells) |
-| **`techx-corp-chart`** | Helm chart, secrets-chart (ESO), ALB values, smoke test, rollout safety |
+| **`techx-corp-infra`** | VPC, EKS, nested ECR, IAM (GHA OIDC, ALB Controller, ESO IRSA, ASM shells), optional Argo CD install |
+| **`tf2-corp-chart`** (GitHub) / local `techx-corp-chart` | Helm chart, secrets-chart (ESO), ALB values, smoke test, rollout safety, `gitops/clusters/*` |
 
 ## 3. Điều kiện tiên quyết
 
-- Cluster EKS đã sẵn sàng (`techx-tf2` production), `kubectl` context đúng.
+- Cluster EKS sẵn sàng, `kubectl` context đúng:
+  - **Prod:** `techx-tf2`
+  - **Dev:** `techx-dev` (hoặc tên cluster dev hiện tại)
 - AWS Load Balancer Controller đã cài trong `kube-system`.
 - **SEC-05:** ESO installed, `ClusterSecretStore` Ready, ASM values bootstrapped, **`techx-corp-secrets`** ExternalSecrets Ready (or use `-f values-demo.yaml` for local demo only).
 - Images đã có trên ECR theo format nested (xem Phase 3 / platform repo).
-- **Helm** v3+, **kubectl**, **bash** (smoke test).
+- **Helm** v3+, **kubectl**, **bash** (smoke test); **argocd** CLI optional (có thể dùng UI / `kubectl`).
+- **GitOps:** Argo CD installed (`argocd` namespace); repo credential trong `argocd` nếu repo private (GitHub App / deploy key / PAT).
 - **Metrics Server:** chart cài kèm subchart `metrics-server` (default `enabled: true`) để HPA (`frontend`, `checkout`) đọc CPU/memory. **Không** cần cài sẵn trong `kube-system`. Nếu cluster **đã** có Metrics Server (một APIService `v1beta1.metrics.k8s.io` duy nhất), tắt trong overlay: `metrics-server.enabled: false`.
 
 ## 4. Hằng số & quy ước image
@@ -40,14 +47,27 @@
 | Account / Region | `493499579600` / `us-east-1` |
 | EKS | `techx-tf2` |
 | Namespace | `techx-corp` |
-| Helm release | `techx-corp` |
+| Helm / Argo release name | `techx-corp` |
+| Argo CD Application | `techx-corp` (`gitops/clusters/prod/`) |
+| Argo CD AppProject | `techx-corp` |
+| Git `repoURL` | `https://github.com/tmcmanhcuong/tf2-corp-chart.git` |
+| Git `targetRevision` | `main` |
+| Value files | `values.yaml` + `values-public-alb.yaml` + `values-prod.yaml` |
 | `default.image.repository` | `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-corp` |
 | `default.image.tag` | VERSION only, ví dụ `sha-a1b2c3d` hoặc `v1.2.3` |
 
-### Development (nếu deploy dev cluster)
+### Development
 
 | Hằng số | Giá trị |
 |---|---|
+| EKS | `techx-dev` (dev cluster) |
+| Namespace | `techx-corp-dev` |
+| Helm / Argo release name | `techx-corp-dev` |
+| Argo CD Application | `techx-corp-dev` (`gitops/clusters/dev/`) |
+| Argo CD AppProject | `techx-corp-dev` |
+| Git `repoURL` | `https://github.com/tmcmanhcuong/tf2-corp-chart.git` |
+| Git `targetRevision` | `techx-dev-corp` |
+| Value files | `values.yaml` + `values-public-alb.yaml` + `values-dev.yaml` |
 | `default.image.repository` | `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-dev-corp` |
 | `default.image.tag` | VERSION đã push từ branch `techx-dev-corp` |
 
@@ -79,6 +99,10 @@ Ví dụ:
 > **Deprecated:** `repository:tag` dạng `.../techx-corp:1.0-ad` (service trong tag).
 
 Component có `imageOverride.repository` (postgres, flagd, …) dùng full `repository:tag` public image, không append service path.
+
+OpenSearch is a **first-party chart component** (`components.opensearch`) using the custom platform image  
+`{{ default.image.repository }}/opensearch:{{ default.image.tag }}`  
+(build: `src/opensearch/Dockerfile`). Promote by updating **only** `default.image.tag` (and repository per env).
 
 ---
 
@@ -136,14 +160,17 @@ Nested ECR (Terraform module `ecr`) phải tồn tại **trước** khi pod pull
    kubectl get clustersecretstore aws-secretsmanager
    ```
 
-   Then ExternalSecrets release (after ESO + ClusterSecretStore Ready):
+   Then ExternalSecrets release (after ESO + ClusterSecretStore Ready; cwd = chart root):
 
    ```bash
+   # Prod
    helm upgrade --install techx-corp-secrets ./secrets-chart \
      -n techx-corp --create-namespace \
      -f secrets-chart/values.yaml \
-     -f secrets-chart/values-prod.yaml   # or values-dev.yaml
+     -f secrets-chart/values-prod.yaml
    kubectl -n techx-corp wait --for=condition=Ready externalsecret --all --timeout=120s
+
+   # Dev: -n techx-corp-dev -f secrets-chart/values-dev.yaml
    ```
 
    Runbook: [operations/external-secrets.md](./operations/external-secrets.md).
@@ -178,28 +205,80 @@ Ghi lại **VERSION** (tag) để ghi vào `values-prod.yaml` / `values-dev.yaml
 
 ## Phase 4: Deploy (GitOps ưu tiên — REL-09)
 
-> Chi tiết: [operations/gitops-argocd.md](./operations/gitops-argocd.md) · plan workspace `docs/gitops-argocd.md`
+> Chi tiết: [operations/gitops-argocd.md](./operations/gitops-argocd.md) · `gitops/README.md` · plan workspace `docs/gitops-argocd.md`
 
 ### 4A. Argo CD (sau khi control plane đã cài)
 
-1. Cập nhật tag trong Git:
-   - Prod: `values-prod.yaml` → `default.image.tag`
-   - Dev: `values-dev.yaml` → `default.image.tag`
-2. **Contract:** tag global — rebuild/push **toàn bộ** service bake với cùng tag; verify ECR trước merge PR.
-3. Sync:
+#### Contract GitOps (bắt buộc khớp)
+
+| Môi trường | Manifests | Application | AppProject | Destination NS | Branch |
+|---|---|---|---|---|---|
+| **Dev** | `gitops/clusters/dev/` | `techx-corp-dev` | `techx-corp-dev` | `techx-corp-dev` | `techx-dev-corp` |
+| **Prod** | `gitops/clusters/prod/` | `techx-corp` | `techx-corp` | `techx-corp` | `main` |
+
+- **Git source (cả hai env):** `https://github.com/tmcmanhcuong/tf2-corp-chart.git`
+- AppProject `spec.sourceRepos` **phải** chứa đúng URL đó (HTTPS và/hoặc SSH).
+- AppProject `spec.destinations` **phải** khớp `Application.spec.destination` (server + namespace).
+- Value layer: `values.yaml` + `values-public-alb.yaml` + `values-dev|prod.yaml`.
+
+#### Bootstrap (một lần / cluster)
 
 ```bash
+# 1) Context đúng cluster (dev vs prod)
+aws eks update-kubeconfig --region us-east-1 --name techx-dev   # or techx-tf2
+
+# 2) Apply AppProject + Application (từ working copy chart)
+kubectl apply -f gitops/clusters/dev/    # dev → techx-corp-dev
+# kubectl apply -f gitops/clusters/prod/ # prod → techx-corp
+
+# 3) Hard refresh nếu UI còn stale error sau khi sửa project/repo
+kubectl -n argocd annotate application techx-corp-dev \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+Nếu repo **private**, đăng ký credential trước sync (một lần):
+
+```bash
+# ví dụ PAT / deploy key — chọn theo org policy
+argocd repo add https://github.com/tmcmanhcuong/tf2-corp-chart.git \
+  --username <user> --password <token>
+```
+
+#### Deploy / promote image tag
+
+1. Cập nhật tag trong Git (cùng commit với mọi service bake):
+   - Dev: `values-dev.yaml` → `default.image.tag` (branch `techx-dev-corp`)
+   - Prod: `values-prod.yaml` → `default.image.tag` (branch `main`)
+2. **Contract:** tag global — rebuild/push **toàn bộ** service bake với cùng tag; verify ECR trước merge PR.
+3. Sync **đúng tên Application**:
+
+```bash
+# --- Development ---
+argocd app diff techx-corp-dev
+argocd app sync techx-corp-dev --dry-run
+argocd app sync techx-corp-dev
+argocd app wait techx-corp-dev --sync --health --timeout 600
+
+# --- Production ---
 argocd app diff techx-corp
 argocd app sync techx-corp --dry-run
 argocd app sync techx-corp
 argocd app wait techx-corp --sync --health --timeout 600
 ```
 
+Tương đương kubectl (khi không có CLI `argocd`):
+
+```bash
+kubectl -n argocd get application techx-corp-dev
+kubectl -n argocd annotate application techx-corp-dev \
+  argocd.argoproj.io/refresh=hard --overwrite
+# Sync: Argo CD UI → Sync, hoặc argocd CLI
+```
+
 4. **Rollback chuẩn:** `git revert` commit deploy → merge → Argo sync.  
    History rollback Argo chỉ break-glass (tắt auto-sync → rollback → **cập nhật Git**).
 5. Sau cutover: **không** `helm upgrade` thường xuyên (ownership = Argo CD).
-
-Value layer: `values.yaml` + `values-public-alb.yaml` + `values-dev|prod.yaml` (xem `gitops/clusters/`).
+6. First cutover (v1): **không** automated sync, **không** prune, **không** ServerSideApply.
 
 #### Truy cập Argo CD UI / first admin (initial)
 
@@ -239,44 +318,162 @@ terraform -chdir=../techx-corp-infra/environments/development \
 ```
 
 Xoay password sau login đầu; secret `argocd-initial-admin-secret` có thể bị xóa sau khi đổi (query trên sẽ fail).
-### 4B. Helm break-glass (chỉ khẩn cấp)
+### 4B. Helm install / upgrade (break-glass + cold install)
 
-Tắt Argo auto-sync trước. Argo **không** chuyển Helm release state; dual-drive gây lệch.
+> **Paths:** mọi lệnh dưới đây giả định **cwd = chart root** (local `techx-corp-chart` / clone `tf2-corp-chart`).  
+> **Release name vs namespace:** phải khớp bảng hằng số (§2 / §4). Dev: release `techx-corp-dev` → NS `techx-corp-dev`. Prod: release `techx-corp` → NS `techx-corp`.  
+> **Sau cutover GitOps:** tắt Argo auto-sync trước khi `helm upgrade`. Argo **không** chuyển Helm release state; dual-drive gây lệch. Deploy thường xuyên qua Git (tag) + Argo sync (mục 4A).
 
-### Production (break-glass)
+#### B1. Install from nothing (cold install)
 
-```bash
-# Secrets release first (SEC-05)
-helm upgrade --install techx-corp-secrets ./techx-corp-chart/secrets-chart \
-  -n techx-corp --create-namespace \
-  -f ./techx-corp-chart/secrets-chart/values.yaml \
-  -f ./techx-corp-chart/secrets-chart/values-prod.yaml
-kubectl -n techx-corp wait --for=condition=Ready externalsecret --all --timeout=120s
+Thứ tự bắt buộc: ESO + `ClusterSecretStore` Ready → **secrets** release Ready → **app** chart.  
+Prereqs: Phase 1–2 (cluster, ALB controller, ASM bootstrap, ESO) + Phase 3 (images trên ECR với tag sẽ ghi trong overlay).
 
-helm upgrade --install techx-corp ./techx-corp-chart \
-  -n techx-corp --create-namespace \
-  -f ./techx-corp-chart/values.yaml \
-  -f ./techx-corp-chart/values-public-alb.yaml \
-  -f ./techx-corp-chart/values-prod.yaml \
-  --wait --atomic --timeout 10m --history-max 10
-```
-
-### Development (break-glass)
+**Development**
 
 ```bash
-helm upgrade --install techx-corp-secrets ./techx-corp-chart/secrets-chart \
+# 0) Context đúng cluster dev
+aws eks update-kubeconfig --region us-east-1 --name techx-dev
+
+# 1) Optional: pull chart dependencies (first time / after Chart.yaml change)
+helm dependency build .
+
+# 2) SEC-05: ExternalSecrets → K8s Secrets (wait Ready before app)
+helm upgrade --install techx-corp-secrets ./secrets-chart \
   -n techx-corp-dev --create-namespace \
-  -f ./techx-corp-chart/secrets-chart/values.yaml \
-  -f ./techx-corp-chart/secrets-chart/values-dev.yaml
+  -f secrets-chart/values.yaml \
+  -f secrets-chart/values-dev.yaml
 kubectl -n techx-corp-dev wait --for=condition=Ready externalsecret --all --timeout=120s
 
-# From techx-corp-chart/ working directory:
+# 3) App chart (from nothing = same command as upgrade --install)
+#    Set image tag in values-dev.yaml first:
+#      default.image.tag: "sha-xxxxxxxx"
 helm upgrade --install techx-corp-dev . \
   -n techx-corp-dev --create-namespace \
   -f values.yaml \
   -f values-public-alb.yaml \
   -f values-dev.yaml \
-  --wait --atomic --timeout 10m --history-max 10
+  --wait --atomic --timeout 15m --history-max 10
+```
+
+**Production**
+
+```bash
+# 0) Context đúng cluster prod
+aws eks update-kubeconfig --region us-east-1 --name techx-tf2
+
+# 1) Optional
+helm dependency build .
+
+# 2) SEC-05 secrets
+helm upgrade --install techx-corp-secrets ./secrets-chart \
+  -n techx-corp --create-namespace \
+  -f secrets-chart/values.yaml \
+  -f secrets-chart/values-prod.yaml
+kubectl -n techx-corp wait --for=condition=Ready externalsecret --all --timeout=120s
+
+# 3) App chart
+#    Set image tag in values-prod.yaml first (default.image.tag).
+helm upgrade --install techx-corp . \
+  -n techx-corp --create-namespace \
+  -f values.yaml \
+  -f values-public-alb.yaml \
+  -f values-prod.yaml \
+  --wait --atomic --timeout 15m --history-max 10
+```
+
+Local demo **không** ESO (plaintext only): thêm `-f values-demo.yaml` ở bước app chart; **không** dùng production.
+
+**Sau cold install — kiểm tra nhanh**
+
+```bash
+# Dev examples (prod: -n techx-corp, release techx-corp)
+helm status techx-corp-dev -n techx-corp-dev
+kubectl -n techx-corp-dev get deploy,pods,ingress
+kubectl -n techx-corp-dev get deploy ad -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+bash scripts/smoke-test.sh --namespace techx-corp-dev
+```
+
+#### B2. Update image tag only
+
+**Contract:** một **VERSION** global (`default.image.tag`) cho mọi nested bake service, **including** `opensearch`.
+
+| File | Key |
+|---|---|
+| `values-dev.yaml` / `values-prod.yaml` | `default.image.tag` only |
+
+Verify images exist on ECR **before** upgrade (mọi service bake, kể cả `opensearch`).
+
+**Preferred (GitOps)** — không cần Helm sau cutover:
+
+```bash
+# 1) Edit overlay in Git (example dev):
+#    default.image.tag: "sha-NEW"
+# 2) Commit + push (dev branch techx-dev-corp / prod main)
+# 3) Sync
+argocd app diff techx-corp-dev          # or techx-corp
+argocd app sync techx-corp-dev          # or techx-corp
+argocd app wait techx-corp-dev --sync --health --timeout 600
+```
+
+**Break-glass Helm** — tag đã ghi trong overlay file, rồi upgrade lại cùng layer values (giống install):
+
+```bash
+# --- Development ---
+# Edit values-dev.yaml: default.image.tag = sha-NEW
+helm upgrade --install techx-corp-dev . \
+  -n techx-corp-dev \
+  -f values.yaml \
+  -f values-public-alb.yaml \
+  -f values-dev.yaml \
+  --wait --atomic --timeout 15m --history-max 10
+
+# --- Production ---
+# Edit values-prod.yaml: default.image.tag = sha-NEW
+helm upgrade --install techx-corp . \
+  -n techx-corp \
+  -f values.yaml \
+  -f values-public-alb.yaml \
+  -f values-prod.yaml \
+  --wait --atomic --timeout 15m --history-max 10
+```
+
+**Break-glass Helm** — set tag trên CLI (không sửa file):
+
+```bash
+# Development — replace sha-NEW
+helm upgrade techx-corp-dev . \
+  -n techx-corp-dev \
+  -f values.yaml \
+  -f values-public-alb.yaml \
+  -f values-dev.yaml \
+  --set default.image.tag=sha-NEW \
+  --wait --atomic --timeout 15m --history-max 10
+
+# Production — replace sha-NEW
+helm upgrade techx-corp . \
+  -n techx-corp \
+  -f values.yaml \
+  -f values-public-alb.yaml \
+  -f values-prod.yaml \
+  --set default.image.tag=sha-NEW \
+  --wait --atomic --timeout 15m --history-max 10
+```
+
+> **Không** dùng `--reuse-values` + chỉ `--set default.image.tag` khi base values trong Git đã đổi (ALB, resources, …): dễ lệch với overlay. Prefer full `-f` layer như trên.  
+> Sau break-glass CLI tag: **đồng bộ lại Git** (ghi tag vào `values-dev|prod.yaml`) để Argo không revert.
+
+**Xác minh tag mới**
+
+```bash
+# Dev
+kubectl -n techx-corp-dev get deploy ad frontend checkout \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+
+# Prod
+kubectl -n techx-corp get deploy ad frontend checkout \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+# Kỳ vọng: .../techx-dev-corp|techx-corp/<service>:sha-NEW
 ```
 
 ### Helm NOTES — Argo CD credential in ra sau install/upgrade
@@ -324,7 +521,32 @@ Chart dependency: **metrics-server 3.13.1** (`https://kubernetes-sigs.github.io/
 | `metrics-server.args` | `--kubelet-insecure-tls` | Thường cần trên EKS (kubelet serving cert) |
 | `metrics-server.resources` | requests 100m/200Mi, limit memory 200Mi | |
 
-HPA templates (`templates/hpa.yaml`) dùng `autoscaling/v2` + CPU/memory utilization — **cần** Metrics Server (API `metrics.k8s.io`). Components bật HPA mặc định: `frontend`, `checkout` (`components.*.autoscaling.enabled`).
+HPA templates (`templates/hpa.yaml`) dùng `autoscaling/v2` — **cần** Metrics Server (API `metrics.k8s.io`). Optional `autoscaling.behavior` (scale-up/down policies) is rendered when set. Multi-replica HPA services also get a first-party **PodDisruptionBudget** (`minAvailable: 1`) when `minReplicas >= 2`.
+
+**Metric policy (Option B — dual metrics):**
+
+| Metric | Target | Role |
+|---|---:|---|
+| CPU | **70%** | Primary capacity signal under traffic |
+| Memory | **90%** | Safety valve only (near request / OOM-adjacent pressure) |
+
+HPA desired replicas = **max** across metrics. A low memory target would dominate scale-out; 90% is intentional so idle heaps do not pin high replica counts. If idle memory utilization stays near request, **raise `requests.memory`** — do not lower the memory target to “fix” thrash. Hard OOM protection remains `limits` + runtime caps (e.g. `GOMEMLIMIT`).
+
+**Default HPA inventory** (`components.*.autoscaling`):
+
+| Service | min | max | Metrics | Placement |
+|---|---:|---:|---|---|
+| `frontend` | 1 | 6 | CPU 70% / Mem 90% | Karpenter (spot-tolerant) |
+| `checkout` | 1 | 6 | CPU 70% / Mem 90% | Karpenter (spot-tolerant) |
+| `cart` | 1 | 6 | CPU 70% / Mem 90% | Karpenter (default) |
+| `product-catalog` | 1 | 6 | CPU 70% / Mem 90% | Karpenter (spot-tolerant) |
+| `frontend-proxy` | 1 | 3 | CPU 70% / Mem 90% | **Critical MNG** (cap max at 3) |
+
+`load-generator` has **no HPA** (fixed `replicas` from chart default, typically 1). Ramp synthetic traffic via `LOCUST_USERS` / Locust UI — extra replicas with `LOCUST_AUTOSTART` would each run an independent swarm.
+
+All HPA services use **`minReplicas: 1`** in base `values.yaml` (cost floor; scale-out still goes to max under load). First-party PDBs are only rendered when `minReplicas >= 2`, so none of these HPAs emit a PDB at the current floor.
+
+**Critical capacity note:** `frontend-proxy` scale-out still lands only on Critical MNG (small floor). If extra proxy pods are `Pending`, free Critical capacity or adjust MNG size in infra — do not raise chart `maxReplicas` without capacity review.
 
 ### Kiểm tra image trong Pod
 
@@ -351,7 +573,8 @@ If the Helm release is **already installed**, you do **not** need a full reinsta
 **Turn blocking ON** (storefront-only; 403 on sensitive paths):
 
 ```bash
-helm upgrade techx-corp ./techx-corp-chart \
+# cwd = chart root
+helm upgrade techx-corp . \
   -n techx-corp \
   --reuse-values \
   --set components.frontend-proxy.publicAlb.blockSensitivePaths=true \
@@ -361,14 +584,14 @@ helm upgrade techx-corp ./techx-corp-chart \
 **Turn blocking OFF** (all paths forward to frontend-proxy):
 
 ```bash
-helm upgrade techx-corp ./techx-corp-chart \
+helm upgrade techx-corp . \
   -n techx-corp \
   --reuse-values \
   --set components.frontend-proxy.publicAlb.blockSensitivePaths=false \
   --wait --timeout 5m
 ```
 
-> Use the same chart path you used on install (`./techx-corp-chart` or `techx-corp-chart`).  
+> Use the same chart path you used on install (chart root / clone of `tf2-corp-chart`).  
 > ALB listener rules may take **1–2 minutes** to update after Ingress changes.
 
 **Verify:**
@@ -419,12 +642,12 @@ kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes | head -c 200; echo
 kubectl top nodes
 kubectl top pods -n techx-corp
 
-# HPA objects for services with autoscaling
-kubectl -n techx-corp get hpa
-kubectl -n techx-corp describe hpa frontend checkout
+# HPA + PDB for multi-replica autoscaled services
+kubectl -n techx-corp get hpa,pdb
+kubectl -n techx-corp describe hpa frontend checkout cart product-catalog frontend-proxy
 ```
 
-Kỳ vọng: `TARGETS` không còn `<unknown>` sau khi Metrics Server Ready; `kubectl top` trả về CPU/memory.
+Kỳ vọng: `TARGETS` không còn `<unknown>` sau khi Metrics Server Ready; `kubectl top` trả về CPU/memory; five HPAs present on base/prod (`frontend`, `checkout`, `cart`, `product-catalog`, `frontend-proxy`) all with `MINPODS=1`; no `load-generator` HPA; first-party PDBs only if some HPA later raises `minReplicas >= 2`.
 
 ### Smoke test
 
@@ -535,18 +758,47 @@ kubectl -n techx-corp get hpa
 Tắt subchart (cluster đã có Metrics Server):
 
 ```bash
-# Break-glass Helm
-helm upgrade techx-corp ./techx-corp-chart -n techx-corp \
+# Break-glass Helm (cwd = chart root)
+helm upgrade techx-corp . -n techx-corp \
   --reuse-values --set metrics-server.enabled=false \
   --wait --timeout 5m
 
 # GitOps: ghi metrics-server.enabled: false vào values-dev.yaml / values-prod.yaml rồi Argo sync
 ```
 
+### Argo CD Application / AppProject
+
+```bash
+kubectl -n argocd get application,appproject
+kubectl -n argocd get application techx-corp-dev -o yaml   # or techx-corp
+kubectl -n argocd get appproject techx-corp-dev -o yaml
+kubectl -n argocd annotate application techx-corp-dev \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+| Symptom / message | Cause | Fix |
+|---|---|---|
+| `destination server '…' and namespace 'techx-corp-dev' do not match any of the allowed destinations in project 'techx-corp-dev'` | AppProject `destinations` namespace ≠ Application destination (thường còn `techx-corp` trên project dev) | Set AppProject destination namespace = `techx-corp-dev`; `kubectl apply -f gitops/clusters/dev/appproject.yaml` |
+| `application repo https://github.com/tmcmanhcuong/tf2-corp-chart.git is not permitted in project '…'` | AppProject `sourceRepos` thiếu URL đúng, hoặc stale condition sau khi đổi repo | Thêm `tf2-corp-chart` vào `sourceRepos`; re-apply AppProject; hard-refresh Application |
+| `failed to list refs: authentication required: Repository not found` | Sai `repoURL` (vd. `techx-corp-chart` không tồn tại) **hoặc** repo private thiếu credential | Dùng `https://github.com/tmcmanhcuong/tf2-corp-chart.git`; đăng ký `argocd repo add` nếu private |
+| Application **OutOfSync** — diff chỉ có `argocd.argoproj.io/instance: <app-name>` | **Expected on Helm → Argo cutover.** Argo tracks ownership with label `application.instanceLabelKey` (default `argocd.argoproj.io/instance` = Application `metadata.name`). Helm live objects lack that label → every resource OutOfSync until first sync stamps it. **Not** a chart template bug; chart does not set this label. | Review `argocd app diff` (expect only that label on existing objects). Then **one** manual sync: `argocd app sync techx-corp-dev` (or prod `techx-corp`). After apply, tracking labels land and that noise disappears. Do **not** `ignoreDifferences` this label (breaks ownership/orphan detection). |
+| Application **OutOfSync** sau bootstrap (other diffs) | Automated sync OFF (v1) **or** real drift (values/tag/templates) | `argocd app diff` then `argocd app sync techx-corp-dev` / `techx-corp` when intentional |
+| Orphaned resources warning | Objects **in destination namespace** not rendered by this Application (warn only; not SyncFailed) | **Expected** on cutover: Helm `sh.helm.release*` Secrets, ESO Secrets/`ExternalSecret` (secrets-chart), StatefulSet PVCs, `kube-root-ca.crt`, `default` SA. AppProject `orphanedResources.ignore` lists these. Review UI list — only delete real junk; **never** prune PVCs/ESO secrets casually. v1 prune stays OFF. |
+| Missing `APIService` / `RoleBinding` metrics-server (`kube-system`) | Subchart metrics-server not yet applied; or cluster already has metrics-server | First sync creates them **or** set `metrics-server.enabled: false` if cluster already has Metrics Server |
+| `namespace kube-system is not permitted in project '…'` (RoleBinding `metrics-server-auth-reader`) | AppProject `destinations` only listed app namespace | Add destination `kube-system` to AppProject (see `gitops/clusters/*/appproject.yaml`) |
+| `resource apiregistration.k8s.io:APIService is not permitted in project …` | AppProject `clusterResourceWhitelist` missing APIService | Whitelist `group: apiregistration.k8s.io` / `kind: APIService` (metrics-server subchart) |
+
+> Sau khi sửa AppProject **và** Application, luôn hard-refresh nếu UI vẫn hiện error cũ.
+>
+> **Cutover note:** First successful sync of an existing Helm release mainly applies `argocd.argoproj.io/instance: techx-corp-dev` (dev Application name). That alone flips dozens of resources OutOfSync → Synced.
+
 ---
 
 ## Tài liệu liên quan
 
+- GitHub chart: [`tmcmanhcuong/tf2-corp-chart`](https://github.com/tmcmanhcuong/tf2-corp-chart) (branch dev `techx-dev-corp`)  
+- `gitops/clusters/dev|prod/` — Argo CD AppProject + Application  
+- `gitops/README.md` — bootstrap tóm tắt  
 - `techx-corp-platform/docs/CICD.md` — build/push OIDC  
 - `techx-corp-platform/docs/DEPLOYMENT.md` — E2E đầy đủ  
 - `techx-corp-infra` — nested ECR + IAM + SEC-05 ASM/ESO  

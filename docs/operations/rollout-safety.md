@@ -4,7 +4,7 @@ This document details the rollout safety mechanisms, release commands, validatio
 
 ## Rollout Architecture & Safety Controls
 
-1. **Readiness Probes**: Kubernetes readiness probes are configured on all critical services by type (gRPC, HTTP, or TCP). Probes ensure that traffic is not routed to newly spawned pods until they are fully functional.
+1. **Readiness Probes**: Kubernetes readiness probes are configured on all critical services by type (gRPC, HTTP, or TCP). Probes ensure that traffic is not routed to newly spawned pods until they are fully functional. Handler choice, liveness pairing, and per-service thresholds are documented in [probe-thresholds.md](./probe-thresholds.md).
 2. **RollingUpdate Policy**:
    - Default services are configured with a zero-downtime rolling update strategy (`maxUnavailable: 0`, `maxSurge: 1`).
    - Singleton data/broker components (`postgresql`, `kafka`, `valkey-cart`) are configured with a non-surge strategy (`maxUnavailable: 1`, `maxSurge: 0`) to prevent volume mount conflicts (e.g., ReadWriteOnce persistence limits).

@@ -11,22 +11,50 @@ spec:
   description: TechX Corp application workloads (production)
 
   sourceRepos:
-    - https://github.com/tmcmanhcuong/techx-corp-chart.git
-    - https://github.com/tmcmanhcuong/techx-corp-chart.git/*
-    - git@github.com:tmcmanhcuong/techx-corp-chart.git
-    - git@github.com:tmcmanhcuong/techx-corp-chart.git/*
+    # Actual GitHub repo name is tf2-corp-chart (local folder may still be techx-corp-chart).
+    - https://github.com/tmcmanhcuong/tf2-corp-chart.git
+    - https://github.com/tmcmanhcuong/tf2-corp-chart.git/*
+    - git@github.com:tmcmanhcuong/tf2-corp-chart.git
+    - git@github.com:tmcmanhcuong/tf2-corp-chart.git/*
 
   destinations:
     - server: https://kubernetes.default.svc
       namespace: techx-corp
+    # metrics-server subchart installs RoleBinding metrics-server-auth-reader here.
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
 
+  # Includes metrics-server APIService + RBAC from observability subcharts.
   clusterResourceWhitelist:
     - group: rbac.authorization.k8s.io
       kind: ClusterRole
     - group: rbac.authorization.k8s.io
       kind: ClusterRoleBinding
+    - group: apiregistration.k8s.io
+      kind: APIService
     - group: ""
       kind: Namespace
 
+  # Same ignore posture as dev (ESO secrets-chart, Helm history, STS PVCs, kube defaults).
   orphanedResources:
     warn: true
+    ignore:
+      - kind: ConfigMap
+        name: kube-root-ca.crt
+      - kind: ServiceAccount
+        name: default
+      - kind: Secret
+        name: sh.helm.release*
+      - kind: Secret
+        name: techx-corp-*
+      - group: external-secrets.io
+        kind: ExternalSecret
+        name: techx-corp-*
+      - kind: PersistentVolumeClaim
+        name: kafka-data-kafka-0
+      - kind: PersistentVolumeClaim
+        name: postgresql-data-postgresql-0
+      - kind: PersistentVolumeClaim
+        name: valkey-cart-data-valkey-cart-0
+      - group: elbv2.k8s.aws
+        kind: TargetGroupBinding

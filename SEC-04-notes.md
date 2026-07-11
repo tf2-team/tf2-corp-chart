@@ -11,7 +11,7 @@ The following components require a writable root filesystem to run correctly, as
 | **postgresql** | `postgres:17.6` | Runs a stateful PostgreSQL database engine. Requires writing to data files, transaction logs, configuration, and temporary directories. |
 | **kafka** | `confluentinc/cp-kafka` (or equivalent) | Runs a stateful Kafka broker. Persists topics, partition state, and cluster metadata to disk. |
 | **valkey-cart** | `valkey/valkey:9.0.1-alpine3.23` | Valkey (Redis-compatible) cache and data store used to persist shopping cart state. Writes dump files (`.rdb`/`.aof`) and requires a writable workspace. |
-| **opensearch** | `opensearchproject/opensearch:3.6.0` | Search and log analytics engine. Requires a writable root filesystem for runtime storage, logs, locking, and temporary java process directories. |
+| **opensearch** | `{{ default.image.repository }}/opensearch:{{ default.image.tag }}` (platform custom build from `opensearchproject/opensearch:3.2.0`) | Search and log analytics engine. Requires a writable root filesystem for runtime storage, logs, locking, and temporary java process directories. |
 
 ## Baseline Hardening Rules Applied
 

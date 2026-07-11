@@ -1,0 +1,16 @@
+{{- range $name, $config := .Values.components }}
+    {{- $config := set . "Capabilities" $.Capabilities }}
+    {{- $config := set . "Template" $.Template }}
+    {{- $config := set . "name" ($name | lower) }}
+    {{- $config := set . "Release" $.Release }}
+    {{- $config := set . "Chart" $.Chart }}
+    {{- $config := set . "serviceAccount" $.Values.serviceAccount }}
+    {{- $config := set . "observability" $.Values.observability }}
+    {{- $config := set . "defaultValues" $.Values.default }}
+
+    {{- if and $config.enabled $config.autoscaling $config.autoscaling.enabled -}}
+        {{- if ge (int ($config.autoscaling.minReplicas | default 1)) 2 -}}
+            {{- include "techx-corp.pdb" $config -}}
+        {{- end }}
+    {{- end }}
+{{- end }}

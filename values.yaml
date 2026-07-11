@@ -1,37 +1,14 @@
 # yaml-language-server: $schema=./values.schema.json
-
-# ──────────────────────────────────────────────────────────────────
-# External Secrets Operator (ESO) configuration
-# Credential thật lưu trong AWS Secrets Manager, không hardcode ở đây.
-# Sau khi terraform apply, lấy eso_role_arn từ output rồi điền vào
-# external-secrets.serviceAccount.annotations bên dưới.
 #
-# Secrets cần tạo trong AWS Secrets Manager trước khi deploy:
-#   <secretPrefix>/postgres-credentials
-#     → postgres-user, postgres-password
-#   <secretPrefix>/app-db-credentials
-#     → db-password, accounting-connection-string,
-#       product-catalog-connection-string, product-reviews-connection-string
-#   <secretPrefix>/grafana-admin
-#     → admin-user, admin-password
-#   <secretPrefix>/flagd-ui-secret
-#     → secret-key-base
-# ──────────────────────────────────────────────────────────────────
+# SEC-05: Sensitive credentials use secretKeyRef → ESO-synced Secrets.
+# Deploy order: ESO + ClusterSecretStore → techx-corp-secrets → wait Ready → techx-corp.
+# Local demo with plaintext: -f values-demo.yaml (never for production).
+# Docs: docs/operations/external-secrets.md
+
 externalSecrets:
   enabled: true
-  region: us-east-1
-  # prefix phải khớp với cluster name để đúng IAM policy (least-privilege)
-  secretPrefix: techx-tf2
-  # ESO sync lại mỗi 1 giờ; giảm xuống nếu cần rotation nhanh hơn
-  refreshInterval: 1h
-
-external-secrets:
-  enabled: true
-  serviceAccount:
-    annotations:
-      # Điền ARN từ: terraform output -raw eso_role_arn
-      # vd: arn:aws:iam::493499579600:role/techx-tf2-eso-role
-      eks.amazonaws.com/role-arn: ""
+  secretStoreName: aws-secretsmanager
+  namespace: techx-corp
 
 default:
   storageClassName: gp2
@@ -73,11 +50,40 @@ default:
   replicas: 1
   # default revisionHistoryLimit for all components (number of old ReplicaSets to retain)
   revisionHistoryLimit: 10
-  # Default schedulingRules for all components
-  schedulingRules:
-    nodeSelector: {}
-    affinity: {}
-    tolerations: []
+  # Default scheduling: hard placement on Karpenter spot-tolerant nodes.
+  # nodeSelector is the hard requirement; Spot capacity-type affinity is preference only.
+  # NodePool weight (infra) decides Spot vs On-Demand fallback — do not treat affinity as primary/fallback.
+  # topologySpreadConstraints are soft balancing only (ScheduleAnyway); labelSelector is template-injected.
+  # Critical components override with nodeSelector workload-class=critical (no Karpenter toleration)
+  # and topologySpreadConstraints: [] (opt-out — small critical MNG floor).
+  # See techx-corp-infra/docs/workload-placement.md and docs/operations/workload-placement.md
+  schedulingRules: &scheduling-spot-tolerant
+    nodeSelector:
+      workload-class: spot-tolerant
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: karpenter.sh/capacity-type
+                  operator: In
+                  values:
+                    - spot
+    tolerations:
+      - key: workload-class
+        operator: Equal
+        value: spot-tolerant
+        effect: NoSchedule
+    # Soft multi-AZ / multi-node balancing within the spot-tolerant pool only.
+    # Does not weaken hard nodeSelector or tolerations; ScheduleAnyway never blocks on capacity.
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
   # Default podSecurityContext for all components
   podSecurityContext:
     seccompProfile:
@@ -140,11 +146,12 @@ components:
   ## Environment variables that upsert (append + merge) into the `env` specification for this component.
   ## A variable named OTEL_RESOURCE_ATTRIBUTES_EXTRA will have its value appended to the OTEL_RESOURCE_ATTRIBUTES value.
   #   envOverrides:
-  ## Pod Scheduling rules for nodeSelector, affinity, or tolerations.
+  ## Pod Scheduling rules for nodeSelector, affinity, tolerations, or topologySpreadConstraints.
   #   schedulingRules:
   #     nodeSelector: {}
   #     affinity: {}
   #     tolerations: []
+  #     topologySpreadConstraints: []  # empty list clears default soft spreads
   ## Pod labels to add to this component
   #   podLabels: {}
   ## Pod Annotations to add to this component
@@ -241,8 +248,6 @@ components:
     securityContext:
       runAsUser: 10001
       runAsGroup: 10001
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: KAFKA_ADDR
         value: kafka:9092
@@ -252,13 +257,17 @@ components:
       - name: DB_CONNECTION_STRING
         valueFrom:
           secretKeyRef:
-            name: app-db-credentials
-            key: accounting-connection-string
+            name: techx-corp-postgresql-app
+            key: accounting-db-connection-string
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
-        memory: 240Mi
+        cpu: 300m
+        memory: 256Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -276,13 +285,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier C (JVM): see docs/operations/probe-thresholds.md
     readinessProbe:
       grpc:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 6
+    livenessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: AD_PORT
         value: "8080"
@@ -295,7 +312,11 @@ components:
       - name: OTEL_LOGS_EXPORTER
         value: otlp
     resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
+        cpu: 300m
         memory: 300Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -305,13 +326,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier B; liveness is tcp so failedReadinessProbe chaos does not restart pods
     readinessProbe:
       grpc:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: CART_PORT
         value: "8080"
@@ -326,8 +355,39 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
-        memory: 160Mi
+        cpu: 300m
+        memory: 256Mi
+    # Hot-path under scaled frontend/checkout; Karpenter (default spot-tolerant).
+    # Valkey remains singleton; cart pods are stateless clients.
+    # Dual metrics (Option B): CPU 70% primary; memory 90% safety valve (HPA uses max of metrics).
+    # behavior anchor is shared by all HPA-enabled services (must be defined before first alias).
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: &hpa-behavior-default
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 15
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 60
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 60
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -340,13 +400,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier B (Go gRPC): see docs/operations/probe-thresholds.md
     readinessProbe:
       grpc:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: CHECKOUT_PORT
         value: "8080"
@@ -371,20 +439,22 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 16MiB
+        value: 200MiB
     resources:
       requests:
-        cpu: 50m
-        memory: 20Mi
-      limits:
         cpu: 100m
-        memory: 50Mi
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    # Dual metrics (Option B): CPU 70% primary; memory 90% safety valve (shared behavior from cart).
     autoscaling:
       enabled: true
-      minReplicas: 2
+      minReplicas: 1
       maxReplicas: 6
-      targetCPUUtilizationPercentage: 80
-      targetMemoryUtilizationPercentage: 80
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: *hpa-behavior-default
     initContainers:
       - name: wait-for-kafka
         image: busybox:latest
@@ -394,13 +464,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier A (native C++ gRPC, low CPU): see docs/operations/probe-thresholds.md
     readinessProbe:
       grpc:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: CURRENCY_PORT
         value: "8080"
@@ -411,20 +489,32 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
       limits:
-        memory: 20Mi
+        cpu: 100m
+        memory: 64Mi
 
   email:
     enabled: true
     useDefault:
       env: true
+    # Tier B (no HTTP health route): tcp only
     readinessProbe:
       tcpSocket:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: EMAIL_PORT
         value: "8080"
@@ -437,8 +527,12 @@ components:
       - name: FLAGD_PORT
         value: "8013"
     resources:
-      limits:
+      requests:
+        cpu: 50m
         memory: 100Mi
+      limits:
+        cpu: 200m
+        memory: 200Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -447,8 +541,6 @@ components:
     enabled: true
     useDefault:
       env: true
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: KAFKA_ADDR
         value: kafka:9092
@@ -463,7 +555,11 @@ components:
       - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
         value: "true"
     resources:
+      requests:
+        cpu: 100m
+        memory: 150Mi
       limits:
+        cpu: 300m
         memory: 300Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -477,14 +573,25 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Stateless app → Karpenter (inherits default hard spot-tolerant contract)
+    schedulingRules: *scheduling-spot-tolerant
+    # Tier B† (Next.js GET / is heavier): timeout 5s; see probe-thresholds.md
     readinessProbe:
       httpGet:
         path: /
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 8080
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 4
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: FRONTEND_PORT
         value: "8080"
@@ -527,14 +634,16 @@ components:
         cpu: 100m
         memory: 128Mi
       limits:
-        cpu: 200m
-        memory: 250Mi
+        cpu: 300m
+        memory: 256Mi
+    # Dual metrics (Option B): CPU 70% primary; memory 90% safety valve (shared behavior from cart).
     autoscaling:
       enabled: true
-      minReplicas: 2
+      minReplicas: 1
       maxReplicas: 6
-      targetCPUUtilizationPercentage: 80
-      targetMemoryUtilizationPercentage: 80
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: *hpa-behavior-default
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -547,10 +656,30 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Critical ingress/gateway → Critical MNG (not the same as stateless frontend).
+    # Anchor source for other critical components (no Karpenter toleration).
+    # topologySpreadConstraints: [] opts out of default soft spreads (small MNG floor).
+    schedulingRules: &scheduling-critical
+      nodeSelector:
+        workload-class: critical
+      affinity: {}
+      tolerations: []
+      topologySpreadConstraints: []
+    # Tier A: Envoy admin /ready (not data-plane / on 8080)
     readinessProbe:
       httpGet:
-        path: /
-        port: 8080
+        path: /ready
+        port: 10000
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /ready
+        port: 10000
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
     service:
       port: 8080
     publicAlb:
@@ -575,7 +704,6 @@ components:
         - /flagservice
         - /otlp-http
     podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
       io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: httpcheck
       io.opentelemetry.discovery.metrics/config: |
@@ -623,8 +751,22 @@ components:
       - name: OTEL_COLLECTOR_PORT_HTTP
         value: "4318"
     resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
       limits:
-        memory: 65Mi
+        cpu: 150m
+        memory: 128Mi
+    # Edge / ALB target on Critical MNG (small floor). Cap maxReplicas to limit pressure.
+    # Dual metrics (Option B): CPU 70% primary; memory 90% safety valve (Envoy usually low RSS).
+    # If pods Pending: free Critical capacity or raise MNG max/desired in infra (separate change).
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: *hpa-behavior-default
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -642,10 +784,24 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier A: nginx stub_status /status
+    readinessProbe:
+      httpGet:
+        path: /status
+        port: 8081
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /status
+        port: 8081
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
     service:
       port: 8081
     podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
       io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: nginx
       io.opentelemetry.discovery.metrics/config: |
@@ -660,8 +816,12 @@ components:
       - name: OTEL_COLLECTOR_HOST
         value: $(OTEL_COLLECTOR_NAME)
     resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
       limits:
-        memory: 50Mi
+        cpu: 100m
+        memory: 64Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -679,10 +839,11 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Synthetic traffic generator — interruptible; runs on Karpenter (spot-tolerant).
+    # Keep off Critical MNG so OpenSearch/Kafka/observability retain the small On-Demand floor.
+    schedulingRules: *scheduling-spot-tolerant
     service:
       port: 8089
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: LOCUST_WEB_HOST
         value: "0.0.0.0"
@@ -717,8 +878,15 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
+      requests:
+        cpu: 200m
+        memory: 500Mi
       limits:
-        memory: 1500Mi
+        cpu: 300m
+        memory: 1000Mi
+    # Fixed single replica (no HPA). Each pod with LOCUST_AUTOSTART independently runs
+    # LOCUST_USERS; autoscaling would multiply synthetic traffic, not share one Locust swarm.
+    # Ramp load via LOCUST_USERS / Locust UI, not replica count.
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -727,13 +895,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier B (Node gRPC health)
     readinessProbe:
       grpc:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: PAYMENT_PORT
         value: "8080"
@@ -746,8 +922,12 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 50m
+        memory: 100Mi
       limits:
-        memory: 140Mi
+        cpu: 200m
+        memory: 200Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -760,13 +940,23 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Stateless → Karpenter hard placement
+    schedulingRules: *scheduling-spot-tolerant
+    # Tier B (Go gRPC); initContainer waits for postgresql
     readinessProbe:
       grpc:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: PRODUCT_CATALOG_PORT
         value: "8080"
@@ -775,19 +965,33 @@ components:
       - name: FLAGD_PORT
         value: "8013"
       - name: GOMEMLIMIT
-        value: 16MiB
+        value: 200MiB
       - name: DB_CONNECTION_STRING
         valueFrom:
           secretKeyRef:
-            name: app-db-credentials
-            key: product-catalog-connection-string
+            name: techx-corp-postgresql-app
+            key: product-catalog-db-connection-string
       - name: OTEL_SEMCONV_STABILITY_OPT_IN
         value: database
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
+      # Right-sized for memory HPA safety valve (90% of 64Mi would thrash under normal Go RSS).
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
-        memory: 20Mi
+        cpu: 300m
+        memory: 256Mi
+    # Hot read path under frontend/checkout; Karpenter spot-tolerant.
+    # Dual metrics (Option B): CPU 70% primary; memory 90% safety valve.
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: *hpa-behavior-default
     initContainers:
       - name: wait-for-postgresql
         image: busybox:latest
@@ -797,13 +1001,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier B (Python gRPC on 3551)
     readinessProbe:
       grpc:
         port: 3551
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      grpc:
+        port: 3551
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 3551
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: OPENAI_API_KEY
         valueFrom:
@@ -829,8 +1041,8 @@ components:
       - name: DB_CONNECTION_STRING
         valueFrom:
           secretKeyRef:
-            name: app-db-credentials
-            key: product-reviews-connection-string
+            name: techx-corp-postgresql-app
+            key: product-reviews-db-connection-string
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: OTEL_PYTHON_LOG_CORRELATION
@@ -840,8 +1052,12 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      limits:
+      requests:
+        cpu: 50m
         memory: 100Mi
+      limits:
+        cpu: 200m
+        memory: 200Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -854,13 +1070,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier B (PHP; no health route → tcp)
     readinessProbe:
       tcpSocket:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: QUOTE_PORT
         value: "8080"
@@ -873,8 +1097,12 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
       limits:
-        memory: 40Mi
+        cpu: 150m
+        memory: 128Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -892,10 +1120,23 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Stateless → Karpenter hard placement
+    schedulingRules: *scheduling-spot-tolerant
+    # Tier B (Python gRPC health; was missing from chart)
+    readinessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      grpc:
+        port: 8080
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: RECOMMENDATION_PORT
         value: "8080"
@@ -912,7 +1153,11 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
       limits:
+        cpu: 300m
         memory: 500Mi            # This is high to enable supporting the recommendationCache feature flag use case
     mountedEmptyDirs:
       - name: tmp-dir
@@ -922,13 +1167,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier A (Rust; business routes only → tcp)
     readinessProbe:
       tcpSocket:
         port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 8080
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
     service:
       port: 8080
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: SHIPPING_PORT
         value: "8080"
@@ -939,8 +1192,12 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
       limits:
-        memory: 20Mi
+        cpu: 100m
+        memory: 64Mi
 
   flagd:
     enabled: true
@@ -949,27 +1206,41 @@ components:
       tag: "v0.12.9"
     useDefault:
       env: true
+    # Feature-flag control plane → Critical MNG
+    schedulingRules: *scheduling-critical
+    # Tier A (Go flagd RPC port)
     readinessProbe:
       tcpSocket:
         port: 8013
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 8013
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
     replicas: 1
     ports:
       - name: rpc
         value: 8013
       - name: ofrep
         value: 8016
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: FLAGD_METRICS_EXPORTER
         value: otel
       - name: FLAGD_OTEL_COLLECTOR_URI
         value: $(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 60MiB
+        value: 100MiB
     resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
       limits:
-        memory: 75Mi
+        cpu: 150m
+        memory: 128Mi
     command:
       - "/flagd-build"
       - "start"
@@ -1004,15 +1275,19 @@ components:
           - name: SECRET_KEY_BASE
             valueFrom:
               secretKeyRef:
-                name: flagd-ui-secret
-                key: secret-key-base
+                name: techx-corp-flagd-ui
+                key: SECRET_KEY_BASE
           - name: PHX_HOST
             value: localhost
           - name: PHX_SERVER
             value: "true"
         resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
           limits:
-            memory: 250Mi
+            cpu: 200m
+            memory: 256Mi
         securityContext:
           runAsUser: 10001
           runAsGroup: 10001
@@ -1044,6 +1319,8 @@ components:
   kafka:
     enabled: true
     stateful: true
+    # Critical data plane → Critical MNG (system-*); no Karpenter toleration
+    schedulingRules: *scheduling-critical
     podSecurityContext:
       fsGroup: 1000
     terminationGracePeriodSeconds: 60
@@ -1056,17 +1333,34 @@ components:
         rollingUpdate:
           maxUnavailable: 1
           maxSurge: 0
+    # Tier C (JVM + OTEL agent, Guaranteed 200m CPU). Without startupProbe, liveness
+    # counts connection-refused during KRaft bootstrap and restarts mid-boot.
+    # Unhealthy "connection refused" Events until the first successful TCP probe are expected.
+    startupProbe:
+      tcpSocket:
+        port: 9092
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 36 # ~6.2 minutes after start (20s + 36*10s)
     readinessProbe:
       tcpSocket:
         port: 9092
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 9092
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 5
     replicas: 1
     ports:
       - name: plaintext
         value: 9092
       - name: controller
         value: 9093
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: KAFKA_ADVERTISED_LISTENERS
         value: PLAINTEXT://kafka:9092
@@ -1083,7 +1377,11 @@ components:
       - name: KAFKA_LOG_DIRS
         value: /opt/kafka/data/kafka
     resources:
+      requests:
+        cpu: 200m
+        memory: 700Mi
       limits:
+        cpu: 200m
         memory: 700Mi
     securityContext:
       runAsUser: 1000  # appuser
@@ -1111,10 +1409,21 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Tier B (Flask; no health route → tcp)
+    readinessProbe:
+      tcpSocket:
+        port: 8000
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 8000
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 5
     service:
       port: 8000
-    podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
     env:
       - name: FLAGD_HOST
         value: flagd
@@ -1124,6 +1433,7 @@ components:
   postgresql:
     enabled: true
     stateful: true
+    schedulingRules: *scheduling-critical
     podSecurityContext:
       fsGroup: 999
     terminationGracePeriodSeconds: 60
@@ -1136,9 +1446,19 @@ components:
         rollingUpdate:
           maxUnavailable: 1
           maxSurge: 0
+    # Tier C (Guaranteed 100m CPU; compose uses timeout 5 / multi-retry)
     readinessProbe:
       tcpSocket:
         port: 5432
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 6
+    livenessProbe:
+      tcpSocket:
+        port: 5432
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 5
     imageOverride:
       repository: "postgres"
       tag: "17.6"
@@ -1146,17 +1466,13 @@ components:
     service:
       port: 5432
     podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
       io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: postgresql
-      # KNOWN LIMITATION: Kubernetes pod annotations không hỗ trợ secretKeyRef.
-      # Password ở đây dùng cho OTel Collector scraper (metrics-only, read-only user).
-      # Credential này tách biệt với app credentials (otelu/otelp).
-      # Rotation: cập nhật annotation này + đổi password trên PostgreSQL cùng lúc.
-      # Tracked: SEC-05 - future work có thể dùng OTel Collector env var substitution.
+      # RESIDUAL (SEC-05): OTel scrape config cannot use secretKeyRef; keep in sync with
+      # postgresql-admin password after rotation, or disable metrics scrape. Tracked for follow-up.
       io.opentelemetry.discovery.metrics/config: |
         username: root
-        password: ${env:POSTGRES_SCRAPER_PASSWORD}
+        password: otel
         metrics:
           postgresql.blks_hit:
             enabled: true
@@ -1180,13 +1496,13 @@ components:
       - name: POSTGRES_USER
         valueFrom:
           secretKeyRef:
-            name: postgres-credentials
-            key: postgres-user
+            name: techx-corp-postgresql-admin
+            key: POSTGRES_USER
       - name: POSTGRES_PASSWORD
         valueFrom:
           secretKeyRef:
-            name: postgres-credentials
-            key: postgres-password
+            name: techx-corp-postgresql-admin
+            key: POSTGRES_PASSWORD
       - name: POSTGRES_DB
         valueFrom:
           secretKeyRef:
@@ -1199,8 +1515,12 @@ components:
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
     resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
-        memory: 100Mi
+        cpu: 100m
+        memory: 128Mi
     securityContext:
       runAsUser: 999
       runAsGroup: 999
@@ -1226,6 +1546,7 @@ components:
   valkey-cart:
     enabled: true
     stateful: true
+    schedulingRules: *scheduling-critical
     podSecurityContext:
       fsGroup: 1000
     terminationGracePeriodSeconds: 60
@@ -1238,9 +1559,19 @@ components:
         rollingUpdate:
           maxUnavailable: 1
           maxSurge: 0
+    # Tier A (fast cache bind)
     readinessProbe:
       tcpSocket:
         port: 6379
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 6379
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
     imageOverride:
       repository: "valkey/valkey"
       tag: "9.0.1-alpine3.23"
@@ -1249,15 +1580,18 @@ components:
       - name: valkey-cart
         value: 6379
     podAnnotations:
-      resource.opentelemetry.io/service.namespace: techx-corp
       io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: redis
       io.opentelemetry.discovery.metrics/config: |
         username: valkey
         collection_interval: 10s
     resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
       limits:
-        memory: 20Mi
+        cpu: 50m
+        memory: 128Mi
     securityContext:
       runAsUser: 999  # valkey
       runAsGroup: 1000
@@ -1293,8 +1627,103 @@ components:
       - name: valkey-cart-data
         mountPath: /data
 
+  # Custom platform image: default.image.repository/opensearch:default.image.tag
+  # (src/opensearch/Dockerfile — strips unused plugins). No separate image override.
+  opensearch:
+    enabled: true
+    stateful: true
+    schedulingRules: *scheduling-critical
+    podSecurityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+    terminationGracePeriodSeconds: 60
+    useDefault:
+      env: false
+    # Singleton search node; non-surge rollout (single-writer data path).
+    rollout:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 0
+    # Cold start is JVM-heavy: on 200m CPU, :9200 often binds only after ~4+ minutes
+    # (observed ~4m16s). CPU request 500m shortens bootstrap; startupProbe still
+    # gates liveness so kubelet does not kill mid-bootstrap if the node is busy.
+    # Unhealthy "connection refused" events during the first few minutes are expected
+    # until the first successful TCP probe; they do not mean the process crashed.
+    startupProbe:
+      tcpSocket:
+        port: 9200
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 36 # ~6.5 minutes after start (30s + 36*10s)
+    readinessProbe:
+      tcpSocket:
+        port: 9200
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 9200
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 5
+    replicas: 1
+    ports:
+      - name: http
+        value: 9200
+      - name: transport
+        value: 9300
+    env:
+      - name: OPENSEARCH_JAVA_OPTS
+        value: "-Xms400m -Xmx400m"
+      - name: discovery.type
+        value: single-node
+      # K8s pods lack memlock ulimit / IPC_LOCK; memory_lock=true can fail bootstrap.
+      - name: bootstrap.memory_lock
+        value: "false"
+      - name: DISABLE_INSTALL_DEMO_CONFIG
+        value: "true"
+      - name: DISABLE_SECURITY_PLUGIN
+        value: "true"
+      - name: cluster.name
+        value: demo-cluster
+      - name: network.host
+        value: "0.0.0.0"
+    resources:
+      # 200m CPU throttled bootstrap to ~4m+ and left almost no margin under the
+      # previous 5m startup window. 500m keeps Guaranteed QoS and realistic cold start.
+      requests:
+        cpu: 500m
+        memory: 1100Mi
+      limits:
+        cpu: 500m
+        memory: 1100Mi
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+    mountedEmptyDirs:
+      - name: opensearch-data
+        mountPath: /usr/share/opensearch/data
+      - name: tmp-dir
+        mountPath: /tmp
+
 opentelemetry-collector:
   enabled: true
+  # Universal DaemonSet: run on Critical MNG and Karpenter (no workload-class selector).
+  tolerations:
+    - key: workload-class
+      operator: Equal
+      value: spot-tolerant
+      effect: NoSchedule
   podSecurityContext:
     seccompProfile:
       type: RuntimeDefault
@@ -1310,8 +1739,11 @@ opentelemetry-collector:
   fullnameOverride: otel-collector
   mode: daemonset
   presets:
+    # Disabled: hostmetrics + root_path /hostfs blocked otelcol in D-state (disk sleep) on
+    # packed Critical MNG nodes, so :13133 never opened and probes saw connection refused.
+    # Re-enable only with narrowed scrapers after Critical MNG capacity is healthy.
     hostMetrics:
-      enabled: true
+      enabled: false
     kubernetesAttributes:
       enabled: true
     kubeletMetrics:
@@ -1321,9 +1753,40 @@ opentelemetry-collector:
     annotationDiscovery:
       metrics:
         enabled: true
+  # Packed Critical MNG nodes (t4g.medium ~96% mem) could not finish startup under 200Mi:
+  # health :13133 stayed closed or hung → readiness/liveness connection refused → restart storm.
+  # Healthy agents already sit ~110–150Mi; leave headroom + raise GOMEMLIMIT (80% of limit).
   resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
     limits:
-      memory: 200Mi
+      cpu: 400m
+      memory: 384Mi
+  # Block liveness until health extension is serving (slow start under node memory pressure).
+  startupProbe:
+    httpGet:
+      path: /
+      port: 13133
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 36
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 13133
+    initialDelaySeconds: 0
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 13133
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
   service:
     enabled: true
   ports:
@@ -1421,7 +1884,8 @@ opentelemetry-collector:
           exporters: [opensearch, debug]
       telemetry:
         metrics:
-          level: detailed
+          # detailed self-metrics + OTLP export amplified load on small Critical MNG agents.
+          level: basic
           readers:
             - periodic:
                 interval: 10000
@@ -1436,6 +1900,9 @@ jaeger:
   enabled: true
   fullnameOverride: jaeger
   jaeger:
+    # Observability control plane → Critical MNG
+    nodeSelector:
+      workload-class: critical
     podSecurityContext:
       seccompProfile:
         type: RuntimeDefault
@@ -1462,7 +1929,11 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
       limits:
+        cpu: 300m
         memory: 600Mi
   userconfig:
     service:
@@ -1538,10 +2009,14 @@ prometheus:
     enabled: false
   server:
     fullnameOverride: prometheus
+    # Observability control plane → Critical MNG
+    nodeSelector:
+      workload-class: critical
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
-    retention: 7d
+    # emptyDir TSDB: keep retention short so WAL/replay stays bounded on restart.
+    retention: 2d
     tsdb:
       out_of_order_time_window: 30m
     otlp:
@@ -1583,9 +2058,31 @@ prometheus:
       enabled: false
     service:
       servicePort: 9090
+    # Working set was ~398Mi against a 400Mi limit (probe timeouts + liveness kill loop).
+    # OTLP receiver + exemplars + k8s SD need headroom on Critical MNG.
     resources:
-      limits:
+      requests:
+        cpu: 150m
         memory: 400Mi
+      limits:
+        cpu: 750m
+        memory: 768Mi
+    # WAL/config load observed ~25–30s; block liveness until ready to avoid restart storms.
+    startupProbe:
+      enabled: true
+      periodSeconds: 10
+      failureThreshold: 30
+      timeoutSeconds: 10
+    readinessProbeInitialDelay: 10
+    readinessProbePeriodSeconds: 10
+    readinessProbeTimeout: 10
+    readinessProbeFailureThreshold: 3
+    readinessProbeSuccessThreshold: 1
+    livenessProbeInitialDelay: 30
+    livenessProbePeriodSeconds: 20
+    livenessProbeTimeout: 10
+    livenessProbeFailureThreshold: 3
+    livenessProbeSuccessThreshold: 1
     securityContext:
       runAsUser: 65534
       runAsNonRoot: true
@@ -1604,6 +2101,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  # Observability control plane → Critical MNG
+  nodeSelector:
+    workload-class: critical
   extraEmptyDirMounts:
     - name: grafana-tmp
       mountPath: /tmp
@@ -1619,9 +2119,9 @@ grafana:
     server:
       root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana"
       serve_from_sub_path: true
-  # adminPassword đã được xóa - credential lấy từ K8s Secret do ESO tạo
+  # SEC-05: admin credentials from ESO Secret techx-corp-grafana-admin
   admin:
-    existingSecret: grafana-admin
+    existingSecret: techx-corp-grafana-admin
     userKey: admin-user
     passwordKey: admin-password
   plugins:
@@ -1634,11 +2134,18 @@ grafana:
     datasources:
       enabled: true
     resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
       limits:
         cpu: 150m
         memory: 256Mi
   resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
     limits:
+      cpu: 200m
       memory: 512Mi
   securityContext:
     runAsNonRoot: true
@@ -1655,31 +2162,14 @@ grafana:
       drop:
         - ALL
 
-opensearch:
-  enabled: true
-  fullnameOverride: opensearch
-  clusterName: demo-cluster
-  nodeGroup: techx-corp
-  singleNode: true
-  opensearchJavaOpts: "-Xms400m -Xmx400m"
-  persistence:
-    enabled: false
-  extraEnvs:
-    - name: "bootstrap.memory_lock"
-      value: "true"
-    - name: "DISABLE_INSTALL_DEMO_CONFIG"
-      value: "true"
-    - name: "DISABLE_SECURITY_PLUGIN"
-      value: "true"
-  resources:
-    limits:
-      memory: 1100Mi
-
 # Metrics Server — required for HPA (autoscaling/v2 CPU & memory metrics).
 # Set enabled: false if the cluster already runs metrics-server (e.g. kube-system).
 metrics-server:
   enabled: true
   fullnameOverride: metrics-server
+  # HPA dependency — pin to critical MNG floor
+  nodeSelector:
+    workload-class: critical
   # EKS / many managed node groups: kubelet serving certs are not trusted by default.
   args:
     - --kubelet-insecure-tls

@@ -28,7 +28,7 @@ Helm chart `techx-corp-chart` là desired state của platform trên EKS. Hiện
 2. **`gitops/clusters/{dev,prod}/`**  
    - `AppProject`: destination `techx-corp`; whitelist ClusterRole, ClusterRoleBinding, Namespace  
    - `Application`: valueFiles = base + public-alb + env; **không** ServerSideApply  
-   - First cutover: **không** `automated` (manual sync); prune OFF  
+   - Default: `automated` + `selfHeal: true`; prune OFF  
 
 3. **Runbook**  
    - `sync --dry-run` → `sync` → `wait --timeout 600` → smoke  
@@ -44,7 +44,7 @@ Helm chart `techx-corp-chart` là desired state của platform trên EKS. Hiện
 
 - [ ] `values-dev.yaml` / `values-prod.yaml` tồn tại và document image contract.
 - [ ] AppProject + Application dev/prod trong `gitops/clusters/`.
-- [ ] Baseline Application: no SSA; first sync manual; prune OFF.
+- [ ] Baseline Application: no SSA; auto-sync + self-heal; prune OFF.
 - [ ] AppProject không cho destination `argocd`; whitelist cluster-scoped cụ thể.
 - [ ] Runbook đầy đủ: ownership, rollback Git, break-glass, promote verify ECR.
 - [ ] CODEOWNERS (hoặc tương đương) cho path ảnh hưởng prod.

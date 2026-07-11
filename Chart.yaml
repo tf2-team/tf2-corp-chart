@@ -1,7 +1,7 @@
 apiVersion: v2
 type: application
 name: techx-corp
-version: 0.40.10
+version: 0.41.0
 description: TechX Corp platform helm chart
 maintainers:
   - name: TechX Corp Platform Team
@@ -23,11 +23,7 @@ dependencies:
     version: 12.3.0
     repository: https://grafana-community.github.io/helm-charts
     condition: grafana.enabled
-  - name: opensearch
-    version: 3.6.0
-    repository: https://opensearch-project.github.io/helm-charts/
-    condition: opensearch.enabled
-  - name: external-secrets
-    version: 0.10.7
-    repository: https://charts.external-secrets.io
-    condition: external-secrets.enabled
+  - name: metrics-server
+    version: 3.13.1
+    repository: https://kubernetes-sigs.github.io/metrics-server/
+    condition: metrics-server.enabled

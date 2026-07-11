@@ -1,9 +1,9 @@
 # [W1][REL-02] Backlog và ghi chú quyết định về readiness/liveness probe
 
-Trạng thái: Đã bổ sung probe cho các service xử lý request và dependency trọng yếu; cần follow-up riêng cho background worker  
+Trạng thái: Đã bổ sung probe cho các service xử lý request và dependency trọng yếu; 2026-07-11 đóng gap recommendation/image-provider/llm, thêm liveness + threshold tiers (`docs/operations/probe-thresholds.md`). Cần follow-up riêng cho background worker.  
 Owner: CDO - Security & Reliability  
 Pillars: Reliability, Security, Operational Excellence  
-Cập nhật lần cuối: 2026-07-08
+Cập nhật lần cuối: 2026-07-11
 
 ## 1. Vấn đề cần giải quyết
 
