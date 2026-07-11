@@ -59,6 +59,9 @@ spec:
       {{- $nodeSelector := ternary $schedOverrides.nodeSelector $schedDefaults.nodeSelector (hasKey $schedOverrides "nodeSelector") | default dict }}
       {{- $affinity := ternary $schedOverrides.affinity $schedDefaults.affinity (hasKey $schedOverrides "affinity") | default dict }}
       {{- $tolerations := ternary $schedOverrides.tolerations $schedDefaults.tolerations (hasKey $schedOverrides "tolerations") | default list }}
+      {{- $topologySpreadConstraints := ternary $schedOverrides.topologySpreadConstraints $schedDefaults.topologySpreadConstraints (hasKey $schedOverrides "topologySpreadConstraints") | default list }}
+      {{- $componentName := .name }}
+      {{- $isStateful := .stateful }}
       {{- if and $nodeSelector (gt (len $nodeSelector) 0) }}
       nodeSelector:
         {{- toYaml $nodeSelector | nindent 8 }}
@@ -70,6 +73,35 @@ spec:
       {{- if and $tolerations (gt (len $tolerations) 0) }}
       tolerations:
         {{- toYaml $tolerations | nindent 8 }}
+      {{- end }}
+      {{- /* Soft topology balancing only; does not replace nodeSelector/tolerations hard placement. */}}
+      {{- if and $topologySpreadConstraints (gt (len $topologySpreadConstraints) 0) }}
+      topologySpreadConstraints:
+        {{- range $topologySpreadConstraints }}
+        - maxSkew: {{ .maxSkew }}
+          topologyKey: {{ .topologyKey }}
+          whenUnsatisfiable: {{ .whenUnsatisfiable }}
+          {{- if .minDomains }}
+          minDomains: {{ .minDomains }}
+          {{- end }}
+          {{- if .labelSelector }}
+          labelSelector:
+            {{- toYaml .labelSelector | nindent 12 }}
+          {{- else }}
+          labelSelector:
+            matchLabels:
+              opentelemetry.io/name: {{ $componentName }}
+          {{- end }}
+          {{- if hasKey . "matchLabelKeys" }}
+          {{- if .matchLabelKeys }}
+          matchLabelKeys:
+            {{- toYaml .matchLabelKeys | nindent 12 }}
+          {{- end }}
+          {{- else if not $isStateful }}
+          matchLabelKeys:
+            - pod-template-hash
+          {{- end }}
+        {{- end }}
       {{- end }}
       {{- $podSecurityContext := mergeOverwrite (dict) (default dict .defaultValues.podSecurityContext) (default dict .podSecurityContext) }}
       {{- if not (empty $podSecurityContext) }}

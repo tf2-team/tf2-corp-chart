@@ -53,7 +53,9 @@ default:
   # Default scheduling: hard placement on Karpenter spot-tolerant nodes.
   # nodeSelector is the hard requirement; Spot capacity-type affinity is preference only.
   # NodePool weight (infra) decides Spot vs On-Demand fallback — do not treat affinity as primary/fallback.
-  # Critical components override with nodeSelector workload-class=critical (no Karpenter toleration).
+  # topologySpreadConstraints are soft balancing only (ScheduleAnyway); labelSelector is template-injected.
+  # Critical components override with nodeSelector workload-class=critical (no Karpenter toleration)
+  # and topologySpreadConstraints: [] (opt-out — small critical MNG floor).
   # See techx-corp-infra/docs/workload-placement.md and docs/operations/workload-placement.md
   schedulingRules: &scheduling-spot-tolerant
     nodeSelector:
@@ -73,6 +75,15 @@ default:
         operator: Equal
         value: spot-tolerant
         effect: NoSchedule
+    # Soft multi-AZ / multi-node balancing within the spot-tolerant pool only.
+    # Does not weaken hard nodeSelector or tolerations; ScheduleAnyway never blocks on capacity.
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
   # Default podSecurityContext for all components
   podSecurityContext:
     seccompProfile:
@@ -135,11 +146,12 @@ components:
   ## Environment variables that upsert (append + merge) into the `env` specification for this component.
   ## A variable named OTEL_RESOURCE_ATTRIBUTES_EXTRA will have its value appended to the OTEL_RESOURCE_ATTRIBUTES value.
   #   envOverrides:
-  ## Pod Scheduling rules for nodeSelector, affinity, or tolerations.
+  ## Pod Scheduling rules for nodeSelector, affinity, tolerations, or topologySpreadConstraints.
   #   schedulingRules:
   #     nodeSelector: {}
   #     affinity: {}
   #     tolerations: []
+  #     topologySpreadConstraints: []  # empty list clears default soft spreads
   ## Pod labels to add to this component
   #   podLabels: {}
   ## Pod Annotations to add to this component
@@ -615,11 +627,13 @@ components:
       env: true
     # Critical ingress/gateway → Critical MNG (not the same as stateless frontend).
     # Anchor source for other critical components (no Karpenter toleration).
+    # topologySpreadConstraints: [] opts out of default soft spreads (small MNG floor).
     schedulingRules: &scheduling-critical
       nodeSelector:
         workload-class: critical
       affinity: {}
       tolerations: []
+      topologySpreadConstraints: []
     # Tier A: Envoy admin /ready (not data-plane / on 8080)
     readinessProbe:
       httpGet:

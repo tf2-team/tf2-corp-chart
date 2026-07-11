@@ -572,6 +572,10 @@
         "tolerations": {
           "type": "array",
           "items": {}
+        },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "items": {}
         }
       }
     },
