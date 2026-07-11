@@ -1929,7 +1929,8 @@ prometheus:
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
-    retention: 7d
+    # emptyDir TSDB: keep retention short so WAL/replay stays bounded on restart.
+    retention: 2d
     tsdb:
       out_of_order_time_window: 30m
     otlp:
@@ -1971,13 +1972,31 @@ prometheus:
       enabled: false
     service:
       servicePort: 9090
+    # Working set was ~398Mi against a 400Mi limit (probe timeouts + liveness kill loop).
+    # OTLP receiver + exemplars + k8s SD need headroom on Critical MNG.
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 300m
+        cpu: 150m
         memory: 400Mi
+      limits:
+        cpu: 750m
+        memory: 768Mi
+    # WAL/config load observed ~25–30s; block liveness until ready to avoid restart storms.
+    startupProbe:
+      enabled: true
+      periodSeconds: 10
+      failureThreshold: 30
+      timeoutSeconds: 10
+    readinessProbeInitialDelay: 10
+    readinessProbePeriodSeconds: 10
+    readinessProbeTimeout: 10
+    readinessProbeFailureThreshold: 3
+    readinessProbeSuccessThreshold: 1
+    livenessProbeInitialDelay: 30
+    livenessProbePeriodSeconds: 20
+    livenessProbeTimeout: 10
+    livenessProbeFailureThreshold: 3
+    livenessProbeSuccessThreshold: 1
     securityContext:
       runAsUser: 65534
       runAsNonRoot: true
