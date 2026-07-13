@@ -15,4 +15,4 @@ components:
   frontend-proxy:
     publicAlb:
       enabled: true
-      blockSensitivePaths: false
+      blockSensitivePaths: true
