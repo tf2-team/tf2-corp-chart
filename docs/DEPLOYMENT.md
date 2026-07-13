@@ -6,7 +6,7 @@
 > Chart consume image theo quy ước **`[REGISTRY]/[PROJECT]/[SERVICE]:[VERSION]`**.
 >
 > **Tên repo GitHub vs thư mục local:** remote GitHub là  
-> [`https://github.com/tmcmanhcuong/tf2-corp-chart`](https://github.com/tmcmanhcuong/tf2-corp-chart)  
+> [`https://github.com/tf2-team/tf2-corp-chart`](https://github.com/tf2-team/tf2-corp-chart)  
 > (branch dev: `techx-dev-corp`). Thư mục monorepo local có thể vẫn tên `techx-corp-chart` — **Argo CD `repoURL` / `sourceRepos` phải dùng `tf2-corp-chart`**, không dùng tên folder.
 
 ---
@@ -51,7 +51,7 @@
 | Helm / Argo release name | `techx-corp` |
 | Argo CD Application | `techx-corp` (`gitops/clusters/prod/`) |
 | Argo CD AppProject | `techx-corp` |
-| Git `repoURL` | `https://github.com/tmcmanhcuong/tf2-corp-chart.git` |
+| Git `repoURL` | `https://github.com/tf2-team/tf2-corp-chart.git` |
 | Git `targetRevision` | `main` |
 | Value files | `values.yaml` + `values-public-alb.yaml` + `values-prod.yaml` |
 | `default.image.repository` | `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-corp` |
@@ -66,7 +66,7 @@
 | Helm / Argo release name | `techx-corp-dev` |
 | Argo CD Application | `techx-corp-dev` (`gitops/clusters/dev/`) |
 | Argo CD AppProject | `techx-corp-dev` |
-| Git `repoURL` | `https://github.com/tmcmanhcuong/tf2-corp-chart.git` |
+| Git `repoURL` | `https://github.com/tf2-team/tf2-corp-chart.git` |
 | Git `targetRevision` | `techx-dev-corp` |
 | Value files | `values.yaml` + `values-public-alb.yaml` + `values-dev.yaml` |
 | `default.image.repository` | `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-dev-corp` |
@@ -217,7 +217,7 @@ Ghi lại **VERSION** (tag) để ghi vào `values-prod.yaml` / `values-dev.yaml
 | **Dev** | `gitops/clusters/dev/` | `techx-corp-dev` | `techx-corp-dev` | `techx-corp-dev` | `techx-dev-corp` |
 | **Prod** | `gitops/clusters/prod/` | `techx-corp` | `techx-corp` | `techx-corp-prod` | `main` |
 
-- **Git source (cả hai env):** `https://github.com/tmcmanhcuong/tf2-corp-chart.git`
+- **Git source (cả hai env):** `https://github.com/tf2-team/tf2-corp-chart.git`
 - AppProject `spec.sourceRepos` **phải** chứa đúng URL đó (HTTPS và/hoặc SSH).
 - AppProject `spec.destinations` **phải** khớp `Application.spec.destination` (server + namespace).
 - Value layer: `values.yaml` + `values-public-alb.yaml` + `values-dev|prod.yaml`.
@@ -241,7 +241,7 @@ Nếu repo **private**, đăng ký credential trước sync (một lần):
 
 ```bash
 # ví dụ PAT / deploy key — chọn theo org policy
-argocd repo add https://github.com/tmcmanhcuong/tf2-corp-chart.git \
+argocd repo add https://github.com/tf2-team/tf2-corp-chart.git \
   --username <user> --password <token>
 ```
 
@@ -792,8 +792,8 @@ kubectl -n argocd annotate application techx-corp-dev \
 | Symptom / message | Cause | Fix |
 |---|---|---|
 | `destination server '…' and namespace 'techx-corp-dev' do not match any of the allowed destinations in project 'techx-corp-dev'` | AppProject `destinations` namespace ≠ Application destination (thường còn `techx-corp` trên project dev) | Set AppProject destination namespace = `techx-corp-dev`; `kubectl apply -f gitops/clusters/dev/appproject.yaml` |
-| `application repo https://github.com/tmcmanhcuong/tf2-corp-chart.git is not permitted in project '…'` | AppProject `sourceRepos` thiếu URL đúng, hoặc stale condition sau khi đổi repo | Thêm `tf2-corp-chart` vào `sourceRepos`; re-apply AppProject; hard-refresh Application |
-| `failed to list refs: authentication required: Repository not found` | Sai `repoURL` (vd. `techx-corp-chart` không tồn tại) **hoặc** repo private thiếu credential | Dùng `https://github.com/tmcmanhcuong/tf2-corp-chart.git`; đăng ký `argocd repo add` nếu private |
+| `application repo https://github.com/tf2-team/tf2-corp-chart.git is not permitted in project '…'` | AppProject `sourceRepos` thiếu URL đúng, hoặc stale condition sau khi đổi repo | Thêm `tf2-corp-chart` vào `sourceRepos`; re-apply AppProject; hard-refresh Application |
+| `failed to list refs: authentication required: Repository not found` | Sai `repoURL` (vd. `techx-corp-chart` không tồn tại) **hoặc** repo private thiếu credential | Dùng `https://github.com/tf2-team/tf2-corp-chart.git`; đăng ký `argocd repo add` nếu private |
 | Application **OutOfSync** — diff chỉ có `argocd.argoproj.io/instance: <app-name>` | **Expected on Helm → Argo cutover.** Argo tracks ownership with label `application.instanceLabelKey` (default `argocd.argoproj.io/instance` = Application `metadata.name`). Helm live objects lack that label → every resource OutOfSync until first sync stamps it. **Not** a chart template bug; chart does not set this label. | Review `argocd app diff` (expect only that label on existing objects). Then **one** manual sync: `argocd app sync techx-corp-dev` (or prod `techx-corp`). After apply, tracking labels land and that noise disappears. Do **not** `ignoreDifferences` this label (breaks ownership/orphan detection). |
 | Application **OutOfSync** sau bootstrap (other diffs) | Automated sync OFF (v1) **or** real drift (values/tag/templates) | `argocd app diff` then `argocd app sync techx-corp-dev` / `techx-corp` when intentional |
 | Orphaned resources warning | Objects **in destination namespace** not rendered by this Application (warn only; not SyncFailed) | **Expected** on cutover: Helm `sh.helm.release*` Secrets, ESO Secrets/`ExternalSecret` (secrets-chart), StatefulSet PVCs, `kube-root-ca.crt`, `default` SA. AppProject `orphanedResources.ignore` lists these. Review UI list — only delete real junk; **never** prune PVCs/ESO secrets casually. v1 prune stays OFF. |
@@ -809,7 +809,7 @@ kubectl -n argocd annotate application techx-corp-dev \
 
 ## Tài liệu liên quan
 
-- GitHub chart: [`tmcmanhcuong/tf2-corp-chart`](https://github.com/tmcmanhcuong/tf2-corp-chart) (branch dev `techx-dev-corp`)  
+- GitHub chart: [`tf2-team/tf2-corp-chart`](https://github.com/tf2-team/tf2-corp-chart) (branch dev `techx-dev-corp`)  
 - `gitops/clusters/dev|prod/` — Argo CD AppProject + Application  
 - `gitops/README.md` — bootstrap tóm tắt  
 - `techx-corp-platform/docs/CICD.md` — build/push OIDC  
