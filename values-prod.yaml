@@ -21,10 +21,83 @@ default:
     tag: "sha-8b3d7d6"
 
 components:
+  # DIRECTIVE #3: keep at least two Ready instances for every stateless service
+  # on the synchronous browse -> cart -> checkout path. HPA services use a
+  # production floor of two; fixed-size services declare replicas explicitly.
+  # Stateful dependencies (Kafka and valkey-cart) require real replication and
+  # failover and are deliberately not "scaled" as independent single writers.
+  ad:
+    replicas: 2
+
+  cart:
+    autoscaling:
+      minReplicas: 2
+
+  checkout:
+    autoscaling:
+      minReplicas: 2
+
+  currency:
+    autoscaling:
+      minReplicas: 2
+
+  email:
+    replicas: 2
+
+  flagd:
+    # Reliability-only change; flag definitions and incident controls remain
+    # unchanged. Two replicas remove the feature-flag service as a node SPOF.
+    replicas: 2
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+
+  frontend:
+    autoscaling:
+      minReplicas: 2
+
   frontend-proxy:
     publicAlb:
       # Internal ALB; path blocking is on CloudFront (infra cloudfront_block_sensitive_paths).
       scheme: internal
       blockSensitivePaths: false
-    # Critical ingress/gateway pin lives in values.yaml hard-placement contract.
-  # flagd critical pin lives in values.yaml.
+    autoscaling:
+      minReplicas: 2
+    # Preserve the critical MNG pin from values.yaml, but prefer separate AZs
+    # and hosts. ScheduleAnyway preserves availability when one node is drained.
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+
+  image-provider:
+    replicas: 2
+
+  payment:
+    replicas: 2
+
+  product-catalog:
+    autoscaling:
+      minReplicas: 2
+
+  product-reviews:
+    replicas: 2
+
+  quote:
+    replicas: 2
+
+  recommendation:
+    autoscaling:
+      minReplicas: 2
+
+  shipping:
+    replicas: 2

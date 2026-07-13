@@ -11,9 +11,14 @@
     {{- $config := set . "observability" $.Values.observability }}
     {{- $config := set . "defaultValues" $.Values.default }}
 
-    {{- if and $config.enabled $config.autoscaling $config.autoscaling.enabled -}}
-        {{- if ge (int ($config.autoscaling.minReplicas | default 1)) 2 -}}
-            {{- include "techx-corp.pdb" $config -}}
-        {{- end }}
+    {{- $fixedReplicas := int ($config.replicas | default $.Values.default.replicas) -}}
+    {{- $autoscalingMinReplicas := 0 -}}
+    {{- if and $config.autoscaling $config.autoscaling.enabled -}}
+        {{- $autoscalingMinReplicas = int ($config.autoscaling.minReplicas | default 1) -}}
+    {{- end -}}
+
+    {{- /* Protect both HPA-backed and fixed-size multi-replica Deployments. */ -}}
+    {{- if and $config.enabled (not $config.stateful) (or (ge $fixedReplicas 2) (ge $autoscalingMinReplicas 2)) -}}
+        {{- include "techx-corp.pdb" $config -}}
     {{- end }}
 {{- end }}
