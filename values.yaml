@@ -1017,7 +1017,7 @@ components:
     resources:
       requests:
         cpu: 200m
-        memory: 512Mi
+        memory: 3Gi
       limits:
         cpu: "1.5"
         memory: 4Gi
@@ -2112,7 +2112,7 @@ jaeger:
       type: memory
     extraEnv:
       - name: MEMORY_MAX_TRACES
-        value: "25000"
+        value: "10000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
