@@ -68,8 +68,43 @@ Cấu hình trước đó còn một số điểm yếu ở mức Helm chart:
 - **Rủi ro**: Queue/retry giúp giảm mất telemetry khi backend chậm, nhưng nếu backend lỗi kéo dài, collector vẫn có thể drop dữ liệu khi queue đầy.
 - **Rollback**: Tắt lại persistence của Prometheus/Grafana, chuyển `components.opensearch` từ `volumeClaimTemplates` về `mountedEmptyDirs`, và giảm cấu hình queue/retry của collector về mặc định trước đó.
 
+## Trạng thái triển khai production
+
+Trong lần triển khai đầu tiên, Argo CD không thể cập nhật OpenSearch từ
+`emptyDir` sang `volumeClaimTemplates` vì trường này là immutable trên
+StatefulSet hiện hữu.
+
+Thông báo lỗi:
+
+```text
+StatefulSet.apps "opensearch" is invalid: spec: Forbidden: updates to
+statefulset spec ... are forbidden
+```
+
+Biện pháp phục hồi:
+
+- Tạm giữ OpenSearch sử dụng `emptyDir`.
+- Giữ persistence cho Prometheus và Grafana.
+- Giữ retry, sending queue và batch của OTel Collector.
+- Tách migration OpenSearch PVC thành một change riêng có ADR, runbook,
+  rollback và kiểm thử trên EKS.
+
+Residual risk:
+
+OpenSearch vẫn mất dữ liệu khi pod bị xóa hoặc reschedule cho đến khi migration
+PVC hoàn tất.
+
+Trạng thái production acceptance hiện tại là **partial**. REL-07 chỉ được đóng
+hoàn toàn sau khi OpenSearch được migrate sang PVC bằng một change riêng và
+kiểm thử xác nhận dữ liệu còn tồn tại sau khi pod được tạo lại.
+
 ---
 
 ## English Summary
 
-This backlog tracks Helm-level hardening for the observability stack. It enables persistence for Prometheus, Grafana, and OpenSearch; adds resource requests/limits for critical observability components; and configures OpenTelemetry Collector exporter retry queues and batching to reduce telemetry loss during backend slowness or restarts.
+This backlog tracks Helm-level hardening for the observability stack. The
+production hotfix keeps persistence enabled for Prometheus and Grafana, adds
+resource requests/limits for critical observability components, and configures
+OpenTelemetry Collector exporter retry queues and batching. OpenSearch PVC
+migration is intentionally deferred to a separate controlled change because
+the existing StatefulSet volume claim template is immutable.

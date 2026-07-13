@@ -1736,19 +1736,9 @@ components:
       capabilities:
         drop:
           - ALL
-    volumeClaimTemplates:
-      - metadata:
-          name: opensearch-data
-        spec:
-          accessModes: [ "ReadWriteOnce" ]
-          storageClassName: '{{ .defaultValues.storageClassName }}'
-          resources:
-            requests:
-              storage: 10Gi
-    additionalVolumeMounts:
+    mountedEmptyDirs:
       - name: opensearch-data
         mountPath: /usr/share/opensearch/data
-    mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
 
@@ -2122,6 +2112,7 @@ prometheus:
         - postgresql.index.name
     persistentVolume:
       enabled: true
+      storageClass: gp2
       size: 8Gi
     service:
       servicePort: 9090
@@ -2215,6 +2206,7 @@ grafana:
       memory: 512Mi
   persistence:
     enabled: true
+    storageClassName: gp2
     size: 1Gi
   securityContext:
     runAsNonRoot: true
