@@ -1131,12 +1131,12 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # kubectl top: 16m CPU, 16Mi mem (Go). P99 mem: 17Mi. GOMEMLIMIT=200MiB caps heap.
+      # Go microservice with GOMEMLIMIT=200MiB. Raise requests to handle concurrency.
       requests:
-        cpu: 20m
-        memory: 24Mi
+        cpu: 50m
+        memory: 64Mi
       limits:
-        cpu: 200m
+        cpu: 300m
         memory: 256Mi
     # Hot read path under frontend/checkout; Karpenter spot-tolerant.
     # Highest backend RPS under Locust browse; RPS primary + CPU/mem safety valves.
@@ -1208,13 +1208,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # kubectl top: 26m CPU, 74Mi mem (Python gRPC). P99 mem: 75Mi.
+      # Python gRPC service. Raise to handle concurrency under load.
       requests:
-        cpu: 30m
-        memory: 96Mi
+        cpu: 50m
+        memory: 160Mi
       limits:
-        cpu: 200m
-        memory: 192Mi
+        cpu: 300m
+        memory: 256Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1311,13 +1311,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # kubectl top: 15m CPU, 43Mi mem (Python gRPC). P99 mem: 44Mi. Keep high limit for recommendationCache.
+      # Python gRPC. Needs enough heap for recommendationCache and concurrent requests.
       requests:
-        cpu: 20m
-        memory: 56Mi
+        cpu: 50m
+        memory: 128Mi
       limits:
         cpu: 300m
-        memory: 500Mi            # This is high to enable supporting the recommendationCache feature flag use case
+        memory: 510Mi
     # Product-page traffic (P1); RPS primary; keep high mem limit for recommendationCache flag scenarios.
     autoscaling:
       enabled: true
@@ -1688,13 +1688,14 @@ components:
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
     resources:
-      # P99 CPU ~63m; P99 mem ~54Mi. Tighten to Guaranteed QoS at measured levels.
+      # PostgreSQL requires sufficient memory to handle connection forks and queries.
+      # 64Mi is too low under load and causes exit code 137. Raise to 512Mi.
       requests:
-        cpu: 80m
-        memory: 64Mi
+        cpu: 200m
+        memory: 512Mi
       limits:
-        cpu: 80m
-        memory: 64Mi
+        cpu: 200m
+        memory: 512Mi
     securityContext:
       runAsUser: 999
       runAsGroup: 999
