@@ -699,17 +699,18 @@ components:
     publicAlb:
       enabled: false
       ingressClassName: alb
-      scheme: internet-facing
+      # Internal ALB for CloudFront VPC origin (not internet-facing).
+      # Public edge + path blocking: techx-corp-infra modules/cloudfront-alb.
+      scheme: internal
       targetType: ip
       listenPorts: '[{"HTTP":80}]'
       host: ""
-      # Storefront-only security posture on public ALB:
-      #   ALLOWED (via catch-all /):  / , /api/* , /images/*
-      #   BLOCKED (HTTP 403 fixed-response when blockSensitivePaths=true):
-      #     /grafana, /jaeger, /loadgen, /feature, /flagservice, /otlp-http
-      # Toggle: --set components.frontend-proxy.publicAlb.blockSensitivePaths=false
-      # Or drive from Terraform output storefront_alb_helm_set_flags
-      blockSensitivePaths: true
+      # ALB has no path-block rules by default (blockSensitivePaths=false).
+      # Sensitive prefixes are blocked at CloudFront (viewer-request Function).
+      # Keep blockedPrefixes for optional emergency ALB fixed-response only.
+      # Toggle emergency ALB blocks:
+      #   --set components.frontend-proxy.publicAlb.blockSensitivePaths=true
+      blockSensitivePaths: false
       blockedPrefixes:
         - /grafana
         - /jaeger

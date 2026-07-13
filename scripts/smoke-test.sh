@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # Smoke test script for techx-corp release
-# Checks homepage, product list, add-to-cart, checkout, and optional ALB blocking.
+# Checks homepage, product list, add-to-cart, checkout, and optional edge path blocking
+# (CloudFront; pass -a with the public HTTPS hostname, not the internal ALB).
 
 set -euo pipefail
 
@@ -23,7 +24,7 @@ function print_usage() {
   echo "Options:"
   echo "  -n, --namespace <ns>    Kubernetes namespace (default: techx-corp-prod)"
   echo "  -h, --host <url>        Direct target host (skips port-forward, e.g. http://localhost:8080)"
-  echo "  -a, --alb-host <url>    Public ALB host to run route-blocking checks on"
+  echo "  -a, --alb-host <url>    Public edge host for route-blocking checks (CloudFront alias or https://dxxx.cloudfront.net)"
   echo "  --help                  Show this help message"
 }
 
@@ -198,14 +199,14 @@ else
   exit 1
 fi
 
-# Optional Public ALB Route-Blocking Check
+# Optional edge (CloudFront) route-blocking check — not the internal ALB
 if [ -n "$ALB_HOST" ]; then
   ALB_HOST="${ALB_HOST%/}"
   if [[ ! "$ALB_HOST" =~ ^http ]]; then
-    ALB_HOST="http://$ALB_HOST"
+    ALB_HOST="https://$ALB_HOST"
   fi
 
-  echo -e "${YELLOW}[ALB Check] Testing Public Ingress route-blocking at $ALB_HOST...${NC}"
+  echo -e "${YELLOW}[Edge Check] Testing CloudFront path-blocking at $ALB_HOST...${NC}"
   BLOCKED_PREFIXES=("/grafana" "/jaeger" "/loadgen" "/feature" "/flagservice" "/otlp-http")
   ALL_BLOCKED=true
 
@@ -220,10 +221,10 @@ if [ -n "$ALB_HOST" ]; then
   done
 
   if [ "$ALL_BLOCKED" = false ]; then
-    echo -e "${RED}✘ Ingress route-blocking validation failed!${NC}"
+    echo -e "${RED}✘ Edge route-blocking validation failed!${NC}"
     exit 1
   else
-    echo -e "${GREEN}✔ All blocked routes successfully verified.${NC}"
+    echo -e "${GREEN}✔ All blocked routes successfully verified at the edge.${NC}"
   fi
 fi
 

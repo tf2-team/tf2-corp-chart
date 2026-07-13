@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Vai trò của Repository này (chart):**
-> Repository này chịu trách nhiệm quản lý **Helm chart**, cấu hình **public ALB Ingress** (`values-public-alb.yaml`), **smoke test**, **GitOps (Argo CD)**, và quy trình **upgrade/rollback** an toàn.  
+> Repository này chịu trách nhiệm quản lý **Helm chart**, cấu hình **storefront ALB Ingress** (`values-public-alb.yaml`, scheme **internal**), **smoke test**, **GitOps (Argo CD)**, và quy trình **upgrade/rollback** an toàn.  
 > Chart consume image theo quy ước **`[REGISTRY]/[PROJECT]/[SERVICE]:[VERSION]`**.
 >
 > **Tên repo GitHub vs thư mục local:** remote GitHub là  
@@ -15,7 +15,7 @@
 
 - Deploy ứng dụng TechX Corp lên EKS (ưu tiên **GitOps / Argo CD**; Helm break-glass khi khẩn cấp).
 - Gắn đúng image từ ECR nested (`techx-corp/<service>` hoặc `techx-dev-corp/<service>`).
-- Bật public ALB cho storefront, chặn route nhạy cảm.
+- Bật internal ALB cho storefront (CloudFront VPC origin); chặn route nhạy cảm tại CloudFront.
 - Xác minh bằng smoke test; rollback khi cần (`git revert` → Argo sync là chuẩn).
 
 ## 2. Bản đồ Repository
@@ -563,63 +563,45 @@ kubectl -n techx-corp-prod get deploy ad -o jsonpath='{.spec.template.spec.conta
 # Kỳ vọng: .../techx-corp/ad:sha-a1b2c3d
 ```
 
-### Storefront ALB path blocking (toggle only)
+### Storefront internal ALB (CloudFront edge path blocking)
 
-Security posture on public ALB (`frontend-proxy-public`):
+Ingress `frontend-proxy-public` creates an **internal** ALB (`scheme: internal`) with **no** path-block rules. All paths forward to `frontend-proxy`. Public clients and sensitive-path **403**s are handled by **CloudFront** (VPC origin + Function) in `techx-corp-infra` — see that repo’s `docs/cloudfront.md`.
 
-| | Paths |
+| Layer | Behavior |
 |---|---|
-| **ALLOWED** | `/`, `/api/*`, `/images/*` (catch-all `/` → frontend-proxy) |
-| **BLOCKED** (HTTP 403) when ON | `/grafana`, `/jaeger`, `/loadgen`, `/feature`, `/flagservice`, `/otlp-http` |
+| **Internal ALB** | Catch-all `/` → frontend-proxy; not internet-facing |
+| **CloudFront** (when enabled) | HTTPS edge; optional 403 on `/grafana`, `/jaeger`, `/loadgen`, `/feature`, `/flagservice`, `/otlp-http` |
 
-Flag: `components.frontend-proxy.publicAlb.blockSensitivePaths`  
-- Default in `values-public-alb.yaml`: **`true`**  
-- Terraform source of truth (optional): `storefront_alb_block_sensitive_paths` in `techx-corp-infra`
+Chart flags:
 
-If the Helm release is **already installed**, you do **not** need a full reinstall. Toggle **only** the block flag with `helm upgrade` + `--reuse-values` (keeps image repo/tag and other values):
+* `components.frontend-proxy.publicAlb.scheme` → **`internal`**
+* `components.frontend-proxy.publicAlb.blockSensitivePaths` → **`false`** (default)
 
-**Turn blocking ON** (storefront-only; 403 on sensitive paths):
+Emergency ALB-side blocks only (prefer CloudFront in prod):
 
-```bash
-# cwd = chart root
-helm upgrade techx-corp . \
-  -n techx-corp-prod \
-  --reuse-values \
-  --set components.frontend-proxy.publicAlb.blockSensitivePaths=true \
+```cmd
+cd /d techx-corp-chart
+helm upgrade techx-corp . -n techx-corp-prod --reuse-values ^
+  --set components.frontend-proxy.publicAlb.blockSensitivePaths=true ^
   --wait --timeout 5m
 ```
 
-**Turn blocking OFF** (all paths forward to frontend-proxy):
+**Verify ALB posture:**
 
-```bash
-helm upgrade techx-corp . \
-  -n techx-corp-prod \
-  --reuse-values \
-  --set components.frontend-proxy.publicAlb.blockSensitivePaths=false \
-  --wait --timeout 5m
-```
-
-> Use the same chart path you used on install (chart root / clone of `tf2-corp-chart`).  
-> ALB listener rules may take **1–2 minutes** to update after Ingress changes.
-
-**Verify:**
-
-```bash
-# Ingress paths: with ON → /grafana (etc.) present; with OFF → only /
+```cmd
 kubectl -n techx-corp-prod get ingress frontend-proxy-public -o yaml
-
-ALB_DNS=$(kubectl get ingress frontend-proxy-public -n techx-corp-prod \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-
-# ON  → HTTP 403 ;  OFF → not 403 (often 200/302/404 from app)
-curl -i "http://${ALB_DNS}/grafana"
+REM Expect: scheme "internal", paths only / → frontend-proxy
 ```
 
-From Terraform (optional helper):
+**Verify edge path blocking** (after CloudFront is applied):
 
-```bash
-terraform -chdir=enviroments/production output storefront_alb_helm_set_flags
-# → --set components.frontend-proxy.publicAlb.blockSensitivePaths=true|false
+```cmd
+curl -i https://shop.example.com/grafana
+REM Expect HTTP 403 when cloudfront_block_sensitive_paths=true
+```
+
+```cmd
+bash scripts/smoke-test.sh -n techx-corp-prod -h https://shop.example.com -a https://shop.example.com
 ```
 
 ---
@@ -668,13 +650,13 @@ Kỳ vọng: `TARGETS` không còn `<unknown>` sau khi Metrics Server Ready (CPU
 # Port-forward / in-cluster path
 bash scripts/smoke-test.sh --namespace techx-corp-prod
 
-# Qua public ALB (gồm route-blocking)
-ALB_DNS=$(kubectl get ingress frontend-proxy-public -n techx-corp-prod \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-bash scripts/smoke-test.sh --namespace techx-corp-prod --alb-host "$ALB_DNS"
+# Via CloudFront edge (path-blocking check when CF Function is enabled)
+bash scripts/smoke-test.sh --namespace techx-corp-prod \
+  --host https://shop.example.com \
+  --alb-host https://shop.example.com
 ```
 
-Route nhạy cảm (`/grafana`, `/jaeger`, `/loadgen`, `/feature`, `/flagservice`, `/otlp-http`) qua ALB công cộng → **HTTP 403** khi `blockSensitivePaths=true` (xem mục *Storefront ALB path blocking* ở Phase 4).
+Route nhạy cảm (`/grafana`, `/jaeger`, …) → **HTTP 403** tại **CloudFront** khi `cloudfront_block_sensitive_paths=true` (infra). ALB nội bộ không còn rule chặn path (xem mục *Storefront internal ALB* ở Phase 4).
 
 ---
 

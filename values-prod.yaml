@@ -23,6 +23,8 @@ default:
 components:
   frontend-proxy:
     publicAlb:
-      blockSensitivePaths: true
+      # Internal ALB; path blocking is on CloudFront (infra cloudfront_block_sensitive_paths).
+      scheme: internal
+      blockSensitivePaths: false
     # Critical ingress/gateway pin lives in values.yaml hard-placement contract.
   # flagd critical pin lives in values.yaml.

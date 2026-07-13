@@ -1,18 +1,22 @@
-# Enable internet-facing ALB for frontend-proxy (storefront only).
+# Enable internal storefront ALB for frontend-proxy (CloudFront VPC origin target).
 #
-# Security posture when blockSensitivePaths=true (default):
-#   ALLOWED:  / , /api/* , /images/*
-#   BLOCKED:  /grafana, /jaeger, /loadgen, /feature, /flagservice, /otlp-http  → HTTP 403
+# The ALB is NOT internet-facing. Public clients reach the storefront only via
+# CloudFront (techx-corp-infra modules/cloudfront-alb). Path blocking for admin/
+# telemetry prefixes lives on CloudFront, not on this Ingress.
 #
-# Toggle path blocking off:
-#   helm ... -f values-public-alb.yaml \
-#     --set components.frontend-proxy.publicAlb.blockSensitivePaths=false
+# ALB posture:
+#   scheme: internal
+#   blockSensitivePaths: false  (no ALB fixed-response 403 rules)
+#   catch-all / → frontend-proxy
 #
-# Or use Terraform (techx-corp-infra) variable storefront_alb_block_sensitive_paths
-# and output storefront_alb_helm_set_flags / storefront_alb_helm_deploy_command.
+# CloudFront path blocking (edge): see techx-corp-infra docs/cloudfront.md
+#   BLOCKED at CF when enabled: /grafana, /jaeger, /loadgen, /feature, /flagservice, /otlp-http
+#
+# Layer order: values.yaml → values-public-alb.yaml → values-dev|prod.yaml
 
 components:
   frontend-proxy:
     publicAlb:
       enabled: true
-      blockSensitivePaths: true
+      scheme: internal
+      blockSensitivePaths: false

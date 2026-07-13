@@ -1,10 +1,12 @@
 {{- $frontendProxy := index .Values.components "frontend-proxy" }}
 {{- if and $frontendProxy $frontendProxy.enabled $frontendProxy.publicAlb $frontendProxy.publicAlb.enabled }}
-{{- /* blockSensitivePaths defaults to true when unset (secure by default on public ALB) */ -}}
-{{- $blockPaths := true -}}
+{{- /* blockSensitivePaths defaults to false: path blocking is at CloudFront edge.
+     Set true only for emergency ALB fixed-response without CloudFront. */ -}}
+{{- $blockPaths := false -}}
 {{- if hasKey $frontendProxy.publicAlb "blockSensitivePaths" -}}
   {{- $blockPaths = $frontendProxy.publicAlb.blockSensitivePaths -}}
 {{- end -}}
+{{- $scheme := dig "scheme" "internal" $frontendProxy.publicAlb -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -13,11 +15,11 @@ metadata:
     {{- $ctx := dict "Release" .Release "Chart" .Chart "Capabilities" .Capabilities "Template" .Template "name" "frontend-proxy" }}
     {{- include "techx-corp.labels" $ctx | nindent 4 }}
   annotations:
-    alb.ingress.kubernetes.io/scheme: {{ $frontendProxy.publicAlb.scheme | quote }}
+    alb.ingress.kubernetes.io/scheme: {{ $scheme | quote }}
     alb.ingress.kubernetes.io/target-type: {{ $frontendProxy.publicAlb.targetType | quote }}
     alb.ingress.kubernetes.io/listen-ports: {{ $frontendProxy.publicAlb.listenPorts | quote }}
     {{- if $blockPaths }}
-    # Fixed 403 for blocked admin/telemetry paths (storefront-only posture)
+    # Optional emergency fixed 403 (prefer CloudFront Function path blocking)
     alb.ingress.kubernetes.io/actions.block-public-path: '{"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"403","messageBody":"Access Denied"}}'
     {{- end }}
 spec:
@@ -38,7 +40,7 @@ spec:
                   name: use-annotation
           {{- end }}
           {{- end }}
-          # ALLOWED storefront surface: / , /api/* , /images/* (and other non-blocked prefixes)
+          # All paths → frontend-proxy (admin/telemetry blocked at CloudFront when enabled)
           - path: /
             pathType: Prefix
             backend:
