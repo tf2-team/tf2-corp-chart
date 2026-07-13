@@ -1929,6 +1929,12 @@ opentelemetry-collector:
         - key: service.instance.id
           from_attribute: k8s.pod.uid
           action: insert
+        - key: deployment.environment.name
+          value: production
+          action: upsert
+        - key: service.namespace
+          value: techx-corp-prod
+          action: upsert
 
     connectors:
       spanmetrics: {}
