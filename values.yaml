@@ -1,4 +1,17 @@
-﻿# yaml-language-server: $schema=./values.schema.json
+# yaml-language-server: $schema=./values.schema.json
+
+# SEC-05: NetworkPolicy — east-west traffic restriction.
+# Requires a CNI that enforces NetworkPolicy (e.g. AWS VPC CNI with Network Policy support,
+# Calico, Cilium). Verify CNI support before enabling in production.
+# Docs: docs/operations/network-policy.md
+#
+# Roll-out approach (recommended):
+#   Phase 1 — audit: deploy with enabled: false, preview blocked flows with CNI audit tool.
+#   Phase 2 — enforce: set enabled: true in dev; soak 24h, check OTel traces for errors.
+#   Phase 3 — promote: apply to prod after dev soak is clean.
+networkPolicy:
+  enabled: false   # flip to true after CNI audit (see docs above)
+
 #
 # SEC-05: Sensitive credentials use secretKeyRef → ESO-synced Secrets.
 # Deploy order: ESO + ClusterSecretStore → techx-corp-secrets → wait Ready → techx-corp.
@@ -116,6 +129,30 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+# SEC-03 least-privilege: any component may declare its OWN serviceAccount to get
+# a distinct, auditable identity instead of sharing the global one above. Fallback
+# rules:
+#   - Component WITHOUT serviceAccount  -> uses the global serviceAccount (default).
+#   - Component WITH serviceAccount     -> gets its own SA; name defaults to the
+#                                          component name when `name` is omitted.
+#   - IRSA role ARNs are NEVER inherited from global; declare them explicitly only
+#     on the workload that needs AWS access.
+# Example (do not enable globally — only for workloads with a real need):
+#
+# components:
+#   accounting:
+#     serviceAccount:
+#       create: true
+#       name: techx-corp-accounting
+#       annotations:
+#         eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/techx-corp-accounting
+#   fraud-detection:
+#     serviceAccount:
+#       create: true
+#       name: techx-corp-fraud-detection
+#       annotations:
+#         eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/techx-corp-fraud-detection
 
 components:
   ## Demo Components are named objects (services) with several properties
@@ -895,11 +932,11 @@ components:
         value: /tmp/.config
     resources:
       requests:
-        cpu: 200m
-        memory: 500Mi
+        cpu: 500m
+        memory: 1Gi
       limits:
-        cpu: 300m
-        memory: 1000Mi
+        cpu: "2"
+        memory: 6Gi
     # Fixed single replica (no HPA). Each pod with LOCUST_AUTOSTART independently runs
     # LOCUST_USERS; autoscaling would multiply synthetic traffic, not share one Locust swarm.
     # Ramp load via LOCUST_USERS / Locust UI, not replica count.
@@ -1953,6 +1990,12 @@ opentelemetry-collector:
         - key: service.instance.id
           from_attribute: k8s.pod.uid
           action: insert
+        - key: deployment.environment.name
+          value: production
+          action: upsert
+        - key: service.namespace
+          value: techx-corp-prod
+          action: upsert
 
     connectors:
       spanmetrics: {}
