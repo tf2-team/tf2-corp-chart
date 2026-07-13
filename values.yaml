@@ -688,10 +688,9 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces             # This allows local development and production/ALB relative routing
     resources:
-      # kubectl top: 20-55m CPU per pod. Next.js SSR is CPU-heavy.
-      # Raise CPU request to 100m to prevent premature HPA scaling at minimal load.
+      # Next.js SSR requires more CPU request under active user load to prevent scaling.
       requests:
-        cpu: 100m
+        cpu: 150m
         memory: 128Mi
       limits:
         cpu: 500m
@@ -701,7 +700,7 @@ components:
       enabled: true
       minReplicas: 1
       maxReplicas: 6
-      targetCPUUtilizationPercentage: 70
+      targetCPUUtilizationPercentage: 80
       targetMemoryUtilizationPercentage: 90
       targetRequestsPerSecond: 50
       behavior: *hpa-behavior-default
@@ -813,11 +812,12 @@ components:
       - name: OTEL_COLLECTOR_PORT_HTTP
         value: "4318"
     resources:
-      # kubectl top: 24-29m CPU per pod (3 pods), 20-23Mi mem per pod. P99 per pod ~29m CPU, ~23Mi.
-      # Envoy proxy gateway needs higher CPU request to prevent HPA scale limit.
+      # kubectl top: 24-29m CPU per pod (3 pods), 20-23Mi mem per pod.
+      # Envoy proxy gateway needs higher memory request (64Mi) to keep utilization well below 90% target,
+      # and 100m CPU request to avoid CPU utilization scale trigger.
       requests:
-        cpu: 80m
-        memory: 32Mi
+        cpu: 100m
+        memory: 64Mi
       limits:
         cpu: 300m
         memory: 128Mi
@@ -828,7 +828,7 @@ components:
       enabled: true
       minReplicas: 1
       maxReplicas: 3
-      targetCPUUtilizationPercentage: 70
+      targetCPUUtilizationPercentage: 80
       targetMemoryUtilizationPercentage: 90
       # Envoy handles massive connections, set target to 200 RPS.
       targetRequestsPerSecond: 200
