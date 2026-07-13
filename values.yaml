@@ -889,13 +889,20 @@ components:
 
   load-generator:
     enabled: true
+    replicas: 0
     useDefault:
       env: true
-    # Synthetic traffic generator — interruptible; runs on Karpenter (spot-tolerant).
-    # Keep off Critical MNG so OpenSearch/Kafka/observability retain the small On-Demand floor.
+    # Run Locust Master on Spot instances (always online, lightweight, automatically managed by Karpenter).
     schedulingRules: *scheduling-spot-tolerant
+    command:
+      - locust
+      - --master
+      - --skip-log-setup
     service:
       port: 8089
+    ports:
+      - name: master-bind
+        value: 5557
     env:
       - name: LOCUST_WEB_HOST
         value: "0.0.0.0"
@@ -931,17 +938,98 @@ components:
         value: /tmp/.config
     resources:
       requests:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 50m
+        memory: 128Mi
       limits:
-        cpu: "2"
-        memory: 6Gi
-    # Fixed single replica (no HPA). Each pod with LOCUST_AUTOSTART independently runs
-    # LOCUST_USERS; autoscaling would multiply synthetic traffic, not share one Locust swarm.
-    # Ramp load via LOCUST_USERS / Locust UI, not replica count.
+        cpu: 200m
+        memory: 256Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
+
+  load-generator-worker:
+    enabled: true
+    replicas: 0
+    useDefault:
+      env: true
+    # Workers generate heavy traffic (runs on dynamic Karpenter Spot nodes).
+    # Configured with podAntiAffinity to prevent running on the same node as other storefront microservices.
+    schedulingRules:
+      nodeSelector:
+        workload-class: spot-tolerant
+      tolerations:
+        - key: workload-class
+          operator: Equal
+          value: spot-tolerant
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - frontend
+                      - checkout
+                      - cart
+                      - recommendation
+                      - product-catalog
+                      - payment
+                      - shipping
+                      - ad
+                      - email
+                      - currency
+                      - fraud-detection
+                      - accounting
+                      - image-provider
+                      - quote
+                      - product-reviews
+              topologyKey: "kubernetes.io/hostname"
+    command:
+      - locust
+      - --worker
+      - --master-host=load-generator
+      - --skip-log-setup
+    env:
+      - name: LOCUST_HOST
+        value: http://frontend-proxy:8080
+      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+        value: "true"
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: FLAGD_HOST
+        value: flagd
+      - name: FLAGD_PORT
+        value: "8013"
+      - name: FLAGD_OFREP_PORT
+        value: "8016"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+      - name: HOME
+        value: /tmp
+      - name: XDG_CACHE_HOME
+        value: /tmp/.cache
+      - name: XDG_CONFIG_HOME
+        value: /tmp/.config
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1.5"
+        memory: 4Gi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
+    # Autoscaling: Scales worker replicas automatically based on CPU/RAM load.
+    # Disabled by default to keep worker replica count at 0.
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
 
   payment:
     enabled: true
