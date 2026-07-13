@@ -2122,6 +2122,7 @@ prometheus:
         - postgresql.index.name
     persistentVolume:
       enabled: true
+      storageClass: gp2
       size: 8Gi
     service:
       servicePort: 9090
@@ -2215,6 +2216,7 @@ grafana:
       memory: 512Mi
   persistence:
     enabled: true
+    storageClassName: gp2
     size: 1Gi
   securityContext:
     runAsNonRoot: true
