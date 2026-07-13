@@ -1689,13 +1689,13 @@ components:
         existingConfigMap: postgresql-init
     resources:
       # PostgreSQL requires sufficient memory to handle connection forks and queries.
-      # 64Mi is too low under load and causes exit code 137. Raise to 512Mi.
+      # 64Mi is too low under load. Raise request/limit to ensure zero throttling.
       requests:
         cpu: 200m
         memory: 512Mi
       limits:
-        cpu: 200m
-        memory: 512Mi
+        cpu: 800m
+        memory: 1Gi
     securityContext:
       runAsUser: 999
       runAsGroup: 999
