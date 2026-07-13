@@ -117,6 +117,30 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# SEC-03 least-privilege: any component may declare its OWN serviceAccount to get
+# a distinct, auditable identity instead of sharing the global one above. Fallback
+# rules:
+#   - Component WITHOUT serviceAccount  -> uses the global serviceAccount (default).
+#   - Component WITH serviceAccount     -> gets its own SA; name defaults to the
+#                                          component name when `name` is omitted.
+#   - IRSA role ARNs are NEVER inherited from global; declare them explicitly only
+#     on the workload that needs AWS access.
+# Example (do not enable globally — only for workloads with a real need):
+#
+# components:
+#   accounting:
+#     serviceAccount:
+#       create: true
+#       name: techx-corp-accounting
+#       annotations:
+#         eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/techx-corp-accounting
+#   fraud-detection:
+#     serviceAccount:
+#       create: true
+#       name: techx-corp-fraud-detection
+#       annotations:
+#         eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/techx-corp-fraud-detection
+
 components:
   ## Demo Components are named objects (services) with several properties
   # demoService:

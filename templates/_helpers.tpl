@@ -73,12 +73,28 @@ opentelemetry.io/name: {{ .name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Create the name of the service account to use.
+
+Resolution order (SEC-03 least-privilege):
+  1. If the component declares its own serviceAccount (.componentServiceAccount),
+     use that identity. Default name falls back to the component name so each
+     workload gets a distinct, auditable service account.
+  2. Otherwise fall back to the global serviceAccount for backwards compatibility.
+IRSA annotations are never propagated from global down to a component; they must
+be declared explicitly on the identity that needs AWS access.
 */}}
 {{- define "techx-corp.serviceAccountName" -}}
-{{- if .serviceAccount.create }}
-{{- default (include "techx-corp.name" .) .serviceAccount.name }}
-{{- else }}
-{{- default "default" .serviceAccount.name }}
-{{- end }}
+{{- if .componentServiceAccount -}}
+{{- if .componentServiceAccount.create -}}
+{{- default .name .componentServiceAccount.name -}}
+{{- else -}}
+{{- default "default" .componentServiceAccount.name -}}
+{{- end -}}
+{{- else -}}
+{{- if .serviceAccount.create -}}
+{{- default (include "techx-corp.name" .) .serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .serviceAccount.name -}}
+{{- end -}}
+{{- end -}}
 {{- end }}

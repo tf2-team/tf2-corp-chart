@@ -1,4 +1,7 @@
 {{- range $name, $config := .Values.components }}
+    {{- if not (hasKey . "componentServiceAccount") }}
+    {{-   $_ := set . "componentServiceAccount" .serviceAccount }}
+    {{- end }}
     {{- $config := set . "Capabilities" $.Capabilities }}
     {{- $config := set . "Template" $.Template }}
     {{- $config := set . "name" ($name | lower) }}

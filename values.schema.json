@@ -161,6 +161,25 @@
         "enabled": {
           "type": "boolean"
         },
+        "serviceAccount": {
+          "description": "SEC-03: per-component ServiceAccount for least-privilege identity. When omitted, the component falls back to the global serviceAccount.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "annotations": {
+              "type": "object"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "create"
+          ]
+        },
         "useDefault": {
           "type": "object",
           "additionalProperties": false,
