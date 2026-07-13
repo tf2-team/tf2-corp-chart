@@ -952,6 +952,8 @@ components:
     replicas: 0
     useDefault:
       env: true
+    imageOverride:
+      repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-corp/load-generator
     # Workers generate heavy traffic (runs on dynamic Karpenter Spot nodes).
     # Configured with podAntiAffinity to prevent running on the same node as other storefront microservices.
     schedulingRules:

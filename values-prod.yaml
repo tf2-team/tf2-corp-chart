@@ -28,3 +28,6 @@ components:
       blockSensitivePaths: false
     # Critical ingress/gateway pin lives in values.yaml hard-placement contract.
   # flagd critical pin lives in values.yaml.
+  load-generator-worker:
+    imageOverride:
+      repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator
