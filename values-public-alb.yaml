@@ -1,5 +1,8 @@
 # Enable internal storefront ALB for frontend-proxy (CloudFront VPC origin target).
 #
+# Why an internal ALB is still required (not a second public edge):
+#   techx-corp-infra/docs/adr/storefront-edge-internal-alb.md
+#
 # The ALB is NOT internet-facing. Public clients reach the storefront only via
 # CloudFront (techx-corp-infra modules/cloudfront-alb). Path blocking for admin/
 # telemetry prefixes lives on CloudFront, not on this Ingress.
