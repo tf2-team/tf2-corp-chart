@@ -130,6 +130,9 @@
         "load-generator": {
           "$ref": "#/definitions/Component"
         },
+        "load-generator-worker": {
+          "$ref": "#/definitions/Component"
+        },
         "payment": {
           "$ref": "#/definitions/Component"
         },
