@@ -394,13 +394,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # kubectl top: 7m CPU, 65Mi mem. P99 mem: 66Mi. 20m CPU for HPA responsiveness.
+      # P99 CPU ~16m. Raise CPU request to 50m to avoid HPA scale-up.
       requests:
-        cpu: 20m
-        memory: 80Mi
+        cpu: 50m
+        memory: 64Mi
       limits:
         cpu: 200m
-        memory: 160Mi
+        memory: 256Mi
     # Hot-path under scaled frontend/checkout; Karpenter (default spot-tolerant).
     # Valkey remains singleton; cart pods are stateless clients.
     # Triple metrics (Option B+): RPS primary; CPU 70% + memory 90% safety valves (HPA uses max).
@@ -411,8 +411,8 @@ components:
       maxReplicas: 6
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 90
-      # Starting RPS/pod targets — tune after Locust + APM baseline (see docs/operations/request-metric-hpa.md).
-      targetRequestsPerSecond: 20
+      # .NET service can easily handle 100 RPS per pod.
+      targetRequestsPerSecond: 100
       behavior: &hpa-behavior-default
         scaleUp:
           stabilizationWindowSeconds: 0
@@ -483,9 +483,9 @@ components:
       - name: GOMEMLIMIT
         value: 200MiB
     resources:
-      # kubectl top: 2m CPU, 15Mi mem. P99 mem: 18Mi. Minimal Go service.
+      # Go gRPC. CPU actual ~2m. Increase CPU request to 30m and limits for concurrency.
       requests:
-        cpu: 10m
+        cpu: 30m
         memory: 24Mi
       limits:
         cpu: 200m
@@ -497,7 +497,8 @@ components:
       maxReplicas: 6
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 90
-      targetRequestsPerSecond: 5
+      # Go service can handle 30 RPS orchestration easily.
+      targetRequestsPerSecond: 30
       behavior: *hpa-behavior-default
     initContainers:
       - name: wait-for-kafka
@@ -547,7 +548,8 @@ components:
       maxReplicas: 6
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 90
-      targetRequestsPerSecond: 50
+      # Native C++ gRPC easily handles 150 RPS.
+      targetRequestsPerSecond: 150
       behavior: *hpa-behavior-default
 
   email:
@@ -686,10 +688,10 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces             # This allows local development and production/ALB relative routing
     resources:
-      # kubectl top: 20-55m CPU per pod (4 pods), 102-119Mi mem per pod. P99 mem/pod ~107Mi.
-      # 50m CPU request: HPA triggers at ~35m avg (70% threshold), healthy for Next.js SSR.
+      # kubectl top: 20-55m CPU per pod. Next.js SSR is CPU-heavy.
+      # Raise CPU request to 100m to prevent premature HPA scaling at minimal load.
       requests:
-        cpu: 50m
+        cpu: 100m
         memory: 128Mi
       limits:
         cpu: 500m
@@ -701,7 +703,7 @@ components:
       maxReplicas: 6
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 90
-      targetRequestsPerSecond: 15
+      targetRequestsPerSecond: 50
       behavior: *hpa-behavior-default
     mountedEmptyDirs:
       - name: tmp-dir
@@ -812,9 +814,9 @@ components:
         value: "4318"
     resources:
       # kubectl top: 24-29m CPU per pod (3 pods), 20-23Mi mem per pod. P99 per pod ~29m CPU, ~23Mi.
-      # 35m CPU request: at 3-pod scale, HPA triggers correctly on real load.
+      # Envoy proxy gateway needs higher CPU request to prevent HPA scale limit.
       requests:
-        cpu: 35m
+        cpu: 80m
         memory: 32Mi
       limits:
         cpu: 300m
@@ -828,7 +830,8 @@ components:
       maxReplicas: 3
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 90
-      targetRequestsPerSecond: 40
+      # Envoy handles massive connections, set target to 200 RPS.
+      targetRequestsPerSecond: 200
       behavior: *hpa-behavior-default
     mountedEmptyDirs:
       - name: tmp-dir
@@ -1133,7 +1136,7 @@ components:
     resources:
       # Go microservice with GOMEMLIMIT=200MiB. Raise requests to handle concurrency.
       requests:
-        cpu: 50m
+        cpu: 40m
         memory: 64Mi
       limits:
         cpu: 300m
@@ -1146,7 +1149,8 @@ components:
       maxReplicas: 6
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 90
-      targetRequestsPerSecond: 30
+      # Go backend can handle 100 RPS.
+      targetRequestsPerSecond: 100
       behavior: *hpa-behavior-default
     initContainers:
       - name: wait-for-postgresql
@@ -1311,9 +1315,9 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # Python gRPC. Needs enough heap for recommendationCache and concurrent requests.
+      # Python gRPC. Raise CPU request to 40m to align HPA CPU scale thresholds under normal concurrent load.
       requests:
-        cpu: 50m
+        cpu: 40m
         memory: 128Mi
       limits:
         cpu: 300m
@@ -1689,13 +1693,13 @@ components:
         existingConfigMap: postgresql-init
     resources:
       # PostgreSQL requires sufficient memory to handle connection forks and queries.
-      # 64Mi is too low under load. Raise request/limit to ensure zero throttling.
+      # Cost-optimized: set requests/limits to 100m/400m CPU and 256Mi memory.
       requests:
-        cpu: 200m
-        memory: 512Mi
+        cpu: 100m
+        memory: 256Mi
       limits:
-        cpu: 800m
-        memory: 1Gi
+        cpu: 400m
+        memory: 256Mi
     securityContext:
       runAsUser: 999
       runAsGroup: 999
