@@ -2420,6 +2420,8 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  deploymentStrategy:
+    type: Recreate
   # Observability control plane → Critical MNG
   nodeSelector:
     workload-class: critical
