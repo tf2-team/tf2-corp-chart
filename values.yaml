@@ -2380,6 +2380,10 @@ grafana:
     server:
       root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana"
       serve_from_sub_path: true
+    # Skip forced password change on first login when admin password comes from Secret
+    # (non-default password still required in techx-corp-grafana-admin via ESO/ASM)
+    security:
+      disable_initial_admin_password_change: true
   # SEC-05: admin credentials from ESO Secret techx-corp-grafana-admin
   admin:
     existingSecret: techx-corp-grafana-admin
