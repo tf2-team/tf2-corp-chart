@@ -1041,13 +1041,14 @@ components:
       - name: tmp-dir
         mountPath: /tmp
     # Autoscaling: Scales worker replicas automatically based on CPU/RAM load.
-    # Disabled by default to keep worker replica count at 0.
+    # Memory target 60% of request (3Gi) = ~1.8Gi. HPA scales to 2 workers before pod
+    # hits the 4Gi limit, preventing OOMKilled during fast ramp-up (e.g. 50→100 users).
     autoscaling:
-      enabled: false
-      minReplicas: 1
-      maxReplicas: 6
+      enabled: true
+      minReplicas: 0
+      maxReplicas: 4
       targetCPUUtilizationPercentage: 70
-      targetMemoryUtilizationPercentage: 90
+      targetMemoryUtilizationPercentage: 60
 
   payment:
     enabled: true
