@@ -2220,7 +2220,7 @@ jaeger:
       type: memory
     extraEnv:
       - name: MEMORY_MAX_TRACES
-        value: "10000"
+        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -2235,10 +2235,10 @@ jaeger:
       # 50-user baseline: P99 CPU 10.6m, P99 memory 417Mi. Memory backend needs growth headroom.
       requests:
         cpu: 25m
-        memory: 512Mi
+        memory: 768Mi
       limits:
         cpu: 300m
-        memory: 1Gi
+        memory: 1.5Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
