@@ -1049,7 +1049,7 @@ components:
     autoscaling:
       enabled: true
       minReplicas: 1
-      maxReplicas: 1
+      maxReplicas: 4
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 75
       behavior: *hpa-behavior-default
