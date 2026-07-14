@@ -935,7 +935,7 @@ components:
       - name: LOCUST_AUTOSTART
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-        value: "true"
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -1012,8 +1012,8 @@ components:
     env:
       - name: LOCUST_HOST
         value: http://frontend-proxy:8080
-      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-        value: "true"
+        - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+          value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -1030,20 +1030,21 @@ components:
         value: /tmp/.cache
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
-    resources:
-      requests:
-        cpu: 600m
-        memory: 4Gi
-      limits:
-        cpu: "1.5"
-        memory: 6Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
     # Autoscaling: Scales worker replicas automatically based on CPU/RAM load.
-    # Memory target 75% of the 4Gi request = 3Gi. This lets HPA add workers
-    # before Playwright browser traffic reaches the 6Gi container limit.
-    # CPU request is 600m; the CPU metric remains a second scale-out signal.
+      # Browser traffic is disabled, so workers use regular HTTP Locust tasks
+      # rather than embedded Playwright browsers. The 512Mi request and 1Gi
+      # limit keep scale-out schedulable without allocating a node per worker.
+      # CPU request is 250m; CPU remains a second scale-out signal.
     autoscaling:
       enabled: true
       minReplicas: 1
