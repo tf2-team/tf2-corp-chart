@@ -2148,6 +2148,10 @@ opentelemetry-collector:
             statements:
               # SANITIZE ALL SPAN NAMES TO PREVENT CARDINALITY EXPLOSION
               - set_semconv_span_name("1.37.0", "unsanitized_span_name")
+      # APM Dashboard filters on these resource attributes (promoted to Prometheus
+      # labels via promote_resource_attributes). Defaults match production; override
+      # in values-dev.yaml (development / techx-corp-dev). Without them Grafana shows
+      # <<not defined>> and empty service lists.
       resource:
         attributes:
         - key: service.instance.id
@@ -2585,3 +2589,5 @@ prometheus-adapter:
       cpu: 200m
       memory: 128Mi
   replicas: 1
+
+# Change trail: @hungxqt - 2026-07-14 - Document APM resource attributes; prod defaults for collector filters.

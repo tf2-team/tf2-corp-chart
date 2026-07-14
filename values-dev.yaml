@@ -27,3 +27,23 @@ components:
       blockSensitivePaths: false
     # Critical ingress/gateway (not stateless frontend). Base values.yaml pins critical.
     # flagd / frontend-proxy critical pins live in values.yaml hard-placement contract.
+
+# APM resource context: base values.yaml hardcodes production / techx-corp-prod.
+# Override so dev telemetry matches this release namespace and Environment dropdown.
+# Arrays replace under Helm merge — keep service.instance.id insert as well.
+opentelemetry-collector:
+  config:
+    processors:
+      resource:
+        attributes:
+        - key: service.instance.id
+          from_attribute: k8s.pod.uid
+          action: insert
+        - key: deployment.environment.name
+          value: development
+          action: upsert
+        - key: service.namespace
+          value: techx-corp-dev
+          action: upsert
+
+# Change trail: @hungxqt - 2026-07-14 - Dev OTEL resource attributes for APM dashboard filters.

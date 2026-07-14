@@ -2173,11 +2173,15 @@
       },
       {
         "current": {
-          "text": "demo",
-          "value": "demo"
+          "text": "production",
+          "value": "production"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${prometheus_datasource}"
         },
         "definition": "label_values(target_info,deployment_environment_name)",
-        "description": "Deployment environment (`production`, `staging`...).\nResource attribute `deployment.environment.name` via `target_info`.\nValue `<<not defined>>` when the resource attribute `deployment.environment.name` is not set.",
+        "description": "Deployment environment (`production`, `development`...).\nResource attribute `deployment.environment.name` via `target_info`.\nValue `<<not defined>>` when the resource attribute `deployment.environment.name` is not set.\nDefaults match collector resource processor (values.yaml production; values-dev.yaml development).",
         "label": "Environment",
         "name": "deployment_environment_name",
         "options": [],
@@ -2200,15 +2204,15 @@
         "allValue": ".*",
         "allowCustomValue": false,
         "current": {
-          "text": "techx-corp",
-          "value": "techx-corp"
+          "text": "techx-corp-prod",
+          "value": "techx-corp-prod"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${prometheus_datasource}"
         },
         "definition": "label_values(target_info{deployment_environment_name=~\"$deployment_environment_name\", telemetry_sdk_name=~\"\\\\S.*\"},service_namespace)",
-        "description": "Service namespace.\nResource attribute `service.namespace` via `target_info`.\nValue `<<not defined>>` when the resource attribute `service.namespace` is not set.",
+        "description": "Service namespace.\nResource attribute `service.namespace` via `target_info`.\nValue `<<not defined>>` when the resource attribute `service.namespace` is not set.\nDefaults match collector resource processor (techx-corp-prod; values-dev.yaml techx-corp-dev).",
         "includeAll": false,
         "label": "Namespace",
         "name": "service_namespace",
@@ -2236,7 +2240,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "webstore-metrics"
+          "uid": "${prometheus_datasource}"
         },
         "definition": "label_values(target_info{service_namespace=~\"$service_namespace\", deployment_environment_name=~\"$deployment_environment_name\", telemetry_sdk_name=~\"\\\\S.*\"},service_name)",
         "description": "Service name.\nResource attribute `service.name` via `target_info`.",

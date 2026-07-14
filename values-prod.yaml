@@ -111,3 +111,23 @@ components:
   load-generator-worker:
     imageOverride:
       repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator
+
+# Explicit production APM resource context (same as values.yaml defaults).
+# Ensures prod overlay does not inherit a future base-values drift unintentionally.
+# Arrays replace under Helm merge — keep the full attributes list.
+opentelemetry-collector:
+  config:
+    processors:
+      resource:
+        attributes:
+        - key: service.instance.id
+          from_attribute: k8s.pod.uid
+          action: insert
+        - key: deployment.environment.name
+          value: production
+          action: upsert
+        - key: service.namespace
+          value: techx-corp-prod
+          action: upsert
+
+# Change trail: @hungxqt - 2026-07-14 - Explicit prod OTEL resource attributes for APM filters.
