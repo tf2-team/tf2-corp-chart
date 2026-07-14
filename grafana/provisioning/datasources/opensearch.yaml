@@ -12,6 +12,13 @@ datasources:
     # SEC-02: provisioned datasource is non-editable to prevent accidental edits
     editable: false
     isDefault: false
+    # SEC-06: basic auth for OpenSearch security plugin.
+    # Credentials are injected by Grafana from the K8s Secret techx-corp-opensearch
+    # via grafana.envValueFrom (see values.yaml grafana section).
+    basicAuth: true
+    basicAuthUser: ${OPENSEARCH_USERNAME}
+    secureJsonData:
+      basicAuthPassword: ${OPENSEARCH_PASSWORD}
     jsonData:
       database: otel-logs-*
       flavor: opensearch

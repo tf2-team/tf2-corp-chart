@@ -107,6 +107,14 @@ aws secretsmanager put-secret-value --region "$REGION" \
 aws secretsmanager put-secret-value --region "$REGION" \
   --secret-id "${PREFIX}/grafana" \
   --secret-string '{"admin-user":"admin","admin-password":"admin"}'
+
+# SEC-06: OpenSearch security plugin admin credentials
+# Password MUST be alphanumeric, length >= 24 (avoid @ : / ? # ; space ' \ for DSN safety).
+# This bootstraps the built-in 'admin' user on first OpenSearch node start.
+# Do NOT use the demo password below for production — generate a strong one.
+aws secretsmanager put-secret-value --region "$REGION" \
+  --secret-id "${PREFIX}/opensearch" \
+  --secret-string '{"username":"admin","password":"<strong-alphanumeric-24chars-min>"}'
 ```
 
 Password alphabet for later rotation: **alphanumeric only**, length ≥ 24, while DSNs are string-concatenated (avoid `@ : / ? # ; space ' \`).
@@ -181,7 +189,8 @@ kubectl -n techx-corp-dev get secret \
   techx-corp-postgresql-app \
   techx-corp-flagd-ui \
   techx-corp-product-reviews \
-  techx-corp-grafana-admin
+  techx-corp-grafana-admin \
+  techx-corp-opensearch
 
 # --- Production ---
 kubectl create namespace techx-corp-prod --dry-run=client -o yaml | kubectl apply -f -
@@ -196,7 +205,8 @@ kubectl -n techx-corp-prod get secret \
   techx-corp-postgresql-app \
   techx-corp-flagd-ui \
   techx-corp-product-reviews \
-  techx-corp-grafana-admin
+  techx-corp-grafana-admin \
+  techx-corp-opensearch
 # Do not print secret values
 ```
 
