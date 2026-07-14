@@ -763,8 +763,7 @@ components:
         - /jaeger
         - /loadgen
         - /feature
-        - /flagservice
-        # /otlp-http is not listed: public browser OTLP must reach the collector
+        # /otlp-http and /flagservice are not listed: public browser OTLP + flagd EventStream
     podAnnotations:
       io.opentelemetry.discovery.metrics/enabled: 'true'
       io.opentelemetry.discovery.metrics/scraper: httpcheck

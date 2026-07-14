@@ -570,7 +570,7 @@ Ingress `frontend-proxy-public` creates an **internal** ALB (`scheme: internal`)
 | Layer | Behavior |
 |---|---|
 | **Internal ALB** | Catch-all `/` → frontend-proxy; not internet-facing; full path surface |
-| **CloudFront** (when enabled) | HTTPS edge; optional 403 on `/grafana`, `/jaeger`, `/loadgen`, `/feature`, `/flagservice` (`/otlp-http` allowed for browser OTLP) |
+| **CloudFront** (when enabled) | HTTPS edge; optional 403 on `/grafana`, `/jaeger`, `/loadgen`, `/feature` (`/otlp-http` and `/flagservice` allowed for browser OTLP + flagd) |
 | **Client VPN** (optional) | Private operator access to the **same** internal ALB for admin UIs — `techx-corp-infra/docs/client-vpn.md` |
 
 Chart flags:

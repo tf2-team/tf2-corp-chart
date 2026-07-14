@@ -13,8 +13,8 @@
 #   catch-all / → frontend-proxy
 #
 # CloudFront path blocking (edge): see techx-corp-infra docs/cloudfront.md
-#   BLOCKED at CF when enabled: /grafana, /jaeger, /loadgen, /feature, /flagservice
-#   (/otlp-http allowed at CF for browser OTLP traces)
+#   BLOCKED at CF when enabled: /grafana, /jaeger, /loadgen, /feature
+#   (/otlp-http and /flagservice allowed at CF for browser OTLP + flagd)
 #
 # Operator admin access (private): AWS Client VPN → private DNS
 #   internal.hungtran.id.vn/<service> (e.g. /grafana/) → THIS ALB
