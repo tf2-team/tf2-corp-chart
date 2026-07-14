@@ -22,13 +22,21 @@ This chart implements **hard placement** between Critical MNG and Karpenter, plu
 
 | Service | HPA (base) | Contract | Note |
 |---------|------------|----------|------|
-| `frontend`, `checkout`, `cart`, `product-catalog`, `currency`, `recommendation` | min **1** / max 6 (CPU 70% + Mem 90% + **RPS**) | spot-tolerant | Karpenter can add nodes under scale-out; RPS is primary under traffic; memory is safety valve only |
+| `frontend`, `checkout`, `cart`, `product-catalog`, `currency`, `recommendation` | base min **1**, production min **2** / max 6 (CPU 70% + Mem 90% + **RPS**) | spot-tolerant | Karpenter can add nodes under scale-out; RPS is primary under traffic; memory is safety valve only |
 | `load-generator` | **none** (fixed replicas) | spot-tolerant | Ramp via `LOCUST_USERS` / Locust UI; not Locust distributed mode — extra pods would each run independent swarms |
-| `frontend-proxy` | min **1** / max **3** (CPU 70% + Mem 90% + **RPS**) | critical | Extra replicas **do not** land on Karpenter; Critical MNG is small (`desired`/`max` in infra). Pending proxy pods → capacity on Critical floor, not chart max increase |
+| `frontend-proxy` | base min **1**, production min **2** / max **3** (CPU 70% + Mem 90% + **RPS**) | critical | Extra replicas **do not** land on Karpenter; Critical MNG must have enough multi-AZ capacity before maintenance |
 
 Request-rate metrics require Prometheus Adapter (`prometheus-adapter.enabled`). See `docs/operations/request-metric-hpa.md`. Placement contracts are unchanged by metric type.
 
-PDBs (`minAvailable: 1`) are rendered for HPA services with `minReplicas >= 2` (none at current floor of 1). Soft topology spreads apply only on the spot-tolerant pool (critical opts out).
+PDBs (`minAvailable: 1`) are rendered for any enabled multi-replica stateless
+Deployment: HPA services with `minReplicas >= 2` and fixed services with
+`replicas >= 2`. The production overlay supplies the two-replica floor required
+by Directive #3. Base/dev overlays may still use a floor of one to control cost.
+
+Critical placement normally opts out of default stateless spreading. The
+production overlay explicitly adds soft zone/hostname spreading to
+`frontend-proxy` and `flagd` so their two replicas prefer different failure
+domains without becoming Pending when one AZ lacks capacity.
 
 ## Pod distribution (topology spread)
 

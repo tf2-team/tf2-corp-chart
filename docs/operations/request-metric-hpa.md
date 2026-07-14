@@ -37,6 +37,10 @@ Targets are **starting points**, not SLOs. Raise if flapping; lower if latency c
 
 **Not request-scaled:** `load-generator`, Kafka consumers (`accounting`, `fraud-detection`), stateful data, `llm` (use concurrency/lag later).
 
+The table shows the base/development floor. `values-prod.yaml` raises every
+money-flow HPA above to `minReplicas: 2` for Directive #3 maintenance safety;
+the maximum and metric targets remain unchanged.
+
 ## Metric name and labels
 
 | Item | Value |

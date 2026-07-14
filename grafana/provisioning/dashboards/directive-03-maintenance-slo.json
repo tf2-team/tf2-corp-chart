@@ -1,0 +1,406 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Live acceptance dashboard for Directive #3. Measures browse, cart and checkout SLOs while a node is drained or workloads are restarted.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Successful storefront browse spans / total browse spans over the selected rate interval. Directive threshold: >= 99.5%.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 99.5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval])) > 0)",
+          "legendFormat": "Browse",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Browse success (>= 99.5%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Successful add-to-cart spans / total cart spans. Directive threshold: >= 99.5%.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 99.5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\"}[$__rate_interval])) > 0)",
+          "legendFormat": "Cart",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Cart success (>= 99.5%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Successful checkout spans / total checkout spans. Directive threshold: >= 99%.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 99 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\"}[$__rate_interval])) > 0)",
+          "legendFormat": "Checkout",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Checkout success (>= 99%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "95th percentile latency of frontend GET /. Directive threshold: < 1 second.",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval]))) / 1000",
+          "legendFormat": "Storefront p95",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Storefront p95 (< 1s)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Traffic generated by the external k6 acceptance test. A missing line means that operation is not receiving traffic.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 5,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=~\"GET /|POST /api/cart|POST /api/checkout\"}[$__rate_interval]))",
+          "legendFormat": "{{span_name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Money-flow request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Ready pods for the stateless money-flow services. During maintenance every critical service should retain at least one Ready pod.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "decimals": 0,
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 6,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "min"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "asc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum by (pod) (kube_pod_status_ready{namespace=\"techx-corp-prod\",condition=\"true\",pod=~\"frontend-proxy-.*|frontend-.*|cart-.*|checkout-.*|product-catalog-.*|currency-.*|payment-.*|shipping-.*|email-.*|quote-.*|flagd-.*\"})",
+          "legendFormat": "{{pod}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Ready state",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Ready EndpointSlice targets. A service reaching zero has no backend eligible to receive traffic.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "decimals": 0,
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "min"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "asc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "count by (endpointslice) (kube_endpointslice_endpoints{namespace=\"techx-corp-prod\",ready=\"true\",targetref_name=~\"frontend-proxy-.*|frontend-.*|cart-.*|checkout-.*|product-catalog-.*|currency-.*|payment-.*|shipping-.*|email-.*|quote-.*|flagd-.*\"})",
+          "legendFormat": "{{endpointslice}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Ready service endpoints",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "description": "Current pod-to-node placement. Use this table to show the replacement pod moving to a different node after drain.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "max by (pod, node) (kube_pod_info{namespace=\"techx-corp-prod\",pod=~\"frontend-proxy-.*|frontend-.*|cart-.*|checkout-.*|product-catalog-.*|currency-.*|payment-.*|shipping-.*|email-.*|quote-.*|flagd-.*\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Pod placement after reschedule",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "Value": true },
+            "indexByName": { "pod": 0, "node": 1 },
+            "renameByName": { "pod": "Pod", "node": "Node" }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["directive-03", "maintenance", "reliability", "slo"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Directive #3 - Maintenance SLO",
+  "uid": "directive-03-maintenance-slo",
+  "version": 1,
+  "weekStart": ""
+}

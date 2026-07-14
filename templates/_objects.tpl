@@ -467,7 +467,8 @@ spec:
 {{- end }}
 
 {{/*
-PodDisruptionBudget for multi-replica HPA Deployments (minAvailable: 1).
+PodDisruptionBudget for multi-replica stateless Deployments (minAvailable: 1).
+Rendered for HPA minReplicas >= 2 and fixed replicas >= 2.
 */}}
 {{- define "techx-corp.pdb" }}
 ---
