@@ -33,9 +33,11 @@ Kết hợp với việc không có NetworkPolicy trong chart, OpenSearch port 9
 
 **Bật OpenSearch Security Plugin** bằng cách xoá `DISABLE_SECURITY_PLUGIN: "true"` và:
 1. Inject `OPENSEARCH_INITIAL_ADMIN_PASSWORD` từ K8s Secret (ESO-synced) để bootstrap admin user khi node khởi động lần đầu
-2. Cập nhật OTel Collector dùng `basicauth/opensearch` extension với credential write-only từ cùng Secret
-3. Cập nhật Grafana datasource dùng `basicAuth: true` với credential read-only từ cùng Secret
+2. Giữ `DISABLE_INSTALL_DEMO_CONFIG: "false"` để OpenSearch tạo demo self-signed TLS certs (security plugin **bắt buộc** có SSL material lúc load; nếu `true` mà không mount PEM riêng → `No SSL configuration found` / CrashLoopBackOff)
+3. OTel Collector và Grafana gọi `https://opensearch:9200` với basic auth + skip TLS verify (cluster-internal)
 4. Quản lý credential qua `secrets-chart` (ESO pattern đã có từ SEC-05)
+
+**Yêu cầu mật khẩu admin (OpenSearch):** ≥8 ký tự, có chữ hoa, chữ thường, số, **và ký tự đặc biệt**.
 
 ---
 
@@ -61,6 +63,7 @@ Kết hợp với việc không có NetworkPolicy trong chart, OpenSearch port 9
 
 ### `values.yaml` — `components.opensearch.env`
 - Xoá `DISABLE_SECURITY_PLUGIN: "true"`
+- Đặt `DISABLE_INSTALL_DEMO_CONFIG: "false"` (demo TLS certs cho single-node; không dùng `true` khi security bật trừ khi đã mount PEM)
 - Thêm `OPENSEARCH_INITIAL_ADMIN_PASSWORD` từ `secretKeyRef`
 
 ### `values.yaml` — `opentelemetry-collector`
@@ -98,11 +101,11 @@ Kết hợp với việc không có NetworkPolicy trong chart, OpenSearch port 9
 
 4. Verify:
    kubectl -n <ns> exec -it statefulset/opensearch -- \
-     curl -sk -u admin:<password> http://localhost:9200/_cluster/health
+     curl -sk -u admin:<password> https://localhost:9200/_cluster/health
    # expect: {"status":"green"} or "yellow" (single-node normal)
 ```
 
-**Lưu ý:** OpenSearch với security plugin bật sẽ khởi động chậm hơn (~30s thêm) do TLS handshake setup nội bộ. `startupProbe.failureThreshold: 36` hiện tại đủ dư cho điều này.
+**Lưu ý:** OpenSearch với security plugin bật sẽ khởi động chậm hơn (~30s thêm) do TLS handshake setup nội bộ. `startupProbe.failureThreshold: 36` hiện tại đủ dư cho điều này. Clients (collector, Grafana) phải dùng **HTTPS** (demo cert → `tls.insecure` / `tlsSkipVerify`).
 
 ---
 

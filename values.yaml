@@ -1885,11 +1885,18 @@ components:
       # K8s pods lack memlock ulimit / IPC_LOCK; memory_lock=true can fail bootstrap.
       - name: bootstrap.memory_lock
         value: "false"
+      # SEC-06: Security plugin is enabled (DISABLE_SECURITY_PLUGIN removed).
+      # The security plugin requires TLS material at bootstrap. For this single-node
+      # log store we install OpenSearch demo certs (self-signed) so the plugin can
+      # load; clients use HTTPS with tls.insecure / skip-verify on the cluster network.
+      # Setting this to "true" without mounting custom PEM certs causes:
+      #   OpenSearchException[No SSL configuration found]
+      #   → CrashLoopBackOff (failed to load OpenSearchSecurityPlugin).
       - name: DISABLE_INSTALL_DEMO_CONFIG
-        value: "true"
-      # SEC-06: Security plugin enabled — DISABLE_SECURITY_PLUGIN removed.
+        value: "false"
       # Admin password is injected via OPENSEARCH_INITIAL_ADMIN_PASSWORD from K8s Secret
       # techx-corp-opensearch (ESO-synced from ASM techx-corp/*/opensearch).
+      # Must meet OpenSearch strength rules: ≥8 chars, upper, lower, digit, special.
       # This env bootstraps the built-in admin user on first node start; PVC persists it.
       - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
         valueFrom:
@@ -2076,7 +2083,8 @@ opentelemetry-collector:
         logs_index: otel-logs
         logs_index_time_format: "yyyy-MM-dd"
         http:
-          endpoint: http://opensearch:9200
+          # SEC-06: security plugin serves HTTPS (demo self-signed certs on single-node).
+          endpoint: https://opensearch:9200
           tls:
             insecure: true
           # SEC-06: basic auth credentials from ESO-synced Secret techx-corp-opensearch.
