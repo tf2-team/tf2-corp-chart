@@ -1029,21 +1029,21 @@ components:
         value: /tmp/.cache
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
-      resources:
-        requests:
-          cpu: 250m
-          memory: 512Mi
-        limits:
-          cpu: "1"
-          memory: 1Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
     # Autoscaling: Scales worker replicas automatically based on CPU/RAM load.
-      # Browser traffic is disabled, so workers use regular HTTP Locust tasks
-      # rather than embedded Playwright browsers. The 512Mi request and 1Gi
-      # limit keep scale-out schedulable without allocating a node per worker.
-      # CPU request is 250m; CPU remains a second scale-out signal.
+    # Browser traffic is disabled, so workers use regular HTTP Locust tasks
+    # rather than embedded Playwright browsers. The 512Mi request and 1Gi
+    # limit keep scale-out schedulable without allocating a node per worker.
+    # CPU request is 250m; CPU remains a second scale-out signal.
     autoscaling:
       enabled: true
       minReplicas: 1
