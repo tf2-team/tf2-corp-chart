@@ -10,7 +10,8 @@
 #   Phase 2 — enforce: set enabled: true in dev; soak 24h, check OTel traces for errors.
 #   Phase 3 — promote: apply to prod after dev soak is clean.
 networkPolicy:
-  enabled: false # flip to true after CNI audit (see docs above)
+  enabled: false   # flip to true after CNI audit (see docs above)
+
 #
 # SEC-05: Sensitive credentials use secretKeyRef → ESO-synced Secrets.
 # Deploy order: ESO + ClusterSecretStore → techx-corp-secrets → wait Ready → techx-corp.
@@ -299,12 +300,12 @@ components:
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
-      # kubectl top: 7m CPU, 155Mi mem. P99 mem: 155Mi. 20m CPU floor (Kafka consumer burst).
+      # 50-user baseline: P99 CPU 7.18m, P99 memory 164Mi.
       requests:
-        cpu: 20m
+        cpu: 10m
         memory: 200Mi
       limits:
-        cpu: 150m
+        cpu: 100m
         memory: 300Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -360,10 +361,10 @@ components:
       - name: OTEL_LOGS_EXPORTER
         value: otlp
     resources:
-      # kubectl top: 4m CPU, 228Mi mem (JVM). P99 mem: 229Mi. Keep generous CPU for JVM GC.
+      # 50-user baseline: P99 CPU 2.34m, P99 memory 270Mi. Keep JVM/GC headroom.
       requests:
-        cpu: 15m
-        memory: 288Mi
+        cpu: 10m
+        memory: 320Mi
       limits:
         cpu: 200m
         memory: 400Mi
@@ -404,10 +405,10 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # P99 CPU ~16m. Raise CPU request to 50m to avoid HPA scale-up.
+      # 50-user baseline: P95/P99 CPU 17.3m/18.4m, P99 memory 158Mi.
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 30m
+        memory: 192Mi
       limits:
         cpu: 200m
         memory: 256Mi
@@ -496,14 +497,14 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
       - name: GOMEMLIMIT
-        value: 200MiB
+        value: 100MiB
     resources:
-      # Go gRPC. CPU actual ~2m. Increase CPU request to 30m and limits for concurrency.
+      # 50-user baseline: P95/P99 CPU 5.93m/6.21m, P99 memory 34.4Mi.
       requests:
-        cpu: 30m
-        memory: 24Mi
+        cpu: 10m
+        memory: 48Mi
       limits:
-        cpu: 200m
+        cpu: 150m
         memory: 128Mi
     # Triple metrics: expensive orchestration → lower RPS target; CPU/mem safety valves.
     autoscaling:
@@ -554,14 +555,13 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # kubectl top: 5m CPU, 9Mi mem peak (native C++). Request 16Mi gives ~56% idle headroom.
-      # Was 8Mi → pod used 9Mi → 112% of request → HPA falsely triggered memory scale-up.
+      # 50-user baseline: P99 CPU 3.96m, P99 memory 3.94Mi.
       requests:
         cpu: 10m
-        memory: 16Mi
+        memory: 8Mi
       limits:
         cpu: 100m
-        memory: 32Mi
+        memory: 16Mi
     # High-RPS / low-CPU gRPC (native C++): RPS is the primary capacity signal; CPU often never hits 70%.
     autoscaling:
       enabled: true
@@ -633,10 +633,10 @@ components:
       - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
         value: "true"
     resources:
-      # kubectl top: 4m CPU, 235Mi mem (Python Kafka consumer). P99 mem: 235Mi.
+      # 50-user baseline: P99 CPU 7.12m, P99 memory 263Mi.
       requests:
-        cpu: 15m
-        memory: 300Mi
+        cpu: 10m
+        memory: 320Mi
       limits:
         cpu: 200m
         memory: 400Mi
@@ -714,13 +714,13 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
     resources:
-      # Next.js SSR requires more CPU request under active user load to prevent scaling.
+      # 50-user baseline: P95/P99 CPU 111m/117m, P99 memory 240Mi.
       requests:
-        cpu: 150m
-        memory: 128Mi
+        cpu: 160m
+        memory: 288Mi
       limits:
         cpu: 500m
-        memory: 256Mi
+        memory: 384Mi
     # BFF/SSR: RPS primary (often I/O-wait on backends); CPU/mem safety valves.
     autoscaling:
       enabled: true
@@ -775,7 +775,11 @@ components:
       # Public edge + path blocking: techx-corp-infra modules/cloudfront-alb.
       scheme: internal
       targetType: ip
+      # HTTP:80 required for CloudFront VPC origin. Add HTTPS:443 + certificateArn for
+      # https://internal.hungtran.id.vn (operator private DNS). Never set ssl-redirect.
       listenPorts: '[{"HTTP":80}]'
+      # ACM ARN in ALB region (us-east-1). Empty = HTTP only.
+      certificateArn: ""
       host: ""
       # ALB has no path-block rules by default (blockSensitivePaths=false).
       # Sensitive prefixes are blocked at CloudFront (viewer-request Function).
@@ -788,6 +792,7 @@ components:
         - /jaeger
         - /loadgen
         - /feature
+        - /argocd
         # /otlp-http and /flagservice are not listed: public browser OTLP + flagd EventStream
     podAnnotations:
       io.opentelemetry.discovery.metrics/enabled: "true"
@@ -826,6 +831,12 @@ components:
         value: jaeger
       - name: JAEGER_UI_PORT
         value: "16686"
+      # Argo CD server (control-plane NS). Envoy routes /argocd/ → this host.
+      # Requires argocd server.insecure=true + rootpath=/argocd (infra modules/argocd).
+      - name: ARGOCD_HOST
+        value: argocd-server.argocd.svc.cluster.local
+      - name: ARGOCD_PORT
+        value: "80"
       - name: LOCUST_WEB_HOST
         value: load-generator
       - name: LOCUST_WEB_PORT
@@ -837,12 +848,10 @@ components:
       - name: OTEL_COLLECTOR_PORT_HTTP
         value: "4318"
     resources:
-      # kubectl top: 24-29m CPU per pod (3 pods), 20-23Mi mem per pod.
-      # Envoy proxy gateway needs higher memory request (64Mi) to keep utilization well below 90% target,
-      # and 100m CPU request to avoid CPU utilization scale trigger.
+      # 50-user baseline: P95/P99 CPU 39.1m/40.5m, P99 memory 67.3Mi.
       requests:
-        cpu: 100m
-        memory: 64Mi
+        cpu: 60m
+        memory: 80Mi
       limits:
         cpu: 300m
         memory: 128Mi
@@ -907,13 +916,13 @@ components:
       - name: OTEL_COLLECTOR_HOST
         value: $(OTEL_COLLECTOR_NAME)
     resources:
-      # P99 CPU ~2m; P99 mem ~3Mi. Nginx static: minimal resources needed.
+      # 50-user baseline: P99 CPU 0.318m, P99 memory 6.97Mi.
       requests:
         cpu: 5m
         memory: 8Mi
       limits:
         cpu: 50m
-        memory: 32Mi
+        memory: 16Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -959,7 +968,7 @@ components:
       - name: LOCUST_AUTOSTART
         value: "true"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-        value: "true"
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -977,12 +986,13 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
+      # HTTP-only Locust controller; browser/Playwright traffic is disabled.
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 10m
+        memory: 64Mi
       limits:
         cpu: 200m
-        memory: 256Mi
+        memory: 128Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1037,7 +1047,7 @@ components:
       - name: LOCUST_HOST
         value: http://frontend-proxy:8080
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-        value: "true"
+        value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
         value: python
       - name: FLAGD_HOST
@@ -1055,19 +1065,21 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
+      # HTTP-only Locust worker; 50-user baseline P99 CPU 80.1m, memory 73.2Mi.
       requests:
-        cpu: 600m
-        memory: 4Gi
+        cpu: 125m
+        memory: 96Mi
       limits:
-        cpu: "1.5"
-        memory: 6Gi
+        cpu: 500m
+        memory: 256Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
     # Autoscaling: Scales worker replicas automatically based on CPU/RAM load.
-    # Memory target 75% of the 4Gi request = 3Gi. This lets HPA add workers
-    # before Playwright browser traffic reaches the 6Gi container limit.
-    # CPU request is 600m; the CPU metric remains a second scale-out signal.
+    # Browser traffic is disabled, so workers use regular HTTP Locust tasks
+    # rather than embedded Playwright browsers. The 512Mi request and 1Gi
+    # limit keep scale-out schedulable without allocating a node per worker.
+    # CPU request is 250m; CPU remains a second scale-out signal.
     autoscaling:
       enabled: true
       minReplicas: 1
@@ -1151,7 +1163,7 @@ components:
       - name: FLAGD_PORT
         value: "8013"
       - name: GOMEMLIMIT
-        value: 200MiB
+        value: 50MiB
       - name: DB_CONNECTION_STRING
         valueFrom:
           secretKeyRef:
@@ -1162,13 +1174,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # Go microservice with GOMEMLIMIT=200MiB. Raise requests to handle concurrency.
+      # 50-user baseline: P95/P99 CPU 19m/20.4m, P99 memory 14.8Mi.
       requests:
-        cpu: 40m
+        cpu: 100m
         memory: 64Mi
       limits:
-        cpu: 300m
-        memory: 256Mi
+        cpu: 200m
+        memory: 128Mi
     # Hot read path under frontend/checkout; Karpenter spot-tolerant.
     # Highest backend RPS under Locust browse; RPS primary + CPU/mem safety valves.
     autoscaling:
@@ -1245,13 +1257,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # Python gRPC service. Raise to handle concurrency under load.
+      # 50-user baseline: P95/P99 CPU 43.4m/50.2m, P99 memory 80.6Mi.
       requests:
-        cpu: 50m
-        memory: 160Mi
+        cpu: 60m
+        memory: 96Mi
       limits:
         cpu: 300m
-        memory: 256Mi
+        memory: 160Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1298,11 +1310,18 @@ components:
     resources:
       # kubectl top: 2m CPU, 18Mi mem (PHP). P99 mem: 19Mi.
       requests:
-        cpu: 5m
-        memory: 24Mi
+        cpu: 50m
+        memory: 32Mi
       limits:
-        cpu: 100m
-        memory: 64Mi
+        cpu: 250m
+        memory: 128Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: *hpa-behavior-default
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1353,14 +1372,14 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # Python gRPC. Raise CPU request to 40m to align HPA CPU scale thresholds under normal concurrent load.
+      # 50-user baseline: P95/P99 CPU 12.8m/13.3m, P99 memory 45.5Mi.
       requests:
-        cpu: 40m
+        cpu: 100m
         memory: 128Mi
       limits:
-        cpu: 300m
-        memory: 510Mi
-    # Product-page traffic (P1); RPS primary; keep high mem limit for recommendationCache flag scenarios.
+        cpu: 200m
+        memory: 256Mi
+    # Product-page traffic (P1); RPS primary; CPU/memory remain safety valves.
     autoscaling:
       enabled: true
       minReplicas: 1
@@ -1402,13 +1421,20 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # P99 CPU ~0.8m; P99 mem ~6Mi (Rust). Minimal footprint confirmed.
+      # 50-user baseline: P99 CPU 1.53m, P99 memory 3.74Mi.
       requests:
-        cpu: 5m
-        memory: 8Mi
-      limits:
         cpu: 50m
-        memory: 32Mi
+        memory: 16Mi
+      limits:
+        cpu: 200m
+        memory: 64Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 90
+      behavior: *hpa-behavior-default
 
   flagd:
     enabled: true
@@ -1446,12 +1472,12 @@ components:
       - name: GOMEMLIMIT
         value: 100MiB
     resources:
-      # kubectl top: 5m CPU, 46Mi mem (flagd container only, pod also has flagd-ui sidecar). P99: 45Mi.
+      # 50-user baseline: P99 CPU 8.05m, P99 memory 45.5Mi.
       requests:
         cpu: 10m
-        memory: 56Mi
+        memory: 64Mi
       limits:
-        cpu: 150m
+        cpu: 100m
         memory: 128Mi
     command:
       - "/flagd-build"
@@ -1494,12 +1520,12 @@ components:
           - name: PHX_SERVER
             value: "true"
         resources:
-          # kubectl top: ~138Mi mem (flagd-ui container). P99 mem: 142Mi.
+          # 50-user baseline: P99 CPU 0.242m, P99 memory 137Mi.
           requests:
             cpu: 5m
-            memory: 176Mi
+            memory: 160Mi
           limits:
-            cpu: 200m
+            cpu: 50m
             memory: 256Mi
         securityContext:
           runAsUser: 10001
@@ -1595,14 +1621,13 @@ components:
       - name: KAFKA_LOG_DIRS
         value: /opt/kafka/data/kafka
     resources:
-      # kubectl top: 17m CPU, 546Mi mem (Kafka JVM). P99 mem: 546Mi. KAFKA_HEAP_OPTS=-Xmx400M.
-      # Guaranteed QoS (request=limit). Keep 200m CPU for JVM GC headroom on burst.
+      # 50-user baseline: P99 CPU 21.6m, P99 memory 560Mi. KAFKA_HEAP_OPTS=-Xmx400M.
       requests:
-        cpu: 200m
-        memory: 650Mi
+        cpu: 50m
+        memory: 640Mi
       limits:
-        cpu: 200m
-        memory: 650Mi
+        cpu: 300m
+        memory: 768Mi
     securityContext:
       runAsUser: 1000 # appuser
       runAsGroup: 1000
@@ -1649,6 +1674,14 @@ components:
         value: flagd
       - name: FLAGD_PORT
         value: "8013"
+    resources:
+      # 50-user baseline: P99 CPU 7.24m, P99 memory 71.5Mi.
+      requests:
+        cpu: 10m
+        memory: 96Mi
+      limits:
+        cpu: 200m
+        memory: 192Mi
 
   postgresql:
     enabled: true
@@ -1735,11 +1768,10 @@ components:
         mountPath: /docker-entrypoint-initdb.d
         existingConfigMap: postgresql-init
     resources:
-      # PostgreSQL requires sufficient memory to handle connection forks and queries.
-      # Cost-optimized: set requests/limits to 100m/400m CPU and 256Mi memory.
+      # 50-user baseline: P95/P99 CPU 52.7m/72.5m, P99 memory 50Mi.
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 75m
+        memory: 128Mi
       limits:
         cpu: 400m
         memory: 256Mi
@@ -1808,13 +1840,13 @@ components:
         username: valkey
         collection_interval: 10s
     resources:
-      # P99 CPU ~4m; P99 mem ~5Mi (Valkey). Tighten Guaranteed QoS at measured levels.
+      # 50-user baseline: P99 CPU 5.05m, P99 memory 7.33Mi; leave burst/OOM headroom.
       requests:
         cpu: 10m
-        memory: 8Mi
+        memory: 16Mi
       limits:
-        cpu: 10m
-        memory: 8Mi
+        cpu: 100m
+        memory: 32Mi
     securityContext:
       runAsUser: 999 # valkey
       runAsGroup: 1000
@@ -1907,24 +1939,38 @@ components:
       # K8s pods lack memlock ulimit / IPC_LOCK; memory_lock=true can fail bootstrap.
       - name: bootstrap.memory_lock
         value: "false"
+      # SEC-06: Security plugin is enabled (DISABLE_SECURITY_PLUGIN removed).
+      # The security plugin requires TLS material at bootstrap. For this single-node
+      # log store we install OpenSearch demo certs (self-signed) so the plugin can
+      # load; clients use HTTPS with tls.insecure / skip-verify on the cluster network.
+      # Setting this to "true" without mounting custom PEM certs causes:
+      #   OpenSearchException[No SSL configuration found]
+      #   → CrashLoopBackOff (failed to load OpenSearchSecurityPlugin).
       - name: DISABLE_INSTALL_DEMO_CONFIG
-        value: "true"
-      - name: DISABLE_SECURITY_PLUGIN
-        value: "true"
+        value: "false"
+      # Admin password is injected via OPENSEARCH_INITIAL_ADMIN_PASSWORD from K8s Secret
+      # techx-corp-opensearch (ESO-synced from ASM techx-corp/*/opensearch).
+      # Must meet OpenSearch strength rules: ≥8 chars, upper, lower, digit, special.
+      # This env bootstraps the built-in admin user on first node start; PVC persists it.
+      - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: techx-corp-opensearch
+            key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
       - name: cluster.name
         value: demo-cluster
       - name: network.host
         value: "0.0.0.0"
     resources:
-      # kubectl top: 42m CPU, 699Mi mem. P99 CPU 216m (bootstrap peak). P99 mem: 701Mi.
-      # OPENSEARCH_JAVA_OPTS=-Xms400m -Xmx400m. Guaranteed QoS (request=limit).
-      # 500m CPU allows faster JVM bootstrap (was 200m → 4m+ cold start). Steady-state ~42m.
+      # 50-user baseline: P99 CPU 70.1m, P99 memory 730Mi.
+      # OPENSEARCH_JAVA_OPTS=-Xms400m -Xmx400m.
+      # Keep a 500m CPU limit for JVM bootstrap while reducing scheduling reservation.
       requests:
-        cpu: 500m
-        memory: 900Mi
+        cpu: 100m
+        memory: 800Mi
       limits:
         cpu: 500m
-        memory: 900Mi
+        memory: 1Gi
     securityContext:
       runAsUser: 1000
       runAsGroup: 1000
@@ -2028,6 +2074,19 @@ opentelemetry-collector:
   ports:
     metrics:
       enabled: true
+  # SEC-06: OpenSearch basic auth credentials injected from ESO-synced Secret.
+  # Used by the basicauth/opensearch extension in the collector config below.
+  extraEnvs:
+    - name: OPENSEARCH_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-opensearch
+          key: username
+    - name: OPENSEARCH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-opensearch
+          key: password
   config:
     receivers:
       otlp:
@@ -2078,9 +2137,14 @@ opentelemetry-collector:
         logs_index: otel-logs
         logs_index_time_format: "yyyy-MM-dd"
         http:
-          endpoint: http://opensearch:9200
+          # SEC-06: security plugin serves HTTPS (demo self-signed certs on single-node).
+          endpoint: https://opensearch:9200
           tls:
             insecure: true
+          # SEC-06: basic auth credentials from ESO-synced Secret techx-corp-opensearch.
+          # The otel-collector DaemonSet mounts these via secretKeyRef (see below).
+          auth:
+            authenticator: basicauth/opensearch
         retry_on_failure:
           enabled: true
           initial_interval: 1s
@@ -2124,6 +2188,10 @@ opentelemetry-collector:
             statements:
               # SANITIZE ALL SPAN NAMES TO PREVENT CARDINALITY EXPLOSION
               - set_semconv_span_name("1.37.0", "unsanitized_span_name")
+      # APM Dashboard filters on these resource attributes (promoted to Prometheus
+      # labels via promote_resource_attributes). Defaults match production; override
+      # in values-dev.yaml (development / techx-corp-dev). Without them Grafana shows
+      # <<not defined>> and empty service lists.
       resource:
         attributes:
           - key: service.instance.id
@@ -2139,7 +2207,17 @@ opentelemetry-collector:
     connectors:
       spanmetrics: {}
 
+    extensions:
+      health_check: {}
+      # SEC-06: BasicAuth extension for OpenSearch exporter.
+      # Credentials are injected via env vars from K8s Secret techx-corp-opensearch.
+      basicauth/opensearch:
+        client_auth:
+          username: ${env:OPENSEARCH_USERNAME}
+          password: ${env:OPENSEARCH_PASSWORD}
+
     service:
+      extensions: [basicauth/opensearch, health_check]
       pipelines:
         traces:
           processors:
@@ -2187,7 +2265,7 @@ jaeger:
       type: memory
     extraEnv:
       - name: MEMORY_MAX_TRACES
-        value: "10000"
+        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -2199,13 +2277,13 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
-      # kubectl top: 22m CPU, 305Mi mem. P99 mem: 306Mi. Memory backend for traces.
+      # 50-user baseline: P99 CPU 10.6m, P99 memory 417Mi. Memory backend needs growth headroom.
       requests:
         cpu: 25m
-        memory: 384Mi
+        memory: 768Mi
       limits:
         cpu: 300m
-        memory: 600Mi
+        memory: 1.5Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -2277,6 +2355,14 @@ prometheus:
       enabled: false
   kube-state-metrics:
     enabled: true
+    resources:
+      # 50-user baseline: P99 CPU 1.90m, P99 memory 31.3Mi.
+      requests:
+        cpu: 5m
+        memory: 40Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
   prometheus-node-exporter:
     enabled: false
   prometheus-pushgateway:
@@ -2338,9 +2424,10 @@ prometheus:
     # 900Mi limit caused OOMKilled (exit 137) before readiness; retain enough
     # headroom for WAL replay while keeping steady-state scheduling bounded.
     resources:
+      # 50-user baseline: P95/P99 CPU 44.6m/251m, P99 memory 1.04Gi.
       requests:
-        cpu: 30m
-        memory: 1Gi
+        cpu: 100m
+        memory: 1280Mi
       limits:
         cpu: 750m
         memory: 2Gi
@@ -2378,6 +2465,8 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  deploymentStrategy:
+    type: Recreate
   # Observability control plane → Critical MNG
   nodeSelector:
     workload-class: critical
@@ -2392,14 +2481,32 @@ grafana:
       disable_login_form: false
     auth.anonymous:
       enabled: false
+    # Keep "Skip" available on the change-password screen if password is still "admin".
+    # Grafana has NO ini flag to hide that screen; the UI hardcodes it when the typed
+    # password is the literal string "admin" (see LoginCtrl.tsx). To fully remove the
+    # interstitial, set admin-password in ASM .../grafana to anything other than "admin".
+    auth.basic:
+      password_policy: false
     server:
       root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana"
       serve_from_sub_path: true
   # SEC-05: admin credentials from ESO Secret techx-corp-grafana-admin
+  # Do NOT use admin-password value "admin" — Grafana always shows change-password UI then.
   admin:
     existingSecret: techx-corp-grafana-admin
     userKey: admin-user
     passwordKey: admin-password
+  # SEC-06: OpenSearch basic auth credentials injected into Grafana container env.
+  # Used by the provisioned opensearch.yaml datasource (${OPENSEARCH_USERNAME} / ${OPENSEARCH_PASSWORD}).
+  envValueFrom:
+    OPENSEARCH_USERNAME:
+      secretKeyRef:
+        name: techx-corp-opensearch
+        key: username
+    OPENSEARCH_PASSWORD:
+      secretKeyRef:
+        name: techx-corp-opensearch
+        key: password
   plugins:
     - grafana-opensearch-datasource
   sidecar:
@@ -2419,14 +2526,13 @@ grafana:
         cpu: 100m
         memory: 128Mi
   resources:
-    # kubectl top: 16m CPU, 654Mi mem. P99 mem: 476Mi (but live shows 654Mi — cover it).
-    # Grafana loads plugins (grafana-opensearch-datasource) and dashboard state into heap.
+    # 50-user baseline: P99 CPU 36.5m, P99 memory 554Mi for the main container.
     requests:
-      cpu: 20m
-      memory: 700Mi
+      cpu: 50m
+      memory: 640Mi
     limits:
       cpu: 300m
-      memory: 900Mi
+      memory: 1Gi
   persistence:
     enabled: true
     storageClassName: gp2
@@ -2463,6 +2569,7 @@ metrics-server:
       cpu: 10m
       memory: 40Mi
     limits:
+      cpu: 100m
       memory: 64Mi
 
 # Prometheus Adapter — custom/external metrics API for request-rate (RPS) HPA.
@@ -2526,3 +2633,5 @@ prometheus-adapter:
       cpu: 200m
       memory: 128Mi
   replicas: 1
+
+# Change trail: @hungxqt - 2026-07-14 - Drop no-op disable flag; document non-admin password for Grafana login.

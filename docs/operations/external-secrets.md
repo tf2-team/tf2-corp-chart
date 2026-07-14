@@ -104,12 +104,24 @@ aws secretsmanager put-secret-value --region "$REGION" \
   --secret-id "${PREFIX}/product-reviews" \
   --secret-string '{"OPENAI_API_KEY":"dummy"}'
 
+# Grafana: do NOT set admin-password to the literal string "admin".
+# Grafana's login UI hardcodes a change-password interstitial when the typed
+# password is "admin" (no grafana.ini flag disables that). Use a non-"admin" value.
 aws secretsmanager put-secret-value --region "$REGION" \
   --secret-id "${PREFIX}/grafana" \
-  --secret-string '{"admin-user":"admin","admin-password":"admin"}'
+  --secret-string '{"admin-user":"admin","admin-password":"<ReplaceWithNonAdminPassword>"}'
+
+# SEC-06: OpenSearch security plugin admin credentials
+# OpenSearch requires: length >= 8, upper, lower, digit, AND special character.
+# Prefer specials safe in JSON/shell: ! % ^ * _ - + = (avoid @ : / ? # ; space ' \ " $ `).
+# Length >= 24 recommended. This bootstraps the built-in admin user on first node start.
+# Do NOT use a password without a special character — bootstrap will reject it.
+aws secretsmanager put-secret-value --region "$REGION" \
+  --secret-id "${PREFIX}/opensearch" \
+  --secret-string '{"username":"admin","password":"<StrongPassw0rd!ReplaceMe>"}'
 ```
 
-Password alphabet for later rotation: **alphanumeric only**, length ≥ 24, while DSNs are string-concatenated (avoid `@ : / ? # ; space ' \`).
+For **OpenSearch only**, include a special character (OpenSearch security plugin rule). Other secrets that are DSN-concatenated should stay alphanumeric (avoid `@ : / ? # ; space ' \`).
 
 ---
 
@@ -181,7 +193,8 @@ kubectl -n techx-corp-dev get secret \
   techx-corp-postgresql-app \
   techx-corp-flagd-ui \
   techx-corp-product-reviews \
-  techx-corp-grafana-admin
+  techx-corp-grafana-admin \
+  techx-corp-opensearch
 
 # --- Production ---
 kubectl create namespace techx-corp-prod --dry-run=client -o yaml | kubectl apply -f -
@@ -196,7 +209,8 @@ kubectl -n techx-corp-prod get secret \
   techx-corp-postgresql-app \
   techx-corp-flagd-ui \
   techx-corp-product-reviews \
-  techx-corp-grafana-admin
+  techx-corp-grafana-admin \
+  techx-corp-opensearch
 # Do not print secret values
 ```
 
@@ -296,3 +310,5 @@ Repeat pattern for admin / Grafana / flagd-ui as needed. After admin rotation, u
 - `helm rollback techx-corp` — keep ESO and K8s Secrets
 - **Do not** re-introduce production passwords into Git
 - Local/demo only: `values-demo.yaml`
+
+<!-- Change trail: @hungxqt - 2026-07-14 - Grafana ASM example must not use admin-password admin. -->

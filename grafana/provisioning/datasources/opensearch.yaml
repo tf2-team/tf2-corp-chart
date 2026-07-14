@@ -7,11 +7,20 @@ datasources:
   - name: OpenSearch
     uid: webstore-logs
     type: grafana-opensearch-datasource
-    url: http://opensearch:9200/
+    # SEC-06: security plugin serves HTTPS (demo self-signed certs). Skip TLS
+    # verify is acceptable on the in-cluster NetworkPolicy-bounded path.
+    url: https://opensearch:9200/
     access: proxy
     # SEC-02: provisioned datasource is non-editable to prevent accidental edits
     editable: false
     isDefault: false
+    # SEC-06: basic auth for OpenSearch security plugin.
+    # Credentials are injected by Grafana from the K8s Secret techx-corp-opensearch
+    # via grafana.envValueFrom (see values.yaml grafana section).
+    basicAuth: true
+    basicAuthUser: ${OPENSEARCH_USERNAME}
+    secureJsonData:
+      basicAuthPassword: ${OPENSEARCH_PASSWORD}
     jsonData:
       database: otel-logs-*
       flavor: opensearch
@@ -19,4 +28,5 @@ datasources:
       logMessageField: body
       pplEnabled: true
       timeField: observedTimestamp
+      tlsSkipVerify: true
       version: 3.6.0

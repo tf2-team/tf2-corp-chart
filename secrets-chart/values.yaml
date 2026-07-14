@@ -24,3 +24,5 @@ targets:
   flagdUi: techx-corp-flagd-ui
   productReviews: techx-corp-product-reviews
   grafanaAdmin: techx-corp-grafana-admin
+  # SEC-06: OpenSearch security plugin credentials
+  opensearch: techx-corp-opensearch

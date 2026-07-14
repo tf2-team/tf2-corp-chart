@@ -18,36 +18,41 @@ default:
   image:
     repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp
     # Replace with currently running tag before cutover (e.g. sha-a1b2c3d or v1.2.3).
-    tag: "sha-1ed789b"
+    tag: "sha-fe39d3f"
 
 components:
-  # DIRECTIVE #3: keep at least two Ready instances for every stateless service
-  # on the synchronous browse -> cart -> checkout path. HPA services use a
-  # production floor of two; fixed-size services declare replicas explicitly.
-  # Stateful dependencies (Kafka and valkey-cart) require real replication and
-  # failover and are deliberately not "scaled" as independent single writers.
-  ad:
-    replicas: 2
-
-  cart:
-    autoscaling:
-      minReplicas: 2
-
-  checkout:
-    autoscaling:
-      minReplicas: 2
-
-  currency:
-    autoscaling:
-      minReplicas: 2
-
-  email:
-    replicas: 2
+  # Temporary baseline: inherit the single-replica defaults from values.yaml.
+  # The previous production floor of two is retained below as comments for
+  # easy restoration after the capacity test.
+  # ad:
+  #   replicas: 2
+  # cart:
+  #   autoscaling:
+  #     minReplicas: 2
+  # checkout:
+  #   autoscaling:
+  #     minReplicas: 2
+  # currency:
+  #   autoscaling:
+  #     minReplicas: 2
+  # email:
+  #   replicas: 2
 
   flagd:
-    # Reliability-only change; flag definitions and incident controls remain
-    # unchanged. Two replicas remove the feature-flag service as a node SPOF.
-    replicas: 2
+    # Flag definitions and incident controls remain unchanged. Temporarily use
+    # the single-replica default while the capacity test is in progress.
+    # replicas: 2
+    # BTC central flag source (values-flagd-sync): read-only HTTP sync, no local flagd-ui.
+    sidecarContainers: []
+    command:
+      - "/flagd-build"
+      - "start"
+      - "--port"
+      - "8013"
+      - "--ofrep-port"
+      - "8016"
+      - "--sources"
+      - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
     schedulingRules:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -57,17 +62,24 @@ components:
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
 
-  frontend:
-    autoscaling:
-      minReplicas: 2
+  # frontend:
+  #   autoscaling:
+  #     minReplicas: 2
 
   frontend-proxy:
     publicAlb:
       # Internal ALB; path blocking is on CloudFront (infra cloudfront_block_sensitive_paths).
       scheme: internal
       blockSensitivePaths: false
-    autoscaling:
-      minReplicas: 2
+      # HTTPS for operator private DNS (https://internal.hungtran.id.vn/...).
+      # Set to the same ACM ARN as techx-corp-infra production:
+      #   private_dns_acm_certificate_arn
+      # Template enables HTTP:80 + HTTPS:443 when non-empty. Keep CloudFront on :80.
+      # Do NOT enable ssl-redirect. See techx-corp-infra docs/client-vpn.md (TLS section).
+      # certificateArn: "arn:aws:acm:us-east-1:493499579600:certificate/<ID>"
+      certificateArn: "arn:aws:acm:us-east-1:493499579600:certificate/043175b8-99f5-492f-a258-ff280e0b9a75"
+    # autoscaling:
+    #   minReplicas: 2
     # Preserve the critical MNG pin from values.yaml, but prefer separate AZs
     # and hosts. ScheduleAnyway preserves availability when one node is drained.
     schedulingRules:
@@ -79,29 +91,43 @@ components:
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
 
-  image-provider:
-    replicas: 2
-
-  payment:
-    replicas: 2
-
-  product-catalog:
-    autoscaling:
-      minReplicas: 2
-
-  product-reviews:
-    replicas: 2
-
-  quote:
-    replicas: 2
-
-  recommendation:
-    autoscaling:
-      minReplicas: 2
-
-  shipping:
-    replicas: 2
+  # image-provider:
+  #   replicas: 2
+  # payment:
+  #   replicas: 2
+  # product-catalog:
+  #   autoscaling:
+  #     minReplicas: 2
+  # product-reviews:
+  #   replicas: 2
+  # quote:
+  #   replicas: 2
+  # recommendation:
+  #   autoscaling:
+  #     minReplicas: 2
+  # shipping:
+  #   replicas: 2
 
   load-generator-worker:
     imageOverride:
       repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator
+
+# Explicit production APM resource context (same as values.yaml defaults).
+# Ensures prod overlay does not inherit a future base-values drift unintentionally.
+# Arrays replace under Helm merge — keep the full attributes list.
+opentelemetry-collector:
+  config:
+    processors:
+      resource:
+        attributes:
+        - key: service.instance.id
+          from_attribute: k8s.pod.uid
+          action: insert
+        - key: deployment.environment.name
+          value: production
+          action: upsert
+        - key: service.namespace
+          value: techx-corp-prod
+          action: upsert
+
+# Change trail: @hungxqt - 2026-07-14 - Explicit prod OTEL resource attributes for APM filters.

@@ -140,6 +140,17 @@ spec:
           port: 4317
         - protocol: TCP
           port: 4318
+    # Argo CD UI (control plane in argocd NS; path /argocd on frontend-proxy)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argocd
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-server
+      ports:
+        - protocol: TCP
+          port: 80
 {{- end }}
 
 {{/* ── 5. FRONTEND ─────────────────────────────────────────────────── */}}

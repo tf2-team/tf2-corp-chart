@@ -6,12 +6,59 @@ Git (`techx-corp-chart` / GitHub `tf2-corp-chart`) là nguồn sự thật; Argo
 namespace **`techx-corp-dev`** (dev) và **`techx-corp-prod`** (prod).  
 Sau cutover: **không** dùng `helm upgrade` thường xuyên.
 
-## Truy cập UI (v1 — không public Ingress)
+## Truy cập UI (không public Ingress)
 
-```bash
-kubectl -n argocd port-forward svc/argocd-server 8080:443
-# Admin password (xoay vòng sau login đầu):
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+Two supported local/operator paths (no public storefront ALB Ingress).  
+Argo CD uses **`server.rootpath=/argocd`** and **HTTP:80** (`server.insecure=true`).
+
+### A. Localhost — kubectl port-forward (always allowed)
+
+Works with kubeconfig only (no VPN required if the API is reachable):
+
+```cmd
+kubectl port-forward service/argocd-server 8080:80 -n argocd
+```
+
+Then open:
+
+```text
+http://localhost:8080/argocd/
+```
+
+Do **not** use `http://localhost:8080/` alone — the UI lives under `/argocd/` because of rootpath.
+
+CLI via port-forward:
+
+```cmd
+argocd login localhost:8080 --grpc-web --rootpath /argocd --username admin --insecure
+```
+
+### B. Production preferred — private DNS + Client VPN
+
+Same pattern as Grafana/Jaeger: connect **AWS Client VPN**, then open:
+
+```text
+https://internal.hungtran.id.vn/argocd/
+```
+
+Requires:
+
+1. Infra: Argo CD `server.rootpath=/argocd`, `server.insecure=true`, `url` → private DNS base  
+2. Platform image: frontend-proxy Envoy routes `/argocd/` → `argocd-server.argocd.svc.cluster.local:80`  
+3. CloudFront blocks public `/argocd` (VPN-only path on internal ALB)
+
+Admin password (rotate after first login):
+
+```cmd
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}"
+```
+
+Decode the base64 value (PowerShell: `[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("..."))`).
+
+CLI (from VPN):
+
+```cmd
+argocd login internal.hungtran.id.vn --grpc-web --rootpath /argocd --username admin
 ```
 
 ## Bootstrap lần đầu

@@ -319,6 +319,10 @@
             "listenPorts": {
               "type": "string"
             },
+            "certificateArn": {
+              "type": "string",
+              "description": "Optional ACM certificate ARN for HTTPS on the internal ALB."
+            },
             "host": {
               "type": "string"
             },

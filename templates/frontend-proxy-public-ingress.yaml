@@ -17,7 +17,16 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: {{ $scheme | quote }}
     alb.ingress.kubernetes.io/target-type: {{ $frontendProxy.publicAlb.targetType | quote }}
+    {{- /* HTTPS on internal ALB for operator private DNS (e.g. internal.hungtran.id.vn).
+         Keep HTTP:80 for CloudFront VPC origin. Do NOT set ssl-redirect — it breaks CF origin.
+         When certificateArn is set, force dual listen ports even if listenPorts was left HTTP-only. */ -}}
+    {{- $certArn := dig "certificateArn" "" $frontendProxy.publicAlb -}}
+    {{- if and $certArn (ne $certArn "") }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ $certArn | quote }}
+    {{- else }}
     alb.ingress.kubernetes.io/listen-ports: {{ $frontendProxy.publicAlb.listenPorts | quote }}
+    {{- end }}
     {{- if $blockPaths }}
     # Optional emergency fixed 403 (prefer CloudFront Function path blocking)
     alb.ingress.kubernetes.io/actions.block-public-path: '{"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"403","messageBody":"Access Denied"}}'
