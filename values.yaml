@@ -1032,7 +1032,7 @@ components:
         value: /tmp/.config
     resources:
       requests:
-        cpu: 200m
+        cpu: 500m
         memory: 3Gi
       limits:
         cpu: "1.5"
@@ -1044,9 +1044,11 @@ components:
     # Memory target 75% of request (3Gi) = ~2.25Gi. At 50 users (~761Mi, 25%) → no scale.
     # HPA triggers only when memory climbs past 2.25Gi (~75-85 users), giving time to
     # add a 2nd worker before the 4Gi hard limit is hit during fast ramp-up.
+    # CPU request set to 500m. At 50 users (~340m CPU used, 68%), it won't scale.
+    # At 100 users (~680m CPU, 136%), HPA will scale to 2 workers.
     autoscaling:
       enabled: true
-      minReplicas: 0
+      minReplicas: 1
       maxReplicas: 4
       targetCPUUtilizationPercentage: 70
       targetMemoryUtilizationPercentage: 75
