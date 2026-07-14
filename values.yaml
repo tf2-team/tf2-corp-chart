@@ -1242,12 +1242,13 @@ components:
     enabled: true
     useDefault:
       env: true
-    # Tier B (Python gRPC on 3551)
+    # Tier B† (Python gRPC on 3551): readiness timeout 5s for LLM/thread-pool
+    # RPC stalls under modest CPU; memory raised vs 96Mi/160Mi after probe EOF/timeout events.
     readinessProbe:
       grpc:
         port: 3551
       periodSeconds: 10
-      timeoutSeconds: 3
+      timeoutSeconds: 5
       failureThreshold: 3
     livenessProbe:
       grpc:
@@ -1294,12 +1295,13 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
       # 50-user baseline: P95/P99 CPU 43.4m/50.2m, P99 memory 80.6Mi.
+      # Request/limit raised for OTEL+LLM headroom (was 96Mi/160Mi; probe EOF/OOM risk).
       requests:
         cpu: 60m
-        memory: 96Mi
+        memory: 128Mi
       limits:
         cpu: 300m
-        memory: 160Mi
+        memory: 256Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -2670,4 +2672,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-14 - Pin Locust master to Critical MNG (system nodes).
+# Change trail: @hungxqt - 2026-07-14 - product-reviews: raise memory and readiness timeout.
