@@ -104,9 +104,12 @@ aws secretsmanager put-secret-value --region "$REGION" \
   --secret-id "${PREFIX}/product-reviews" \
   --secret-string '{"OPENAI_API_KEY":"dummy"}'
 
+# Grafana: do NOT set admin-password to the literal string "admin".
+# Grafana's login UI hardcodes a change-password interstitial when the typed
+# password is "admin" (no grafana.ini flag disables that). Use a non-"admin" value.
 aws secretsmanager put-secret-value --region "$REGION" \
   --secret-id "${PREFIX}/grafana" \
-  --secret-string '{"admin-user":"admin","admin-password":"admin"}'
+  --secret-string '{"admin-user":"admin","admin-password":"<ReplaceWithNonAdminPassword>"}'
 
 # SEC-06: OpenSearch security plugin admin credentials
 # OpenSearch requires: length >= 8, upper, lower, digit, AND special character.
@@ -307,3 +310,5 @@ Repeat pattern for admin / Grafana / flagd-ui as needed. After admin rotation, u
 - `helm rollback techx-corp` — keep ESO and K8s Secrets
 - **Do not** re-introduce production passwords into Git
 - Local/demo only: `values-demo.yaml`
+
+<!-- Change trail: @hungxqt - 2026-07-14 - Grafana ASM example must not use admin-password admin. -->

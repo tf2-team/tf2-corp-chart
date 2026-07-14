@@ -2440,14 +2440,17 @@ grafana:
       disable_login_form: false
     auth.anonymous:
       enabled: false
+    # Keep "Skip" available on the change-password screen if password is still "admin".
+    # Grafana has NO ini flag to hide that screen; the UI hardcodes it when the typed
+    # password is the literal string "admin" (see LoginCtrl.tsx). To fully remove the
+    # interstitial, set admin-password in ASM .../grafana to anything other than "admin".
+    auth.basic:
+      password_policy: false
     server:
       root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana"
       serve_from_sub_path: true
-    # Skip forced password change on first login when admin password comes from Secret
-    # (non-default password still required in techx-corp-grafana-admin via ESO/ASM)
-    security:
-      disable_initial_admin_password_change: true
   # SEC-05: admin credentials from ESO Secret techx-corp-grafana-admin
+  # Do NOT use admin-password value "admin" — Grafana always shows change-password UI then.
   admin:
     existingSecret: techx-corp-grafana-admin
     userKey: admin-user
@@ -2590,4 +2593,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-14 - Document APM resource attributes; prod defaults for collector filters.
+# Change trail: @hungxqt - 2026-07-14 - Drop no-op disable flag; document non-admin password for Grafana login.
