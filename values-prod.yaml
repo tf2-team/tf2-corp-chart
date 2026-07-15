@@ -136,11 +136,14 @@ components:
 
   frontend:
     autoscaling:
-      # Keep enough warm capacity for the 200-user maintenance test and scale
-      # before SSR tail latency breaches the storefront p95 objective.
+      # Temporary N+1 capacity for the maintenance window: draining one node
+      # leaves two frontend pods serving while the replacement becomes Ready.
       minReplicas: 3
       targetCPUUtilizationPercentage: 65
-      targetRequestsPerSecond: 12
+      # Spanmetrics counts all frontend server spans; the observed 150-200 user
+      # load is about 160-190 metric RPS. A 40 RPS/pod target holds 4-5 pods
+      # instead of over-scaling to 14-20 pods.
+      targetRequestsPerSecond: 40
     schedulingRules: *directive03-hard-spread
 
   frontend-proxy:
