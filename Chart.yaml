@@ -1,7 +1,7 @@
 apiVersion: v2
 type: application
 name: techx-corp
-version: 0.48.3
+version: 0.48.4
 description: TechX Corp platform helm chart
 maintainers:
   - name: TechX Corp Platform Team
@@ -32,4 +32,4 @@ dependencies:
     version: 5.3.0
     repository: https://prometheus-community.github.io/helm-charts
     condition: prometheus-adapter.enabled
-# Change trail: @hungxqt - 2026-07-15 - Chart 0.48.3: local flagd file is local-* keys only.
+# Change trail: @hungxqt - 2026-07-15 - Chart 0.48.4: S3-delivered AI guardrail model cache.
