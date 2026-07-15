@@ -133,6 +133,16 @@ spec:
           {{- end }}
           env:
             {{- include "techx-corp.pod.env" . | nindent 12 }}
+            {{- if and .modelDelivery .modelDelivery.enabled }}
+            - name: HF_HOME
+              value: {{ .modelDelivery.mountPath | quote }}
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            - name: TRANSFORMERS_OFFLINE
+              value: "1"
+            - name: AI_GUARDRAIL_REQUIRE_MODEL
+              value: "true"
+            {{- end }}
           resources:
             {{- .resources | toYaml | nindent 12 }}
           {{- $securityContext := mergeOverwrite (dict) (default dict .defaultValues.securityContext) (default dict .securityContext) }}
@@ -178,6 +188,11 @@ spec:
               {{- if .subPath }}
               subPath: {{ .subPath }}
               {{- end }}
+          {{- end }}
+          {{- if and .modelDelivery .modelDelivery.enabled }}
+            - name: ai-model-cache
+              mountPath: {{ .modelDelivery.mountPath }}
+              readOnly: true
           {{- end }}
         {{- range .sidecarContainers }}
         {{- $sidecar := set . "name" (.name | lower)}}
@@ -227,8 +242,39 @@ spec:
             {{- .volumeMounts | toYaml | nindent 12 }}
           {{- end }}
         {{- end }}
-      {{- if .initContainers }}
+      {{- if or .initContainers (and .modelDelivery .modelDelivery.enabled) }}
       initContainers:
+        {{- if and .modelDelivery .modelDelivery.enabled }}
+        - name: fetch-ai-guardrail-model
+          image: {{ .modelDelivery.fetcherImage | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              archive=/tmp/model.tar.gz
+              checksum=/tmp/model.tar.gz.sha256
+              aws s3 cp {{ .modelDelivery.s3Uri | quote }} "$archive" --only-show-errors
+              aws s3 cp {{ printf "%s.sha256" .modelDelivery.s3Uri | quote }} "$checksum" --only-show-errors
+              cd /tmp
+              sha256sum -c model.tar.gz.sha256
+              mkdir -p /models
+              tar -xzf "$archive" -C /models
+              test -f /models/.model-ready
+          env:
+            - name: AWS_REGION
+              value: {{ .modelDelivery.awsRegion | quote }}
+            - name: AWS_EC2_METADATA_DISABLED
+              value: "true"
+          resources:
+            {{- .modelDelivery.resources | toYaml | nindent 12 }}
+          securityContext:
+            {{- mergeOverwrite (dict) (default dict .defaultValues.initContainerSecurityContext) | toYaml | nindent 12 }}
+          volumeMounts:
+            - name: ai-model-cache
+              mountPath: /models
+            - name: tmp-dir
+              mountPath: /tmp
+        {{- end }}
         {{- range $initContainer := .initContainers }}
         {{- $mergedSecurityContext := mergeOverwrite (dict) (default dict $.defaultValues.initContainerSecurityContext) (default dict $initContainer.securityContext) }}
         {{- $c := mergeOverwrite (dict) $initContainer }}
@@ -253,6 +299,11 @@ spec:
         {{- range .mountedEmptyDirs }}
         - name: {{ .name | lower}}
           emptyDir: {}
+        {{- end }}
+        {{- if and .modelDelivery .modelDelivery.enabled }}
+        - name: ai-model-cache
+          emptyDir:
+            sizeLimit: {{ .modelDelivery.cacheSizeLimit }}
         {{- end }}
         {{- if .additionalVolumes }}
         {{- tpl (toYaml .additionalVolumes) . | nindent 8 }}
