@@ -7,7 +7,7 @@ This chart implements **hard placement** between Critical MNG and Karpenter, plu
 | Contract | Mechanism | Workloads |
 |----------|-----------|-----------|
 | **Critical** | `nodeSelector.workload-class=critical`; **no** Karpenter toleration; **no** topology spreads (`topologySpreadConstraints: []`) | `frontend-proxy`, `flagd`, `load-generator` (Locust master), `postgresql`, `kafka`, `valkey-cart`, `opensearch`, `prometheus.server`, `grafana`, `jaeger.jaeger`, `metrics-server` |
-| **Stateless (default)** | `nodeSelector.workload-class=spot-tolerant` + toleration `workload-class=spot-tolerant:NoSchedule` + preferred Spot affinity + **soft** zone/hostname topology spreads | All first-party Deployments that inherit `default.schedulingRules` (explicit: `frontend`, `product-catalog`, `recommendation`, `load-generator-worker`, and other classified demo apps) |
+| **Stateless (default)** | `nodeSelector.workload-class=spot-tolerant` + toleration `workload-class=spot-tolerant:NoSchedule` + preferred Spot affinity + **soft** zone/hostname topology spreads | All first-party Deployments that inherit `default.schedulingRules` (explicit: `frontend`, `product-catalog`, `recommendation`, and other classified demo apps; **exception:** `load-generator-worker` packs on one node — see table below) |
 | **Universal DaemonSet** | No workload-class selector; Karpenter taint toleration | `opentelemetry-collector` (agent DaemonSet) |
 
 ### Important distinctions
@@ -24,7 +24,7 @@ This chart implements **hard placement** between Critical MNG and Karpenter, plu
 |---------|------------|----------|------|
 | `frontend`, `checkout`, `cart`, `product-catalog`, `product-reviews`, `currency`, `recommendation` | min **1–2** / max **6–72** per service (CPU + Mem 90% + **RPS**); see `request-metric-hpa.md` | spot-tolerant | Karpenter can add nodes under scale-out; RPS is primary under traffic; memory is safety valve only |
 | `load-generator` | **none** (fixed 0–1 master) | critical | Locust **master** only on Critical MNG (`system-*`); scale to 1 for tests. Workers are `load-generator-worker` |
-| `load-generator-worker` | **CPU-only HPA** (min 1, max 8; scaleDown 300s / 50%) | spot-tolerant + storefront anti-affinity | Locust **workers** on Karpenter; join master via `load-generator:5557`; stable scale-in to limit thrash |
+| `load-generator-worker` | **CPU-only HPA** (min 1, max 8; scaleDown 300s / 50%) | spot-tolerant + storefront anti-affinity + **preferred worker podAffinity (hostname pack)**; **no** topology spreads | Locust **workers** on Karpenter; prefer scale-out on one node first (cost); join master via `load-generator:5557`; stable scale-in to limit thrash |
 | `frontend-proxy` | min **2** / max **10** (CPU 80% + Mem 90% + **RPS**) | critical | Extra replicas **do not** land on Karpenter; Critical MNG must have enough multi-AZ capacity before load tests / maintenance |
 
 Request-rate metrics require Prometheus Adapter (`prometheus-adapter.enabled`). See `docs/operations/request-metric-hpa.md`. Placement contracts are unchanged by metric type.
@@ -92,7 +92,7 @@ Expected matrix (selected):
 | Deployment | frontend | stateless | `spot-tolerant` | Yes | Soft zone + hostname |
 | Deployment | checkout | stateless | `spot-tolerant` | Yes | Soft zone + hostname |
 | Deployment | load-generator (master) | critical | `critical` | No | None (opt-out) |
-| Deployment | load-generator-worker | stateless | `spot-tolerant` + storefront anti-affinity | Yes | Soft zone + hostname |
+| Deployment | load-generator-worker | stateless (pack-first) | `spot-tolerant` + storefront anti-affinity + preferred same-worker hostname affinity | Yes | None (opt-out; pack on one node first) |
 | Deployment | frontend-proxy | critical | `critical` | No | None (opt-out) |
 | StatefulSet | postgresql / kafka / … | critical | `critical` | No | None (opt-out) |
 | DaemonSet | otel-collector-agent | universal | none | Yes | N/A |
@@ -141,4 +141,4 @@ Topology spreads must not change A/B/C outcomes.
 * Cluster Autoscaler for Critical MNG (scale-out is a reviewed Terraform `desired_size` change only).
 * Descheduler for rebalancing already-running pods after new nodes appear.
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Worker HPA scaleDown 300s/50% for Locust thrash. -->
+<!-- Change trail: @hungxqt - 2026-07-15 - load-generator-worker prefers packing on one node first. -->

@@ -1027,7 +1027,9 @@ components:
       env: true
     imageOverride:
       repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-corp/load-generator
-    # Workers generate traffic on Karpenter Spot; anti-affinity keeps them off storefront nodes.
+    # Workers on Karpenter Spot: pack onto one node first (cost), keep off storefront nodes.
+    # Affinity fully replaces default; restate preferred Spot capacity-type here.
+    # topologySpreadConstraints: [] opts out of default soft multi-node/AZ spreads.
     schedulingRules:
       nodeSelector:
         workload-class: spot-tolerant
@@ -1036,7 +1038,29 @@ components:
           operator: Equal
           value: spot-tolerant
           effect: NoSchedule
+      topologySpreadConstraints: []
       affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: karpenter.sh/capacity-type
+                    operator: In
+                    values:
+                      - spot
+        # Soft pack: prefer co-locating workers on the same hostname before new nodes.
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - load-generator-worker
+                topologyKey: kubernetes.io/hostname
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
@@ -2700,4 +2724,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-15 - Raise Prometheus memory limit after OOMKilled CrashLoop.
+# Change trail: @hungxqt - 2026-07-15 - Pack load-generator-worker pods onto one node first.

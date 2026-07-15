@@ -550,7 +550,7 @@ RPS uses External metric `http_requests_per_second` with label `service_name` (O
 | `quote` | 1 | 4 | CPU 70% | Karpenter (default) |
 | `shipping` | 1 | 4 | CPU 70% | Karpenter (default) |
 
-**Locust distributed mode:** `load-generator` is the **master** (fixed replicas, default `0`; scale to `1` for tests; no HPA; **Critical MNG / system nodes**). `load-generator-worker` is the **worker pool** (CPU-only HPA, min 1 / max 8 when enabled; **stable scale-down** 300s stabilize / 50% per 60s; **Karpenter Spot**). Ramp users via `LOCUST_USERS` / Locust UI on the master; workers join `load-generator:5557`. See `docs/changes/2026-07-14-distributed-load-generator.md`, `docs/changes/2026-07-14-fix-locust-master-worker-discovery.md`, `docs/changes/2026-07-14-locust-master-critical-mng.md`, and `docs/changes/2026-07-15-load-generator-worker-stable-scale-down.md`.
+**Locust distributed mode:** `load-generator` is the **master** (fixed replicas, default `0`; scale to `1` for tests; no HPA; **Critical MNG / system nodes**). `load-generator-worker` is the **worker pool** (CPU-only HPA, min 1 / max 8 when enabled; **stable scale-down** 300s stabilize / 50% per 60s; **Karpenter Spot**; **prefer pack on one node first** via soft worker podAffinity + topology-spread opt-out; hard storefront anti-affinity retained). Ramp users via `LOCUST_USERS` / Locust UI on the master; workers join `load-generator:5557`. See `docs/changes/2026-07-14-distributed-load-generator.md`, `docs/changes/2026-07-14-fix-locust-master-worker-discovery.md`, `docs/changes/2026-07-14-locust-master-critical-mng.md`, `docs/changes/2026-07-15-load-generator-worker-stable-scale-down.md`, and `docs/changes/2026-07-15-load-generator-worker-pack-one-node.md`.
 
 Hot-path money-flow HPAs (`frontend`, `checkout`, `cart`, `product-catalog`, `frontend-proxy`) use **`minReplicas: 2`** in base `values.yaml` (Directive #3 maintenance floor + first-party PDB). `currency` / `recommendation` / `product-reviews` remain min **1**. First-party PDBs render when `minReplicas >= 2`.
 
@@ -816,4 +816,4 @@ kubectl -n argocd annotate application techx-corp-dev \
 - `templates/NOTES.txt` — post-install notes (port-forward, ALB, **Argo CD admin credential**)  
 - [operations/gitops-argocd.md](./operations/gitops-argocd.md) — GitOps runbook + UI access
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Document load-generator-worker stable HPA scale-down. -->
+<!-- Change trail: @hungxqt - 2026-07-15 - Document load-generator-worker pack-one-node scheduling. -->
