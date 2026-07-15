@@ -2472,7 +2472,7 @@ prometheus:
     enabled: true
     # Expose only the node-placement labels required by capacity alerts.
     metricLabelsAllowlist:
-      - nodes=[workload-class,karpenter.sh/nodepool,karpenter.sh/capacity-type]
+      - nodes=[workload-class,karpenter.sh/nodepool,karpenter.sh/capacity-type,topology.kubernetes.io/zone]
     resources:
       # 50-user baseline: P99 CPU 1.90m, P99 memory 31.3Mi.
       requests:
@@ -2767,4 +2767,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-15 - product-reviews modelDelivery.extractorImage (busybox) for tar extract.
+# Change trail: @hungxqt - 2026-07-15 - Configure product-reviews extraction and bounded Karpenter observability.

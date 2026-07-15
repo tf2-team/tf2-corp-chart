@@ -95,7 +95,7 @@ groups:
             datasourceUid: webstore-metrics
             model:
               editorMode: code
-              expr: 'karpenter_cluster_state_synced == 0'
+              expr: 'karpenter_cluster_state_synced == bool 0'
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -205,16 +205,36 @@ groups:
               editorMode: code
               expr: |
                 (
-                  sum by (resource, unit) (
+                  sum by (node, resource, unit) (
                     kube_pod_container_resource_requests{resource=~"cpu|memory"}
                     * on(node) group_left()
                     kube_node_labels{label_workload_class="critical"}
                   )
                   /
-                  sum by (resource, unit) (
+                  sum by (node, resource, unit) (
                     kube_node_status_allocatable{resource=~"cpu|memory"}
                     * on(node) group_left()
                     kube_node_labels{label_workload_class="critical"}
+                  )
+                ) > 0.75
+                or
+                (
+                  sum by (label_topology_kubernetes_io_zone, resource, unit) (
+                    kube_pod_container_resource_requests{resource=~"cpu|memory"}
+                    * on(node) group_left(label_topology_kubernetes_io_zone)
+                    kube_node_labels{
+                      label_workload_class="critical",
+                      label_topology_kubernetes_io_zone!=""
+                    }
+                  )
+                  /
+                  sum by (label_topology_kubernetes_io_zone, resource, unit) (
+                    kube_node_status_allocatable{resource=~"cpu|memory"}
+                    * on(node) group_left(label_topology_kubernetes_io_zone)
+                    kube_node_labels{
+                      label_workload_class="critical",
+                      label_topology_kubernetes_io_zone!=""
+                    }
                   )
                 ) > 0.75
               instant: true
@@ -238,7 +258,7 @@ groups:
         keepFiringFor: 5m
         annotations:
           summary: Critical managed-node requested resource headroom is below 25 percent
-          description: Review the affected CPU or memory request ratio per Availability Zone before scheduling or infrastructure changes.
+          description: Review the affected CPU or memory request ratio per node and Availability Zone before scheduling or infrastructure changes.
         labels: {severity: warning, team: platform}
         isPaused: false
         notification_settings: {receiver: discord-alerts}

@@ -18,7 +18,7 @@ Read-only inspection found that Karpenter exposed scheduler, synchronization, an
 ## After
 
 * Prometheus scrapes `karpenter.kube-system.svc.cluster.local:8080` as job `karpenter`.
-* Kube-state-metrics exposes only `workload-class`, `karpenter.sh/nodepool`, and `karpenter.sh/capacity-type` from node labels.
+* Kube-state-metrics exposes only `workload-class`, `karpenter.sh/nodepool`, `karpenter.sh/capacity-type`, and `topology.kubernetes.io/zone` from node labels.
 * Grafana provisions warnings for Karpenter unschedulable pods, NodePool CPU/memory above 80%, and production unschedulable pods after 5 minutes.
 * Grafana provisions critical rules for Karpenter cluster-state desynchronization and production unschedulable pods after 15 minutes.
 * Critical MNG requested CPU/memory above 75% raises a warning.
@@ -102,7 +102,7 @@ Read-only live inspection confirmed the Karpenter Service port and the metric na
 |---|---|---|---|
 | Karpenter Service DNS or port changes | Low | Medium | Target-down/desynchronization becomes visible; update the Git value after read-only verification. |
 | Alert query label mismatch | Medium | Medium | Evaluate queries after sync; revert the provisioning file if noisy or indeterminate. |
-| Additional labels increase cardinality | Low | Low | Three node labels are explicitly allowlisted; no wildcard is used. |
+| Additional labels increase cardinality | Low | Low | Four node labels are explicitly allowlisted; no wildcard is used. |
 | Hard topology produces intentional Pending pods | Medium | Medium | Investigate capacity/AZ health before any approved incident relaxation. |
 
 **Rollback procedure:**
