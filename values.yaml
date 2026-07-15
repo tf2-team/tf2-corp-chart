@@ -2486,22 +2486,22 @@ prometheus:
       size: 8Gi
     service:
       servicePort: 9090
-    # Prometheus now replays a larger WAL with exemplar storage enabled. The former
-    # 900Mi limit caused OOMKilled (exit 137) before readiness; retain enough
-    # headroom for WAL replay while keeping steady-state scheduling bounded.
+    # PVC + OTLP + exemplars: WAL replay (~50s) and head block exceed the former
+    # 2Gi limit (OOMKilled exit 137 / CrashLoop). Request stays below Critical
+    # t4g.large packing pressure; limit covers replay spikes.
     resources:
-      # 50-user baseline: P95/P99 CPU 44.6m/251m, P99 memory 1.04Gi.
+      # 50-user baseline steady ~1.04Gi; prod WAL replay + OTLP needs higher ceiling.
       requests:
         cpu: 100m
-        memory: 1280Mi
+        memory: 1536Mi
       limits:
-        cpu: 750m
-        memory: 2Gi
-    # WAL/config load observed ~25–30s; block liveness until ready to avoid restart storms.
+        cpu: "1"
+        memory: 3Gi
+    # WAL/config load observed ~50s under load; block liveness until ready.
     startupProbe:
       enabled: true
       periodSeconds: 10
-      failureThreshold: 30
+      failureThreshold: 36
       timeoutSeconds: 10
     readinessProbeInitialDelay: 10
     readinessProbePeriodSeconds: 10
@@ -2700,4 +2700,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-15 - Restore load-generator-worker HPA stable scale-down.
+# Change trail: @hungxqt - 2026-07-15 - Raise Prometheus memory limit after OOMKilled CrashLoop.
