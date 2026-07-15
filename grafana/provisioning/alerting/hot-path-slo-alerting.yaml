@@ -3,14 +3,14 @@
 #
 # Hot Path Service SLO Alert Rules
 #
-# Metric source: traces_span_metrics_duration_milliseconds_* (spanmetrics từ OTel Collector)
+# Metric source: traces_span_metrics_duration_milliseconds_* (spanmetrics / OTel Collector)
 # Datasource   : webstore-metrics (Prometheus uid)
 # Namespace    : techx-corp-prod
 #
 # Thresholds:
-#   Error rate  > 1%  (5m window)   → warning
-#   P95 latency > 1s  (5m window)   → warning
-#   Pod restart > 3   (5m window)   → critical (per hot-path pod)
+#   Error rate  > 1%    (5m window)  → warning
+#   P95 latency > 1000ms (5m window) → warning
+#   Pod restart > 3     (5m window)  → critical
 #
 # Hot path services:
 #   frontend, frontend-proxy, cart, checkout, currency,
@@ -26,12 +26,33 @@ groups:
     rules:
 
       # ------------------------------------------------------------------ #
-      # 1. Error Rate > 1% — bất kỳ hot path service nào                   #
+      # 1. Error Rate > 1%                                                   #
+      #    Guard: chỉ fire khi có ít nhất 1 req/s để tránh false positive   #
+      #    khi traffic = 0 (0/0 = NaN)                                      #
       # ------------------------------------------------------------------ #
       - uid: hotpath-error-rate-001
         title: HotPathHighErrorRate
         condition: threshold
         data:
+          - refId: total_rate
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                sum by (service_name) (
+                  rate(
+                    traces_span_metrics_duration_milliseconds_count{
+                      service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
+                    }[5m]
+                  )
+                )
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: total_rate
           - refId: error_rate
             relativeTimeRange:
               from: 300
@@ -40,24 +61,14 @@ groups:
             model:
               editorMode: code
               expr: |
-                100 * (
-                  sum by (service_name) (
-                    rate(
-                      traces_span_metrics_duration_milliseconds_count{
-                        service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping",
-                        status_code="STATUS_CODE_ERROR"
-                      }[5m]
-                    )
-                  )
-                  or
-                  (
-                    sum by (service_name) (
-                      rate(
-                        traces_span_metrics_duration_milliseconds_count{
-                          service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
-                        }[5m]
-                      )
-                    ) * 0
+                100
+                *
+                sum by (service_name) (
+                  rate(
+                    traces_span_metrics_duration_milliseconds_count{
+                      service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping",
+                      status_code="STATUS_CODE_ERROR"
+                    }[5m]
                   )
                 )
                 /
@@ -67,11 +78,29 @@ groups:
                       service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
                     }[5m]
                   )
-                ) > 1
+                )
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
               refId: error_rate
+          # Guard: chỉ pass threshold khi total_rate > 1 req/s VÀ error_rate > 1%
+          - refId: has_traffic
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: has_traffic
+              expression: total_rate
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [1]
+                  operator:
+                    type: and
+                  query:
+                    params: [has_traffic]
+                  reducer:
+                    type: last
+                    params: []
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -81,7 +110,7 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [0]
+                    params: [1]
                   operator:
                     type: and
                   query:
@@ -94,10 +123,10 @@ groups:
         for: 2m
         keepFiringFor: 2m
         annotations:
-          summary: "{{ $labels.service_name }} error rate cao"
+          summary: "{{ $labels.service_name }} error rate > 1%"
           description: >-
-            Service <b>{{ $labels.service_name }}</b> đang có error rate
-            <b>{{ $values.error_rate | printf \"%.2f\" }}%</b> (ngưỡng: 1%) trong 5 phút qua.
+            Service <b>{{ $labels.service_name }}</b> error rate:
+            <b>{{ $values.error_rate | printf "%.2f" }}%</b> (ngưỡng: 1%, window: 5m).
         labels:
           severity: warning
           team: platform
@@ -107,7 +136,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 2. P95 Latency > 1s — bất kỳ hot path service nào                  #
+      # 2. P95 Latency > 1000ms                                             #
       # ------------------------------------------------------------------ #
       - uid: hotpath-p95-latency-002
         title: HotPathHighP95Latency
@@ -130,7 +159,7 @@ groups:
                       }[5m]
                     )
                   )
-                ) > 1000
+                )
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -144,7 +173,7 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [0]
+                    params: [1000]
                   operator:
                     type: and
                   query:
@@ -159,8 +188,8 @@ groups:
         annotations:
           summary: "{{ $labels.service_name }} P95 latency > 1s"
           description: >-
-            Service <b>{{ $labels.service_name }}</b> P95 latency đang là
-            <b>{{ $values.p95_ms | printf \"%.0f\" }}ms</b> (ngưỡng: 1000ms) trong 5 phút qua.
+            Service <b>{{ $labels.service_name }}</b> P95 latency:
+            <b>{{ $values.p95_ms | printf "%.0f" }}ms</b> (ngưỡng: 1000ms, window: 5m).
         labels:
           severity: warning
           team: platform
@@ -170,7 +199,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 3. Pod Restart > 3 lần / 5 phút — chỉ hot path pods                #
+      # 3. Pod Restart > 3 lần / 5 phút — hot path pods only               #
       # ------------------------------------------------------------------ #
       - uid: hotpath-pod-restart-003
         title: HotPathPodRestarting
@@ -216,11 +245,11 @@ groups:
         for: 0s
         keepFiringFor: 5m
         annotations:
-          summary: "Hot path pod {{ $labels.pod }} restart liên tục"
+          summary: "Hot path pod {{ $labels.pod }} restart > 3 lần/5m"
           description: >-
             Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             (container: <b>{{ $labels.container }}</b>) đã restart
-            <b>{{ $values.restarts_5m | printf \"%.0f\" }}</b> lần trong 5 phút.
+            <b>{{ $values.restarts_5m | printf "%.0f" }}</b> lần trong 5 phút.
             Service này thuộc hot path — cần xử lý ngay.
         labels:
           severity: critical

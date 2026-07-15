@@ -4,19 +4,19 @@
 # Pod & Node Health Alert Rules
 #
 # Covers:
-#   1.  PodCrashLooping        — container restart count tăng liên tục (CrashLoopBackOff)
-#   2.  PodOOMKilled           — container bị kill do OOM (exit reason = OOMKilled)
-#   3.  PodRestartingFrequently — restart nhiều lần trong 1 giờ (không nhất thiết crash loop)
-#   4.  PodNotReady            — pod không Ready > 5 phút
-#   5.  PodPending             — pod stuck Pending > 10 phút (scheduling fail, PVC bound fail...)
-#   6.  PodFailed              — pod ở trạng thái Failed (job failed, init container fail...)
-#   7.  ContainerWaitingError  — container stuck ở ImagePullBackOff / ErrImagePull / CreateContainerError
-#   8.  NodeMemoryPressure     — node có condition MemoryPressure = true
-#   9.  NodeDiskPressure       — node có condition DiskPressure = true
-#   10. NodeNotReady           — node không Ready > 5 phút
+#   1.  PodCrashLooping        — non-hot-path pod restart >3 lần/15m
+#   2.  PodOOMKilled           — container bị kill do OOM
+#   3.  PodRestartingFrequently — restart >10 lần/1h (early warning, non-hot-path)
+#   4.  PodNotReady            — pod không Ready >5m, không đang restart
+#   5.  PodStuckPending        — pod stuck Pending >10m
+#   6.  PodFailed              — phase=Failed
+#   7.  ContainerWaitingError  — ImagePullBackOff / ErrImagePull / ...
+#   8.  NodeMemoryPressure
+#   9.  NodeDiskPressure
+#   10. NodeNotReady           — node không Ready >5m
 #
-# Datasource: webstore-metrics (Prometheus, uid cố định trong datasources/default.yaml)
-# Namespace filter: techx-corp-prod (production namespace)
+# NOTE: Hot path pods (frontend, cart, checkout, ...) được cover riêng
+#       trong hot-path-slo-alerting.yaml với ngưỡng chặt hơn.
 ---
 apiVersion: 1
 
@@ -28,7 +28,8 @@ groups:
     rules:
 
       # ------------------------------------------------------------------ #
-      # 1. CrashLoopBackOff — restart count tăng > 3 lần trong 15 phút     #
+      # 1. CrashLoopBackOff — non-hot-path pod restart >3 lần/15m          #
+      #    Hot path pods được cover bởi HotPathPodRestarting (5m window)   #
       # ------------------------------------------------------------------ #
       - uid: pod-crash-loop-001
         title: PodCrashLooping
@@ -44,7 +45,8 @@ groups:
               expr: |
                 increase(
                   kube_pod_container_status_restarts_total{
-                    namespace="techx-corp-prod"
+                    namespace="techx-corp-prod",
+                    pod!~"(frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping)-.*"
                   }[15m]
                 ) > 3
               instant: true
@@ -147,7 +149,8 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 3. Restart nhiều — > 5 lần trong 1 giờ (warning trước khi crash)   #
+      # 3. Restart nhiều — non-hot-path, >10 lần/1h (early warning)        #
+      #    Ngưỡng 10 để tránh overlap với PodCrashLooping (>3/15m)         #
       # ------------------------------------------------------------------ #
       - uid: pod-restart-freq-003
         title: PodRestartingFrequently
@@ -163,9 +166,10 @@ groups:
               expr: |
                 increase(
                   kube_pod_container_status_restarts_total{
-                    namespace="techx-corp-prod"
+                    namespace="techx-corp-prod",
+                    pod!~"(frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping)-.*"
                   }[1h]
-                ) > 5
+                ) > 10
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -205,7 +209,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 4. Pod Not Ready — pod không có container Ready > 5 phút            #
+      # 4. Pod Not Ready >5m — loại trừ pod đang trong quá trình restart    #
       # ------------------------------------------------------------------ #
       - uid: pod-not-ready-004
         title: PodNotReady
@@ -219,10 +223,24 @@ groups:
             model:
               editorMode: code
               expr: |
-                kube_pod_status_ready{
-                  namespace="techx-corp-prod",
-                  condition="true"
-                } == 0
+                (
+                  kube_pod_status_ready{
+                    namespace="techx-corp-prod",
+                    condition="true"
+                  } == 0
+                )
+                unless
+                (
+                  kube_pod_container_status_restarts_total{
+                    namespace="techx-corp-prod"
+                  } > 0
+                  and
+                  increase(
+                    kube_pod_container_status_restarts_total{
+                      namespace="techx-corp-prod"
+                    }[5m]
+                  ) > 0
+                )
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -252,7 +270,7 @@ groups:
           summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} không Ready"
           description: >-
             Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
-            không ở trạng thái Ready hơn 5 phút.
+            không ở trạng thái Ready hơn 5 phút (và không phải do đang restart).
             Kiểm tra: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
         labels:
           severity: warning
@@ -262,7 +280,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 5. Pod Pending — stuck Pending > 10 phút (node selector, PVC, ...)  #
+      # 5. Pod Pending >10m                                                  #
       # ------------------------------------------------------------------ #
       - uid: pod-pending-005
         title: PodStuckPending
@@ -320,7 +338,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 6. Pod Failed — phase = Failed (init container, job, probe fail)    #
+      # 6. Pod Failed                                                        #
       # ------------------------------------------------------------------ #
       - uid: pod-failed-006
         title: PodFailed
@@ -376,7 +394,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 7. Container Waiting Error — ImagePullBackOff / ErrImagePull / ...  #
+      # 7. Container Waiting Error                                           #
       # ------------------------------------------------------------------ #
       - uid: container-waiting-007
         title: ContainerWaitingError
@@ -420,7 +438,7 @@ groups:
         for: 3m
         keepFiringFor: 5m
         annotations:
-          summary: "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} lỗi khởi động"
+          summary: "Container {{ $labels.pod }}/{{ $labels.container }} lỗi khởi động"
           description: >-
             Container <b>{{ $labels.container }}</b> trong pod
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
@@ -480,7 +498,8 @@ groups:
           summary: "Node {{ $labels.node }} đang Memory Pressure"
           description: >-
             Node <b>{{ $labels.node }}</b> đang trong trạng thái <b>MemoryPressure</b>.
-            Kubelet có thể bắt đầu evict pod. Kiểm tra: kubectl describe node {{ $labels.node }}
+            Kubelet có thể bắt đầu evict pod.
+            Kiểm tra: kubectl describe node {{ $labels.node }}
         labels:
           severity: critical
           team: platform
@@ -545,7 +564,7 @@ groups:
           receiver: telegram-alerts
 
       # ------------------------------------------------------------------ #
-      # 10. Node Not Ready > 5 phút                                         #
+      # 10. Node Not Ready >5m                                               #
       # ------------------------------------------------------------------ #
       - uid: node-not-ready-010
         title: NodeNotReady

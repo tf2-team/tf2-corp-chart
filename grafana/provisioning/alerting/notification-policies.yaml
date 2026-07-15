@@ -4,9 +4,11 @@
 # Grafana provisioning — Notification Policies
 #
 # Routing:
-#   - severity=critical  → telegram-alerts, repeat mỗi 30 phút
-#   - severity=warning   → telegram-alerts, repeat mỗi 1 giờ
-#   - default fallback   → telegram-alerts
+#   - hot path alerts (alert_type label) → group by service_name + alert_type
+#     → error_rate/latency/restart của cùng 1 service không bị gộp chung
+#   - severity=critical  → repeat mỗi 30 phút
+#   - severity=warning   → repeat mỗi 1 giờ
+#   - default fallback   → telegram-alerts, repeat 4h
 ---
 apiVersion: 1
 
@@ -21,9 +23,26 @@ policies:
     group_interval: 5m
     repeat_interval: 4h
     routes:
+      # Hot path: group theo service_name + alert_type để mỗi loại vấn đề
+      # (error_rate / latency / restart) của từng service là 1 message riêng
+      - receiver: telegram-alerts
+        matchers:
+          - alert_type =~ "error_rate|latency|restart"
+        group_by:
+          - service_name
+          - alert_type
+          - severity
+        group_wait: 30s
+        group_interval: 2m
+        repeat_interval: 30m
+        continue: false
+
       - receiver: telegram-alerts
         matchers:
           - severity = critical
+        group_by:
+          - namespace
+          - alertname
         group_wait: 10s
         group_interval: 2m
         repeat_interval: 30m
@@ -32,6 +51,9 @@ policies:
       - receiver: telegram-alerts
         matchers:
           - severity = warning
+        group_by:
+          - namespace
+          - alertname
         group_wait: 30s
         group_interval: 5m
         repeat_interval: 1h
