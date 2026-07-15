@@ -1,0 +1,602 @@
+# Copyright TechX Corp Platform Team
+# SPDX-License-Identifier: Apache-2.0
+#
+# Pod & Node Health Alert Rules
+#
+# Covers:
+#   1.  PodCrashLooping        — container restart count tăng liên tục (CrashLoopBackOff)
+#   2.  PodOOMKilled           — container bị kill do OOM (exit reason = OOMKilled)
+#   3.  PodRestartingFrequently — restart nhiều lần trong 1 giờ (không nhất thiết crash loop)
+#   4.  PodNotReady            — pod không Ready > 5 phút
+#   5.  PodPending             — pod stuck Pending > 10 phút (scheduling fail, PVC bound fail...)
+#   6.  PodFailed              — pod ở trạng thái Failed (job failed, init container fail...)
+#   7.  ContainerWaitingError  — container stuck ở ImagePullBackOff / ErrImagePull / CreateContainerError
+#   8.  NodeMemoryPressure     — node có condition MemoryPressure = true
+#   9.  NodeDiskPressure       — node có condition DiskPressure = true
+#   10. NodeNotReady           — node không Ready > 5 phút
+#
+# Datasource: webstore-metrics (Prometheus, uid cố định trong datasources/default.yaml)
+# Namespace filter: techx-corp-prod (production namespace)
+---
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: pod-health
+    folder: platform
+    interval: 1m
+    rules:
+
+      # ------------------------------------------------------------------ #
+      # 1. CrashLoopBackOff — restart count tăng > 3 lần trong 15 phút     #
+      # ------------------------------------------------------------------ #
+      - uid: pod-crash-loop-001
+        title: PodCrashLooping
+        condition: threshold
+        data:
+          - refId: restarts
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                increase(
+                  kube_pod_container_status_restarts_total{
+                    namespace="techx-corp-prod"
+                  }[15m]
+                ) > 3
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: restarts
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: restarts
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        keepFiringFor: 2m
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} đang CrashLoop"
+          description: >-
+            Container <b>{{ $labels.container }}</b> trong pod
+            <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            đã restart {{ $values.restarts | printf "%.0f" }} lần trong 15 phút.
+            Kiểm tra: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} --previous
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 2. OOMKilled — container bị kernel kill do vượt memory limit        #
+      # ------------------------------------------------------------------ #
+      - uid: pod-oomkilled-002
+        title: PodOOMKilled
+        condition: threshold
+        data:
+          - refId: oom_events
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                increase(
+                  kube_pod_container_status_last_terminated_reason{
+                    namespace="techx-corp-prod",
+                    reason="OOMKilled"
+                  }[10m]
+                ) > 0
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: oom_events
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: oom_events
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        keepFiringFor: 5m
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} bị OOMKilled"
+          description: >-
+            Container <b>{{ $labels.container }}</b> trong pod
+            <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            vừa bị OOMKilled (kernel kill do vượt memory limit).
+            Xem xét tăng <code>resources.limits.memory</code>.
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 3. Restart nhiều — > 5 lần trong 1 giờ (warning trước khi crash)   #
+      # ------------------------------------------------------------------ #
+      - uid: pod-restart-freq-003
+        title: PodRestartingFrequently
+        condition: threshold
+        data:
+          - refId: restarts_1h
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                increase(
+                  kube_pod_container_status_restarts_total{
+                    namespace="techx-corp-prod"
+                  }[1h]
+                ) > 5
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: restarts_1h
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: restarts_1h
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        keepFiringFor: 0s
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restart liên tục"
+          description: >-
+            Container <b>{{ $labels.container }}</b> trong pod
+            <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            đã restart <b>{{ $values.restarts_1h | printf "%.0f" }}</b> lần trong 1 giờ qua.
+        labels:
+          severity: warning
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 4. Pod Not Ready — pod không có container Ready > 5 phút            #
+      # ------------------------------------------------------------------ #
+      - uid: pod-not-ready-004
+        title: PodNotReady
+        condition: threshold
+        data:
+          - refId: not_ready
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_pod_status_ready{
+                  namespace="techx-corp-prod",
+                  condition="true"
+                } == 0
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: not_ready
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: not_ready
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [-1]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        keepFiringFor: 2m
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} không Ready"
+          description: >-
+            Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            không ở trạng thái Ready hơn 5 phút.
+            Kiểm tra: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+        labels:
+          severity: warning
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 5. Pod Pending — stuck Pending > 10 phút (node selector, PVC, ...)  #
+      # ------------------------------------------------------------------ #
+      - uid: pod-pending-005
+        title: PodStuckPending
+        condition: threshold
+        data:
+          - refId: pending
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_pod_status_phase{
+                  namespace="techx-corp-prod",
+                  phase="Pending"
+                } == 1
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: pending
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: pending
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        keepFiringFor: 2m
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck Pending"
+          description: >-
+            Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            vẫn ở trạng thái <b>Pending</b> hơn 10 phút.
+            Nguyên nhân thường gặp: node selector không match, PVC chưa bound, resource quota.
+            Kiểm tra: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+        labels:
+          severity: warning
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 6. Pod Failed — phase = Failed (init container, job, probe fail)    #
+      # ------------------------------------------------------------------ #
+      - uid: pod-failed-006
+        title: PodFailed
+        condition: threshold
+        data:
+          - refId: failed
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_pod_status_phase{
+                  namespace="techx-corp-prod",
+                  phase="Failed"
+                } == 1
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: failed
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: failed
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        keepFiringFor: 5m
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} ở trạng thái Failed"
+          description: >-
+            Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b> đã vào phase <b>Failed</b>.
+            Kiểm tra: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} --previous
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 7. Container Waiting Error — ImagePullBackOff / ErrImagePull / ...  #
+      # ------------------------------------------------------------------ #
+      - uid: container-waiting-007
+        title: ContainerWaitingError
+        condition: threshold
+        data:
+          - refId: waiting_error
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_pod_container_status_waiting_reason{
+                  namespace="techx-corp-prod",
+                  reason=~"ImagePullBackOff|ErrImagePull|CreateContainerConfigError|InvalidImageName|CreateContainerError"
+                } == 1
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: waiting_error
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: waiting_error
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        keepFiringFor: 5m
+        annotations:
+          summary: "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} lỗi khởi động"
+          description: >-
+            Container <b>{{ $labels.container }}</b> trong pod
+            <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            đang stuck với lý do: <b>{{ $labels.reason }}</b>.
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 8. Node Memory Pressure                                              #
+      # ------------------------------------------------------------------ #
+      - uid: node-memory-pressure-008
+        title: NodeMemoryPressure
+        condition: threshold
+        data:
+          - refId: mem_pressure
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_node_status_condition{
+                  condition="MemoryPressure",
+                  status="true"
+                } == 1
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: mem_pressure
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: mem_pressure
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        keepFiringFor: 5m
+        annotations:
+          summary: "Node {{ $labels.node }} đang Memory Pressure"
+          description: >-
+            Node <b>{{ $labels.node }}</b> đang trong trạng thái <b>MemoryPressure</b>.
+            Kubelet có thể bắt đầu evict pod. Kiểm tra: kubectl describe node {{ $labels.node }}
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 9. Node Disk Pressure                                                #
+      # ------------------------------------------------------------------ #
+      - uid: node-disk-pressure-009
+        title: NodeDiskPressure
+        condition: threshold
+        data:
+          - refId: disk_pressure
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_node_status_condition{
+                  condition="DiskPressure",
+                  status="true"
+                } == 1
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: disk_pressure
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: disk_pressure
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        keepFiringFor: 5m
+        annotations:
+          summary: "Node {{ $labels.node }} đang Disk Pressure"
+          description: >-
+            Node <b>{{ $labels.node }}</b> đang trong trạng thái <b>DiskPressure</b>.
+            Container runtime có thể bị ảnh hưởng. Kiểm tra disk usage trên node.
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 10. Node Not Ready > 5 phút                                         #
+      # ------------------------------------------------------------------ #
+      - uid: node-not-ready-010
+        title: NodeNotReady
+        condition: threshold
+        data:
+          - refId: node_not_ready
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                kube_node_status_condition{
+                  condition="Ready",
+                  status="true"
+                } == 0
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: node_not_ready
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: node_not_ready
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [-1]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        keepFiringFor: 5m
+        annotations:
+          summary: "Node {{ $labels.node }} không Ready"
+          description: >-
+            Node <b>{{ $labels.node }}</b> không ở trạng thái <b>Ready</b> hơn 5 phút.
+            Tất cả pod trên node này có thể bị ảnh hưởng.
+            Kiểm tra: kubectl describe node {{ $labels.node }}
+        labels:
+          severity: critical
+          team: platform
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts

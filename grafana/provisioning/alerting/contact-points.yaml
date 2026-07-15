@@ -1,0 +1,26 @@
+# Copyright TechX Corp Platform Team
+# SPDX-License-Identifier: Apache-2.0
+#
+# Grafana provisioning — Contact Points
+#
+# Required env vars — inject vào values.yaml grafana.env:
+#   TELEGRAM_BOT_TOKEN : token từ @BotFather (dạng "123456:ABC-xxx")
+#   TELEGRAM_CHAT_ID   : chat/group ID nhận alert (dạng "-100xxxxxxxxx")
+---
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: telegram-alerts
+    receivers:
+      - uid: telegram-alerts-receiver
+        type: telegram
+        settings:
+          bottoken: "${TELEGRAM_BOT_TOKEN}"
+          chatid: "${TELEGRAM_CHAT_ID}"
+          # Parse mode HTML cho phép bold/italic trong message
+          parse_mode: html
+          # Gửi cả message "resolved" khi alert tự hết
+          disableResolveMessage: false
+          # Disable web preview để message gọn hơn
+          disable_web_page_preview: true

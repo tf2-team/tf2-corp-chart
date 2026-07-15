@@ -1,4 +1,11 @@
 {{- if .Values.grafana.enabled -}}
+{{- /*
+  Alerting provisioning — mỗi file alerting được mount thành 1 ConfigMap riêng.
+  Sidecar sc-alerts (label grafana_alert: "1") sẽ watch tất cả ConfigMap có label này
+  và copy vào /etc/grafana/provisioning/alerting/ trong Grafana pod.
+
+  Glob cả *.yaml để bắt tất cả file provisioning alerting.
+*/ -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -9,7 +16,7 @@ metadata:
     {{- include "techx-corp.labels" . | nindent 4 }}
     grafana_alert: "1"
 data:
-  {{ (.Files.Glob "grafana/provisioning/alerting/*.yaml").AsConfig | nindent 2 }}
+  {{- (.Files.Glob "grafana/provisioning/alerting/*.yaml").AsConfig | nindent 2 }}
 
 {{- range $path, $_ := .Files.Glob "grafana/provisioning/dashboards/*.json" }}
 {{- $name := base $path | trimSuffix ".json" }}
@@ -37,6 +44,6 @@ metadata:
     {{- include "techx-corp.labels" . | nindent 4 }}
     grafana_datasource: "1"
 data:
-  {{ (.Files.Glob "grafana/provisioning/datasources/*.yaml").AsConfig | nindent 2 }}
+  {{- (.Files.Glob "grafana/provisioning/datasources/*.yaml").AsConfig | nindent 2 }}
 
 {{- end }}
