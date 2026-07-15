@@ -13,13 +13,23 @@ Full plan: workspace `docs/eso-aws-secrets-manager.md`.
 ## Deploy order (required)
 
 1. Provision the replacement property in the existing ASM object through the approved out-of-band secret-entry process. Terraform must not read or store it.
-2. Merge the `techx-corp-secrets` Git change and let Argo CD sync the `ExternalSecret` mapping.
+2. Merge the `secrets-chart` Git change. Argo CD Applications **`techx-corp-secrets`** (prod) / **`techx-corp-secrets-dev`** (dev) auto-sync path `secrets-chart` into the app namespace.
 3. Verify the `ExternalSecret` is Ready and that the generated Kubernetes `Secret` contains the required key name, without reading or printing its payload.
-4. Merge the application chart reference to the generated Secret and let Argo CD sync it.
+4. Merge the application chart reference to the generated Secret and let Argo CD sync the main app Application (`techx-corp` / `techx-corp-dev`).
 5. Verify the replacement pods become Ready and flag synchronization succeeds.
 6. Revoke the superseded token only after the replacement pods are healthy.
 
 Never combine “source migration” and “password rotation” in one change.
+
+### GitOps ownership (secrets-chart)
+
+| Environment | Argo Application | Project | Path | Helm releaseName | Destination NS |
+|-------------|------------------|---------|------|------------------|----------------|
+| production | `techx-corp-secrets` | `techx-corp` | `secrets-chart` | `techx-corp-secrets` | `techx-corp-prod` |
+| development | `techx-corp-secrets-dev` | `techx-corp-dev` | `secrets-chart` | `techx-corp-secrets` | `techx-corp-dev` |
+
+Manifests: `gitops/clusters/{prod,dev}/secrets-application.yaml`.  
+These are **not** part of the main app Application (`path: .`). After the secrets Application is bootstrapped, do **not** routine `helm upgrade` for `techx-corp-secrets`.
 
 ---
 
@@ -185,7 +195,25 @@ If a prior revision was `deployed` and only an upgrade is pending, try `helm rol
 
 ## Phase 2c — ExternalSecrets GitOps sync
 
-Commit the `secrets-chart` mapping, merge it through the normal repository workflow, and let Argo CD reconcile the secrets release. Do not run direct mutating Helm or kubectl commands against this Argo-managed release.
+### Bootstrap secrets Application (once per cluster)
+
+If the Application does not exist yet (pre-GitOps Helm-only install), apply the manifest then let auto-sync adopt release `techx-corp-secrets`:
+
+```cmd
+REM Prod
+kubectl apply -f gitops/clusters/prod/secrets-application.yaml
+argocd app get techx-corp-secrets
+argocd app wait techx-corp-secrets --sync --health --timeout 300
+
+REM Dev
+kubectl apply -f gitops/clusters/dev/secrets-application.yaml
+argocd app get techx-corp-secrets-dev
+argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
+```
+
+### Ongoing mapping changes
+
+Commit the `secrets-chart` mapping, merge it through the normal repository workflow, and let Argo CD reconcile Application `techx-corp-secrets` / `techx-corp-secrets-dev`. Do not run direct mutating Helm or kubectl commands against this Argo-managed release after cutover.
 
 After Argo CD reports the sync healthy, use read-only checks. The second command prints key names only, never payloads.
 
@@ -283,4 +311,4 @@ Repeat pattern for admin / Grafana / flagd-ui as needed. After admin rotation, u
 - Never restore a literal, superseded, or revoked credential to Git. If the replacement token is invalid, issue another replacement out-of-band and repeat the ordered GitOps cutover.
 - Local/demo only: `values-demo.yaml`
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Repaired flagd secret guidance fences and CMD-first verification flow. -->
+<!-- Change trail: @hungxqt - 2026-07-15 - Document secrets-chart Argo Applications for auto-sync. -->

@@ -161,17 +161,25 @@ Nested ECR (Terraform module `ecr`) phải tồn tại **trước** khi pod pull
    kubectl get clustersecretstore aws-secretsmanager
    ```
 
-   Then ExternalSecrets release (after ESO + ClusterSecretStore Ready; cwd = chart root):
+   Then ExternalSecrets (after ESO + ClusterSecretStore Ready). **Preferred (GitOps):**
 
-   ```bash
-   # Prod
-   helm upgrade --install techx-corp-secrets ./secrets-chart \
-     -n techx-corp-prod --create-namespace \
-     -f secrets-chart/values.yaml \
-     -f secrets-chart/values-prod.yaml
+   ```cmd
+   REM Prod — once: bootstrap Application, then auto-sync owns secrets-chart
+   kubectl apply -f gitops/clusters/prod/secrets-application.yaml
+   argocd app wait techx-corp-secrets --sync --health --timeout 300
    kubectl -n techx-corp-prod wait --for=condition=Ready externalsecret --all --timeout=120s
 
-   # Dev: -n techx-corp-dev -f secrets-chart/values-dev.yaml
+   REM Dev: kubectl apply -f gitops/clusters/dev/secrets-application.yaml
+   REM      argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
+   ```
+
+   Break-glass / pre-Argo only (cwd = chart root):
+
+   ```cmd
+   helm upgrade --install techx-corp-secrets ./secrets-chart ^
+     -n techx-corp-prod --create-namespace ^
+     -f secrets-chart/values.yaml ^
+     -f secrets-chart/values-prod.yaml
    ```
 
    Runbook: [operations/external-secrets.md](./operations/external-secrets.md).
@@ -340,6 +348,10 @@ aws eks update-kubeconfig --region us-east-1 --name techx-dev
 helm dependency build .
 
 # 2) SEC-05: ExternalSecrets → K8s Secrets (wait Ready before app)
+# Preferred: Argo Application techx-corp-secrets-dev (path secrets-chart)
+#   kubectl apply -f gitops/clusters/dev/secrets-application.yaml
+#   argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
+# Break-glass Helm (pre-Argo or emergency only):
 helm upgrade --install techx-corp-secrets ./secrets-chart \
   -n techx-corp-dev --create-namespace \
   -f secrets-chart/values.yaml \
@@ -367,6 +379,10 @@ aws eks update-kubeconfig --region us-east-1 --name techx-tf2
 helm dependency build .
 
 # 2) SEC-05 secrets
+# Preferred: Argo Application techx-corp-secrets (path secrets-chart)
+#   kubectl apply -f gitops/clusters/prod/secrets-application.yaml
+#   argocd app wait techx-corp-secrets --sync --health --timeout 300
+# Break-glass Helm (pre-Argo or emergency only):
 helm upgrade --install techx-corp-secrets ./secrets-chart \
   -n techx-corp-prod --create-namespace \
   -f secrets-chart/values.yaml \
@@ -824,16 +840,17 @@ temporary `dryrun` audit and final policy Application bootstrap.
 ## Tài liệu liên quan
 
 - GitHub chart: [`tf2-team/tf2-corp-chart`](https://github.com/tf2-team/tf2-corp-chart) (branch dev `techx-dev-corp`)  
-- `gitops/clusters/dev|prod/` — Argo CD AppProject + Application  
+- `gitops/clusters/dev|prod/` — Argo CD AppProject + app + secrets Applications  
+- `gitops/clusters/*/secrets-application.yaml` — secrets-chart GitOps (`techx-corp-secrets`)  
 - `gitops/README.md` — bootstrap tóm tắt  
 - `techx-corp-platform/docs/CICD.md` — build/push OIDC  
 - `techx-corp-platform/docs/DEPLOYMENT.md` — E2E đầy đủ  
 - `techx-corp-infra` — nested ECR + IAM + SEC-05 ASM/ESO  
 - [operations/external-secrets.md](./operations/external-secrets.md) — ESO bootstrap / cutover / rotation  
 - `values.yaml` — `secretKeyRef` production path; `values-demo.yaml` for local plaintext; `metrics-server` subchart values  
-- `secrets-chart/` — ExternalSecrets Helm release (`techx-corp-secrets`)  
+- `secrets-chart/` — ExternalSecrets chart; Argo release `techx-corp-secrets` (apps `techx-corp-secrets` / `techx-corp-secrets-dev`)  
 - `Chart.yaml` — subchart deps (OTel, Prometheus, Grafana, Jaeger, OpenSearch, **metrics-server**)  
 - `templates/NOTES.txt` — post-install notes (port-forward, ALB, **Argo CD admin credential**)  
 - [operations/gitops-argocd.md](./operations/gitops-argocd.md) — GitOps runbook + UI access
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Document production HPA floors, active-controller PDBs, and hard spreading. -->
+<!-- Change trail: @hungxqt - 2026-07-15 - Prefer Argo Application for secrets-chart over routine Helm. -->

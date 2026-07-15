@@ -1,4 +1,5 @@
-# AppProject for production cluster Application "techx-corp".
+# AppProject for production Applications: techx-corp (app chart) and
+# techx-corp-secrets (secrets-chart / ExternalSecrets).
 # Same inventory-based clusterResourceWhitelist as dev. Re-inventory after chart upgrades.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
@@ -35,7 +36,10 @@ spec:
     - group: ""
       kind: Namespace
 
-  # Same ignore posture as dev (ESO secrets-chart, Helm history, STS PVCs, kube defaults).
+  # Orphan ignore: kube defaults, Helm history Secrets, ESO-generated Secrets
+  # (created by ESO, not by either Application), STS PVCs, ALB TargetGroupBindings.
+  # ExternalSecret CRs are owned by Application techx-corp-secrets (still ignored
+  # here so the main app chart does not warn during dual-app ownership).
   orphanedResources:
     warn: true
     ignore:
@@ -58,3 +62,4 @@ spec:
         name: valkey-cart-data-valkey-cart-0
       - group: elbv2.k8s.aws
         kind: TargetGroupBinding
+# Change trail: @hungxqt - 2026-07-15 - Document dual Application ownership for secrets-chart.

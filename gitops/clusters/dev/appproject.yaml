@@ -1,4 +1,5 @@
-# AppProject for development cluster Application "techx-corp".
+# AppProject for development Applications: techx-corp-dev (app chart) and
+# techx-corp-secrets-dev (secrets-chart / ExternalSecrets).
 # Inventory (helm template + deps): ClusterRole / ClusterRoleBinding from Grafana,
 # OpenTelemetry Collector, Prometheus. First-party chart resources are namespaced.
 # Re-run inventory after subchart upgrades.
@@ -46,9 +47,11 @@ spec:
   # Do not allow this project to manage Argo CD itself.
   namespaceResourceBlacklist: []
 
-  # Warn on unexpected objects in destination NS. Ignore known non-chart owners:
-  # - kube defaults, Helm release Secrets (pre-GitOps), ESO secrets + CRs (secrets-chart),
-  # - StatefulSet PVCs (volumeClaimTemplates, not standalone chart objects).
+  # Warn on unexpected objects in destination NS. Ignore known non-Application owners:
+  # - kube defaults, Helm release Secrets (pre-GitOps)
+  # - ESO-generated Secrets (ESO creates them; ExternalSecrets owned by techx-corp-secrets-dev)
+  # - StatefulSet PVCs (volumeClaimTemplates, not standalone chart objects)
+  # - ALB TargetGroupBindings
   orphanedResources:
     warn: true
     ignore:
@@ -72,3 +75,4 @@ spec:
       # AWS Load Balancer Controller creates these for ALB Ingress (not in chart).
       - group: elbv2.k8s.aws
         kind: TargetGroupBinding
+# Change trail: @hungxqt - 2026-07-15 - Document dual Application ownership for secrets-chart.

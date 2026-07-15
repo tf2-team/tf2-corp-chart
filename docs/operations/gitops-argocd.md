@@ -65,19 +65,25 @@ argocd login internal.hungtran.id.vn --grpc-web --rootpath /argocd --username ad
 
 1. Terraform: `argocd_enabled = true` (dev trước) → apply.
 2. Cấu hình credential repo Git trong namespace `argocd` (GitHub App / deploy key).
-3. Cập nhật `values-dev.yaml` / `values-prod.yaml` **tag đang chạy thật** (giảm drift).
-4. Apply manifests:
+3. ESO + `ClusterSecretStore` Ready (SEC-05) trước khi sync secrets Application.
+4. Cập nhật `values-dev.yaml` / `values-prod.yaml` **tag đang chạy thật** (giảm drift).
+5. Apply manifests:
 
 ```bash
 kubectl apply -f gitops/clusters/dev/   # hoặc prod/
 ```
 
-5. Application bật **auto-sync + self-heal** (`prune: false`). Sau apply, Argo sẽ
-   tự sync khi OutOfSync. Vẫn có thể force/review:
+6. Applications bật **auto-sync + self-heal** (`prune: false` cho secrets). Sau apply, Argo sẽ
+   tự sync khi OutOfSync. Thứ tự: **secrets Application trước**, rồi app chart.
 
 ```bash
-# Dev: techx-corp-dev / namespace techx-corp-dev
-# Prod: techx-corp / namespace techx-corp-prod
+# Dev
+#   secrets: techx-corp-secrets-dev  → namespace techx-corp-dev  (path secrets-chart)
+#   app:     techx-corp-dev          → namespace techx-corp-dev  (path .)
+# Prod
+#   secrets: techx-corp-secrets      → namespace techx-corp-prod
+#   app:     techx-corp              → namespace techx-corp-prod
+argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
 argocd app diff techx-corp-dev
 argocd app sync techx-corp-dev --dry-run   # optional review
 argocd app wait techx-corp-dev --sync --health --timeout 600
@@ -86,8 +92,16 @@ argocd app wait techx-corp-dev --sync --health --timeout 600
 
 ## Ownership sau cutover
 
-Argo CD **quản lý** các resource hiện có. Trạng thái Helm release cũ **không** được chuyển sang Argo.  
-Không còn dùng `helm upgrade` cho deploy thường. Break-glass: **tắt auto-sync** trước, rồi Helm nếu bắt buộc, sau đó **đồng bộ lại Git**.
+| Workload | Argo Application | Git path | Helm releaseName |
+|----------|------------------|----------|------------------|
+| App + observability chart | `techx-corp` / `techx-corp-dev` | `.` | `techx-corp` / `techx-corp-dev` |
+| ExternalSecrets (SEC-05) | `techx-corp-secrets` / `techx-corp-secrets-dev` | `secrets-chart` | `techx-corp-secrets` |
+
+Argo CD **quản lý** các resource do Application render. ESO-generated Kubernetes `Secret`s
+vẫn do ESO tạo (không phải object trong chart); chỉ `ExternalSecret` CRs thuộc secrets Application.
+
+Không còn dùng `helm upgrade` thường cho **app** hoặc **secrets** sau cutover. Break-glass:
+**tắt auto-sync** trên Application tương ứng trước, rồi Helm nếu bắt buộc, sau đó **đồng bộ lại Git**.
 
 ## Rollback
 
@@ -244,3 +258,6 @@ first-party resources (`helm.sh/chart: techx-corp-*`).
 - Workspace plan: `docs/gitops-argocd.md`
 - Backlog: `docs/backlogs/2026-07-09-rel-09-gitops-argocd.md`
 - Smoke: `scripts/smoke-test.sh`
+- Secrets GitOps: `docs/operations/external-secrets.md`, `gitops/clusters/*/secrets-application.yaml`
+
+<!-- Change trail: @hungxqt - 2026-07-15 - Document secrets-chart Argo Application ownership. -->
