@@ -1542,6 +1542,9 @@ components:
       limits:
         cpu: 100m
         memory: 128Mi
+    # Base: local file only (Compose / bare helm without BTC). Prod dual-sources
+    # (file + BTC HTTP, central wins on key clash) live in values-prod.yaml and
+    # values-flagd-sync.yaml. Keep initContainers + ConfigMap so the file path exists.
     command:
       - "/flagd-build"
       - "start"
@@ -2706,4 +2709,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-14 - Fix recommendation HPA unknown CPU; postgres capacity.
+# Change trail: @hungxqt - 2026-07-15 - Note prod dual flagd sources; base remains local file.

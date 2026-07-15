@@ -115,7 +115,11 @@ components:
     # Reliability-only change: flag definitions and incident controls remain
     # unchanged. Two replicas remove flagd as a single-pod/node dependency.
     replicas: 2
-    # BTC central flag source (values-flagd-sync): read-only HTTP sync, no local flagd-ui.
+    # Dual sources: local ConfigMap file (team-only keys) + BTC central HTTP.
+    # Merge order: later source wins on key clash — HTTP last so BTC always wins
+    # for shared chaos/incident flags (paymentFailure, cartFailure, …).
+    # flagd-ui stays off so cluster UI cannot override central definitions.
+    # Team flags: add unique keys to flagd/demo.flagd.json (not BTC key names).
     sidecarContainers: []
     command:
       - "/flagd-build"
@@ -125,7 +129,7 @@ components:
       - "--ofrep-port"
       - "8016"
       - "--sources"
-      - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
+      - '[{"uri":"/etc/flagd/demo.flagd.json","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
     schedulingRules: *directive03-hard-spread
 
   frontend:
@@ -210,4 +214,4 @@ opentelemetry-collector:
           value: techx-corp-prod
           action: upsert
 
-# Change trail: @hungxqt - 2026-07-15 - Cart managed Valkey TLS+AUTH env for ElastiCache cutover.
+# Change trail: @hungxqt - 2026-07-15 - Dual flagd sources: local file + BTC HTTP (central wins).

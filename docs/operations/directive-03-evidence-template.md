@@ -26,7 +26,7 @@
 - [ ] Managed Valkey has a healthy primary and replica in distinct AZs.
 - [ ] Candidate node contains no Kafka, PostgreSQL or OpenSearch pod.
 - [ ] Directive #1 public/private access boundary is unchanged.
-- [ ] flagd is enabled, Ready and using the reviewed BTC source.
+- [ ] flagd is enabled, Ready, and dual-sourced (local file + reviewed BTC HTTP; central wins on key clash).
 
 Attach outputs:
 
@@ -83,3 +83,5 @@ service reaches zero Ready endpoints.
 - Kafka stop/recovery test and outbox drain evidence:
 - Managed Valkey failover test:
 - Any incident/change ticket:
+
+<!-- Change trail: @hungxqt - 2026-07-15 - flagd dual-source evidence checklist. -->

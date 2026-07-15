@@ -1,12 +1,21 @@
-# Per-TF: flagd sync read-only từ nguồn cấu hình flag trung tâm của BTC.
+# Per-TF: flagd dual-source — local file + BTC central HTTP (read-only).
 # Ghép khi deploy:  helm ... -f values-flagd-sync.yaml
-# Thay <TOKEN> bằng token BTC cấp cho TF. Token không bí mật với TF - chỉ để chặn
-# truy cập vu vơ từ internet; TF không tự đổi được flag vì nguồn trung tâm sync đè lên.
+# (Prod Argo already embeds the same --sources in values-prod.yaml.)
+#
+# Merge priority (flagd): last source in the array wins on duplicate flag keys.
+# Order here is intentional:
+#   1) file  — chart ConfigMap flagd/demo.flagd.json (team-only flags)
+#   2) http  — BTC central flags.json (chaos/incident; always overrides same keys)
+#
+# Token is TF-scoped access to the central document only; TF cannot write BTC flags.
+# Do not re-enable flagd-ui in prod if the goal is to prevent local UI override
+# of shared key names (UI only edits the local file, which loses to HTTP on clash).
+# Team-only flags must use unique keys not present in the BTC document.
 components:
   flagd:
-    # 1) Gỡ flagd-ui local (không cho toggle bằng web trong cluster TF)
+    # 1) No local flagd-ui (toggle UI disabled in cluster)
     sidecarContainers: []
-    # 2) Đổi nguồn flag: từ file local -> central http có bearer (token literal, không cần shell expand)
+    # 2) Dual sources: local file then central HTTP (central wins on name clash)
     command:
       - "/flagd-build"
       - "start"
@@ -15,4 +24,6 @@ components:
       - "--ofrep-port"
       - "8016"
       - "--sources"
-      - '[{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
+      - '[{"uri":"/etc/flagd/demo.flagd.json","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
+
+# Change trail: @hungxqt - 2026-07-15 - Dual flagd sources: local file + BTC HTTP (central wins).
