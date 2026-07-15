@@ -1266,6 +1266,25 @@ components:
 
   product-reviews:
     enabled: true
+    serviceAccount:
+      create: true
+      name: product-reviews
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-dev-tf2-product-reviews-model-read
+    modelDelivery:
+      enabled: true
+      awsRegion: us-east-1
+      fetcherImage: public.ecr.aws/aws-cli/aws-cli:2.27.49
+      s3Uri: s3://techx-dev-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/model.tar.gz
+      mountPath: /models/huggingface
+      cacheSizeLimit: 2Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
     useDefault:
       env: true
     # Tier B† (Python gRPC on 3551): readiness timeout 5s for LLM/thread-pool
@@ -1323,11 +1342,11 @@ components:
       # 50-user baseline: P95/P99 CPU 43.4m/50.2m, P99 memory 80.6Mi.
       # Request/limit raised for OTEL+LLM headroom (was 96Mi/160Mi; probe EOF/OOM risk).
       requests:
-        cpu: 60m
-        memory: 128Mi
+        cpu: 250m
+        memory: 1Gi
       limits:
-        cpu: 300m
-        memory: 256Mi
+        cpu: "1"
+        memory: 2Gi
     # Product-page AI reviews (P1); RPS primary; CPU safety valve.
     # Lower RPS/pod than recommendation — LLM + Postgres path is heavier.
     # maxReplicas 6: same band as recommendation until load-test pin data.

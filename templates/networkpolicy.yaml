@@ -849,6 +849,13 @@ spec:
           port: 4317
         - protocol: TCP
           port: 4318
+    # S3 model download. IRSA restricts reads to the exact bucket/prefix.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
 {{- end }}
 
 {{/* ── 17. ACCOUNTING ───────────────────────────────────────────────── */}}
