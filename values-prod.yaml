@@ -115,11 +115,11 @@ components:
     # Reliability-only change: flag definitions and incident controls remain
     # unchanged. Two replicas remove flagd as a single-pod/node dependency.
     replicas: 2
-    # Dual sources: local ConfigMap file (team-only keys) + BTC central HTTP.
+    # Dual sources: local ConfigMap file + BTC central HTTP.
     # Merge order: later source wins on key clash — HTTP last so BTC always wins
-    # for shared chaos/incident flags (paymentFailure, cartFailure, …).
+    # for shared original keys (paymentFailure, cartFailure, …).
+    # Team self-test: toggle local-* twins in /feature (apps OR/max with BTC keys).
     # flagd-ui: inherit base values.yaml sidecar (writes local file only).
-    # UI toggles team-only keys effectively; shared BTC keys still follow HTTP.
     # Access: /feature via internal ALB / Client VPN (CloudFront blocks /feature).
     # Requires ESO Secret techx-corp-flagd-ui (SECRET_KEY_BASE).
     command:
@@ -215,4 +215,4 @@ opentelemetry-collector:
           value: techx-corp-prod
           action: upsert
 
-# Change trail: @hungxqt - 2026-07-15 - Dual flagd sources + re-enable flagd-ui for team-only toggles.
+# Change trail: @hungxqt - 2026-07-15 - Dual flagd sources, flagd-ui, document local-* team flags.

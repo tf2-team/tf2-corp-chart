@@ -11,7 +11,7 @@
 # UI writes only the local file (shared emptyDir with flagd). It cannot write BTC.
 # Toggling a BTC-owned key in the UI changes the local copy only; effective value
 # still comes from HTTP until that key is absent from central.
-# Team-only flags: unique keys not present in the BTC document (UI or Git JSON).
+# Team self-test flags: local-* twins in demo.flagd.json (UI or Git); apps OR/max with BTC keys.
 # Token is TF-scoped access to the central document only; TF cannot write BTC flags.
 components:
   flagd:
@@ -27,4 +27,4 @@ components:
       - "--sources"
       - '[{"uri":"/etc/flagd/demo.flagd.json","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
 
-# Change trail: @hungxqt - 2026-07-15 - Dual flagd sources with flagd-ui enabled for team-only toggles.
+# Change trail: @hungxqt - 2026-07-15 - Dual flagd sources, flagd-ui, document local-* team flags.
