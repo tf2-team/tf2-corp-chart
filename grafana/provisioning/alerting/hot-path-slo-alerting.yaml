@@ -1,0 +1,231 @@
+# Copyright TechX Corp Platform Team
+# SPDX-License-Identifier: Apache-2.0
+#
+# Hot Path Service SLO Alert Rules
+#
+# Metric source: traces_span_metrics_duration_milliseconds_* (spanmetrics từ OTel Collector)
+# Datasource   : webstore-metrics (Prometheus uid)
+# Namespace    : techx-corp-prod
+#
+# Thresholds:
+#   Error rate  > 1%  (5m window)   → warning
+#   P95 latency > 1s  (5m window)   → warning
+#   Pod restart > 3   (5m window)   → critical (per hot-path pod)
+#
+# Hot path services:
+#   frontend, frontend-proxy, cart, checkout, currency,
+#   product-catalog, product-reviews, quote, recommendation, shipping
+---
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: hot-path-slo
+    folder: platform
+    interval: 1m
+    rules:
+
+      # ------------------------------------------------------------------ #
+      # 1. Error Rate > 1% — bất kỳ hot path service nào                   #
+      # ------------------------------------------------------------------ #
+      - uid: hotpath-error-rate-001
+        title: HotPathHighErrorRate
+        condition: threshold
+        data:
+          - refId: error_rate
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                100 * (
+                  sum by (service_name) (
+                    rate(
+                      traces_span_metrics_duration_milliseconds_count{
+                        service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping",
+                        status_code="STATUS_CODE_ERROR"
+                      }[5m]
+                    )
+                  )
+                  or
+                  (
+                    sum by (service_name) (
+                      rate(
+                        traces_span_metrics_duration_milliseconds_count{
+                          service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
+                        }[5m]
+                      )
+                    ) * 0
+                  )
+                )
+                /
+                sum by (service_name) (
+                  rate(
+                    traces_span_metrics_duration_milliseconds_count{
+                      service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
+                    }[5m]
+                  )
+                ) > 1
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: error_rate
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: error_rate
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        keepFiringFor: 2m
+        annotations:
+          summary: "{{ $labels.service_name }} error rate cao"
+          description: >-
+            Service <b>{{ $labels.service_name }}</b> đang có error rate
+            <b>{{ $values.error_rate | printf \"%.2f\" }}%</b> (ngưỡng: 1%) trong 5 phút qua.
+        labels:
+          severity: warning
+          team: platform
+          alert_type: error_rate
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 2. P95 Latency > 1s — bất kỳ hot path service nào                  #
+      # ------------------------------------------------------------------ #
+      - uid: hotpath-p95-latency-002
+        title: HotPathHighP95Latency
+        condition: threshold
+        data:
+          - refId: p95_ms
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                histogram_quantile(
+                  0.95,
+                  sum by (service_name, le) (
+                    rate(
+                      traces_span_metrics_duration_milliseconds_bucket{
+                        service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
+                      }[5m]
+                    )
+                  )
+                ) > 1000
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: p95_ms
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: p95_ms
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        keepFiringFor: 2m
+        annotations:
+          summary: "{{ $labels.service_name }} P95 latency > 1s"
+          description: >-
+            Service <b>{{ $labels.service_name }}</b> P95 latency đang là
+            <b>{{ $values.p95_ms | printf \"%.0f\" }}ms</b> (ngưỡng: 1000ms) trong 5 phút qua.
+        labels:
+          severity: warning
+          team: platform
+          alert_type: latency
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
+
+      # ------------------------------------------------------------------ #
+      # 3. Pod Restart > 3 lần / 5 phút — chỉ hot path pods                #
+      # ------------------------------------------------------------------ #
+      - uid: hotpath-pod-restart-003
+        title: HotPathPodRestarting
+        condition: threshold
+        data:
+          - refId: restarts_5m
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                increase(
+                  kube_pod_container_status_restarts_total{
+                    namespace="techx-corp-prod",
+                    pod=~"(frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping)-.*"
+                  }[5m]
+                ) > 3
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: restarts_5m
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: restarts_5m
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        keepFiringFor: 5m
+        annotations:
+          summary: "Hot path pod {{ $labels.pod }} restart liên tục"
+          description: >-
+            Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
+            (container: <b>{{ $labels.container }}</b>) đã restart
+            <b>{{ $values.restarts_5m | printf \"%.0f\" }}</b> lần trong 5 phút.
+            Service này thuộc hot path — cần xử lý ngay.
+        labels:
+          severity: critical
+          team: platform
+          alert_type: restart
+        isPaused: false
+        notification_settings:
+          receiver: telegram-alerts
