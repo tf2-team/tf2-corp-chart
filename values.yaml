@@ -10,7 +10,7 @@
 #   Phase 2 — enforce: set enabled: true in dev; soak 24h, check OTel traces for errors.
 #   Phase 3 — promote: apply to prod after dev soak is clean.
 networkPolicy:
-  enabled: false   # flip to true after CNI audit (see docs above)
+  enabled: false # flip to true after CNI audit (see docs above)
 
 #
 # SEC-05: Sensitive credentials use secretKeyRef → ESO-synced Secrets.
@@ -120,6 +120,15 @@ default:
     capabilities:
       drop:
         - ALL
+  # Runtime-hardening baseline for every first-party init container.
+  # Components may override individual values under initContainers[].resources.
+  initContainerResources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -314,7 +323,7 @@ components:
         mountPath: /var/log/opentelemetry/dotnet
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -322,7 +331,7 @@ components:
             "until nc -z -v -w30 kafka 9092; do echo waiting for kafka; sleep 2; done;",
           ]
       - name: wait-for-postgresql
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -446,7 +455,7 @@ components:
         mountPath: /tmp
     initContainers:
       - name: wait-for-valkey-cart
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -518,7 +527,7 @@ components:
       behavior: *hpa-behavior-default
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -645,7 +654,7 @@ components:
         mountPath: /tmp
     initContainers:
       - name: wait-for-kafka
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -1256,7 +1265,7 @@ components:
       behavior: *hpa-behavior-default
     initContainers:
       - name: wait-for-postgresql
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -1362,7 +1371,7 @@ components:
         mountPath: /tmp
     initContainers:
       - name: wait-for-postgresql
-        image: busybox:latest
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -1643,7 +1652,7 @@ components:
             mountPath: /tmp
     initContainers:
       - name: init-config
-        image: busybox
+        image: busybox:1.37.0
         command:
           [
             "sh",
@@ -2577,6 +2586,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  # The persistent storage uses fsGroup 472; the root/CHOWN init container is unnecessary.
+  initChownData:
+    enabled: false
   deploymentStrategy:
     type: Recreate
   # Observability control plane → Critical MNG

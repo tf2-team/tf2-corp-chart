@@ -1,0 +1,49 @@
+gatekeeper:
+  replicas: 2
+  auditInterval: 60
+  metricsBackends:
+    - prometheus
+  disableAudit: false
+  disableMutation: true
+  disableValidatingWebhook: false
+  validatingWebhookFailurePolicy: Fail
+  enableExternalData: false
+  enableGeneratorResourceExpansion: false
+  enableRuntimeDefaultSeccompProfile: true
+
+  controllerManager:
+    nodeSelector:
+      kubernetes.io/os: linux
+      workload-class: critical
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  audit:
+    nodeSelector:
+      kubernetes.io/os: linux
+      workload-class: critical
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  pdb:
+    controllerManager:
+      minAvailable: 1
+
+  postInstall:
+    labelNamespace:
+      enabled: false
+    probeWebhook:
+      enabled: false
+
+  upgradeCRDs:
+    enabled: false

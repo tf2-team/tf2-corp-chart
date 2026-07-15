@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Pod
+metadata: {name: valid-registry-port-tag, namespace: default}
+spec:
+  containers:
+    - name: app
+      image: registry.example.com:5000/team/app:v1.2.3

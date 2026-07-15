@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gatekeeper
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Gatekeeper controller and runtime-hardening policy for production
+  sourceRepos:
+    - https://github.com/tf2-team/tf2-corp-chart.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: gatekeeper-system
+  clusterResourceWhitelist:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: templates.gatekeeper.sh
+      kind: "*"
+    - group: constraints.gatekeeper.sh
+      kind: "*"

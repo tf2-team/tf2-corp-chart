@@ -1,0 +1,60 @@
+name: Runtime hardening verification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/runtime-hardening.yml"
+      - "Chart.yaml"
+      - "Chart.lock"
+      - "charts/**"
+      - "gatekeeper-chart/**"
+      - "gitops/gatekeeper/**"
+      - "scripts/render-gatekeeper-dryrun.ps1"
+      - "scripts/verify-runtime-hardening.ps1"
+      - "templates/**"
+      - "tests/runtime-hardening/**"
+      - "values.schema.json"
+      - "values*.yaml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/runtime-hardening.yml"
+      - "Chart.yaml"
+      - "Chart.lock"
+      - "charts/**"
+      - "gatekeeper-chart/**"
+      - "gitops/gatekeeper/**"
+      - "scripts/render-gatekeeper-dryrun.ps1"
+      - "scripts/verify-runtime-hardening.ps1"
+      - "templates/**"
+      - "tests/runtime-hardening/**"
+      - "values.schema.json"
+      - "values*.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: azure/setup-kubectl@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: false
+      - name: Build chart dependencies
+        run: |
+          helm repo add opentelemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add jaeger https://jaegertracing.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana-community.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+          helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts
+          helm dependency build .
+          helm dependency build gatekeeper-chart
+      - name: Verify chart schema and Gatekeeper policies
+        shell: pwsh
+        run: ./scripts/verify-runtime-hardening.ps1

@@ -476,6 +476,9 @@
         "initContainerSecurityContext": {
           "$ref": "#/definitions/SecurityContext"
         },
+        "initContainerResources": {
+          "$ref": "#/definitions/ContainerResources"
+        },
         "rollout": {
           "$ref": "#/definitions/Rollout"
         },
@@ -620,6 +623,7 @@
     },
     "ContainerResources": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "limits": {
           "$ref": "#/definitions/ContainerResourceDef"
@@ -631,6 +635,7 @@
     },
     "ContainerResourceDef": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "cpu": {
           "type": "string"

@@ -286,11 +286,17 @@ spec:
         {{- end }}
         {{- range $initContainer := .initContainers }}
         {{- $mergedSecurityContext := mergeOverwrite (dict) (default dict $.defaultValues.initContainerSecurityContext) (default dict $initContainer.securityContext) }}
+        {{- $mergedResources := mergeOverwrite (dict) (default dict $.defaultValues.initContainerResources) (default dict $initContainer.resources) }}
         {{- $c := mergeOverwrite (dict) $initContainer }}
         {{- if not (empty $mergedSecurityContext) }}
         {{- $c = mergeOverwrite $c (dict "securityContext" $mergedSecurityContext) }}
         {{- else }}
         {{- $c = omit $c "securityContext" }}
+        {{- end }}
+        {{- if not (empty $mergedResources) }}
+        {{- $c = mergeOverwrite $c (dict "resources" $mergedResources) }}
+        {{- else }}
+        {{- $c = omit $c "resources" }}
         {{- end }}
         {{- tpl (toYaml (list $c)) $ | nindent 8 }}
         {{- end }}

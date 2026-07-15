@@ -84,7 +84,7 @@ components:
     # in-cluster singleton Service.
     initContainers:
       - name: wait-for-managed-valkey
-        image: busybox:latest
+        image: busybox:1.37.0
         command: ["sh", "-c", "until nc -z -v -w5 valkey-cart.techx.internal 6379; do echo waiting for managed Valkey; sleep 2; done;"]
   checkout:
     autoscaling:

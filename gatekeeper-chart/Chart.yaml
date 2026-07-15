@@ -1,0 +1,10 @@
+apiVersion: v2
+type: application
+name: techx-corp-gatekeeper
+version: 0.1.0
+appVersion: "3.23.0"
+description: TechX Corp Gatekeeper admission controller
+dependencies:
+  - name: gatekeeper
+    version: 3.23.0
+    repository: https://open-policy-agent.github.io/gatekeeper/charts

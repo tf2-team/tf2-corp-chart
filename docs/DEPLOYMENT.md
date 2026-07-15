@@ -801,6 +801,24 @@ kubectl -n argocd annotate application techx-corp-dev \
 
 ---
 
+## Gatekeeper runtime hardening (MANDATE-05)
+
+Gatekeeper is Kubernetes policy infrastructure and is delivered entirely from
+this chart repository. `gatekeeper-chart/` pins the upstream chart; no Gatekeeper
+module or apply is required in `tf2-corp-infra`.
+
+```bash
+kubectl apply -f gitops/clusters/prod/gatekeeper-appproject.yaml
+kubectl apply -f gitops/clusters/prod/gatekeeper-application.yaml
+argocd app wait gatekeeper --sync --health --timeout 600
+```
+
+After the controller is healthy, follow
+[`operations/runtime-hardening.md`](./operations/runtime-hardening.md) for the
+temporary `dryrun` audit and final policy Application bootstrap.
+
+---
+
 ## Tài liệu liên quan
 
 - GitHub chart: [`tf2-team/tf2-corp-chart`](https://github.com/tf2-team/tf2-corp-chart) (branch dev `techx-dev-corp`)  

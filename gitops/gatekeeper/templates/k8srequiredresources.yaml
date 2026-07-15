@@ -1,0 +1,58 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredresources
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredResources
+      validation:
+        openAPIV3Schema:
+          type: object
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      code:
+        - engine: Rego
+          source:
+            version: "v1"
+            rego: |
+              package k8srequiredresources
+
+              pod_spec := input.review.object.spec if {
+                input.review.kind.kind == "Pod"
+              }
+
+              pod_spec := input.review.object.spec.template.spec if {
+                input.review.kind.kind in {"Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "Job", "ReplicationController"}
+              }
+
+              pod_spec := input.review.object.spec.jobTemplate.spec.template.spec if {
+                input.review.kind.kind == "CronJob"
+              }
+
+              checked_containers contains {"container": container, "type": "container"} if {
+                some container in object.get(pod_spec, "containers", [])
+              }
+
+              checked_containers contains {"container": container, "type": "initContainer"} if {
+                some container in object.get(pod_spec, "initContainers", [])
+              }
+
+              required_fields := [
+                {"section": "requests", "resource": "cpu"},
+                {"section": "requests", "resource": "memory"},
+                {"section": "limits", "resource": "cpu"},
+                {"section": "limits", "resource": "memory"},
+              ]
+
+              violation contains {"msg": msg} if {
+                some ref in checked_containers
+                some field in required_fields
+                resources := object.get(ref.container, "resources", {})
+                section := object.get(resources, field.section, {})
+                object.get(section, field.resource, "") == ""
+                msg := sprintf("%s %s: %s %s must set resources.%s.%s", [input.review.kind.kind, input.review.object.metadata.name, ref.type, ref.container.name, field.section, field.resource])
+              }

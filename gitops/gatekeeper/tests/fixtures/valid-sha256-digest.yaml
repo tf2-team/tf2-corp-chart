@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Pod
+metadata: {name: valid-sha256-digest, namespace: default}
+spec:
+  containers:
+    - name: app
+      image: nginx@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

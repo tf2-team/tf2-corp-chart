@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - templates/k8scontainerhardening.yaml
+  - templates/k8sallowedimagetags.yaml
+  - templates/k8srequiredresources.yaml
+  - constraints/container-hardening.yaml
+  - constraints/allowed-image-tags.yaml
+  - constraints/required-resources.yaml
