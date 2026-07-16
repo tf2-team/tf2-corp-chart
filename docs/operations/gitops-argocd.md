@@ -67,35 +67,41 @@ argocd login internal.hungtran.id.vn --grpc-web --rootpath /argocd --username ad
 2. Cấu hình credential repo Git trong namespace `argocd` (GitHub App / deploy key).
 3. ESO + `ClusterSecretStore` Ready (SEC-05) trước khi sync secrets Application.
 4. Cập nhật `values-dev.yaml` / `values-prod.yaml` **tag đang chạy thật** (giảm drift).
-5. Apply manifests:
+5. Apply **root app-of-apps only** (một lần / cluster). Root reconciles child
+   Application/AppProject CRs from `gitops/clusters/{env}/`:
 
-```bash
-kubectl apply -f gitops/clusters/dev/   # hoặc prod/
+```cmd
+cd /d techx-corp-chart
+kubectl apply -f gitops\bootstrap\dev\
+REM Prod: kubectl apply -f gitops\bootstrap\prod\
 ```
 
-6. Applications bật **auto-sync + self-heal** (`prune: false` cho secrets). Sau apply, Argo sẽ
-   tự sync khi OutOfSync. Thứ tự: **secrets Application trước**, rồi app chart.
+Do **not** place root manifests under `gitops/clusters/*` (avoids self-management).
+Steady-state: add/change children in `gitops/clusters/{env}/` via Git only.
 
-```bash
-# Dev
-#   secrets: techx-corp-secrets-dev  → namespace techx-corp-dev  (path secrets-chart)
-#   app:     techx-corp-dev          → namespace techx-corp-dev  (path .)
-# Prod
-#   secrets: techx-corp-secrets      → namespace techx-corp-prod
-#   app:     techx-corp              → namespace techx-corp-prod
+6. Child Applications bật **auto-sync + self-heal** (`prune: false` cho secrets và root).
+   Thứ tự wait: **root** → **secrets** → **app chart**. Prod also creates Gatekeeper
+   controller Application (`gatekeeper`); policy stays manual until SEC-07 cutover.
+
+```cmd
+REM Dev
+argocd app wait root-dev --sync --health --timeout 300
 argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
 argocd app diff techx-corp-dev
-argocd app sync techx-corp-dev --dry-run   # optional review
+argocd app sync techx-corp-dev --dry-run
 argocd app wait techx-corp-dev --sync --health --timeout 600
-./scripts/smoke-test.sh --namespace techx-corp-dev
+bash scripts/smoke-test.sh -n techx-corp-dev
 ```
 
 ## Ownership sau cutover
 
 | Workload | Argo Application | Git path | Helm releaseName |
 |----------|------------------|----------|------------------|
+| Root app-of-apps | `root-prod` / `root-dev` | `gitops/clusters/{prod,dev}` (dir) | n/a |
 | App + observability chart | `techx-corp` / `techx-corp-dev` | `.` | `techx-corp` / `techx-corp-dev` |
 | ExternalSecrets (SEC-05) | `techx-corp-secrets` / `techx-corp-secrets-dev` | `secrets-chart` | `techx-corp-secrets` |
+| Gatekeeper controller (prod) | `gatekeeper` | `gatekeeper-chart` | `gatekeeper` |
+| Gatekeeper policy (prod) | `gatekeeper-policy` | `gitops/gatekeeper` | n/a (manual until cutover) |
 
 Argo CD **quản lý** các resource do Application render. ESO-generated Kubernetes `Secret`s
 vẫn do ESO tạo (không phải object trong chart); chỉ `ExternalSecret` CRs thuộc secrets Application.
@@ -259,5 +265,6 @@ first-party resources (`helm.sh/chart: techx-corp-*`).
 - Backlog: `docs/backlogs/2026-07-09-rel-09-gitops-argocd.md`
 - Smoke: `scripts/smoke-test.sh`
 - Secrets GitOps: `docs/operations/external-secrets.md`, `gitops/clusters/*/secrets-application.yaml`
+- Root bootstrap: `gitops/bootstrap/{dev,prod}/`, `gitops/README.md`
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Document secrets-chart Argo Application ownership. -->
+<!-- Change trail: @hungxqt - 2026-07-16 - Document root app-of-apps bootstrap ownership. -->

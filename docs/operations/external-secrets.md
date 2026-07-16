@@ -197,19 +197,25 @@ If a prior revision was `deployed` and only an upgrade is pending, try `helm rol
 
 ### Bootstrap secrets Application (once per cluster)
 
-If the Application does not exist yet (pre-GitOps Helm-only install), apply the manifest then let auto-sync adopt release `techx-corp-secrets`:
+Preferred: apply the **root** app-of-apps once so `secrets-application.yaml` under
+`gitops/clusters/{env}/` is reconciled by Argo (same path as store + Gatekeeper apps).
 
 ```cmd
 REM Prod
-kubectl apply -f gitops/clusters/prod/secrets-application.yaml
+kubectl apply -f gitops\bootstrap\prod\
+argocd app wait root-prod --sync --health --timeout 300
 argocd app get techx-corp-secrets
 argocd app wait techx-corp-secrets --sync --health --timeout 300
 
 REM Dev
-kubectl apply -f gitops/clusters/dev/secrets-application.yaml
+kubectl apply -f gitops\bootstrap\dev\
+argocd app wait root-dev --sync --health --timeout 300
 argocd app get techx-corp-secrets-dev
 argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
 ```
+
+Break-glass (pre-root only): `kubectl apply -f gitops/clusters/{env}/secrets-application.yaml`
+still works if the root Application is not installed yet.
 
 ### Ongoing mapping changes
 
@@ -311,4 +317,4 @@ Repeat pattern for admin / Grafana / flagd-ui as needed. After admin rotation, u
 - Never restore a literal, superseded, or revoked credential to Git. If the replacement token is invalid, issue another replacement out-of-band and repeat the ordered GitOps cutover.
 - Local/demo only: `values-demo.yaml`
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Document secrets-chart Argo Applications for auto-sync. -->
+<!-- Change trail: @hungxqt - 2026-07-16 - Prefer root app-of-apps for secrets Application bootstrap. -->

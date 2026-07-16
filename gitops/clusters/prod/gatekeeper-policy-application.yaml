@@ -1,3 +1,9 @@
+# Gatekeeper policy Application (production) — ConstraintTemplates + Constraints.
+# Managed by root-prod. MANUAL SYNC until SEC-07 dry-run cutover:
+#   1. Controller Application gatekeeper is Healthy.
+#   2. Temporary dryrun policy applied; two audit cycles with totalViolations=0.
+#   3. Enable automated below (selfHeal true, prune false) via Git PR, then sync.
+# Committed constraint enforcementAction remains deny (final source of truth).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -12,13 +18,15 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: gatekeeper-system
+  # Manual sync only until cutover. After approval, restore:
+  #   automated:
+  #     prune: false
+  #     selfHeal: true
   syncPolicy:
-    automated:
-      prune: false
-      selfHeal: true
     retry:
       limit: 3
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
+# Change trail: @hungxqt - 2026-07-16 - Manual sync until SEC-07 deny cutover.

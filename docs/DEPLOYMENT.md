@@ -162,14 +162,17 @@ Nested ECR (Terraform module `ecr`) phải tồn tại **trước** khi pod pull
    ```
 
    Then ExternalSecrets (after ESO + ClusterSecretStore Ready). **Preferred (GitOps):**
+   secrets Application is owned by the root app-of-apps (`gitops/bootstrap/{env}/`).
 
    ```cmd
-   REM Prod — once: bootstrap Application, then auto-sync owns secrets-chart
-   kubectl apply -f gitops/clusters/prod/secrets-application.yaml
+   REM Prod — once: root bootstrap creates techx-corp-secrets; then auto-sync
+   kubectl apply -f gitops\bootstrap\prod\
+   argocd app wait root-prod --sync --health --timeout 300
    argocd app wait techx-corp-secrets --sync --health --timeout 300
    kubectl -n techx-corp-prod wait --for=condition=Ready externalsecret --all --timeout=120s
 
-   REM Dev: kubectl apply -f gitops/clusters/dev/secrets-application.yaml
+   REM Dev: kubectl apply -f gitops\bootstrap\dev\
+   REM      argocd app wait root-dev --sync --health --timeout 300
    REM      argocd app wait techx-corp-secrets-dev --sync --health --timeout 300
    ```
 
@@ -220,29 +223,36 @@ Ghi lại **VERSION** (tag) để ghi vào `values-prod.yaml` / `values-dev.yaml
 
 #### Contract GitOps (bắt buộc khớp)
 
-| Môi trường | Manifests | Application | AppProject | Destination NS | Branch |
-|---|---|---|---|---|---|
-| **Dev** | `gitops/clusters/dev/` | `techx-corp-dev` | `techx-corp-dev` | `techx-corp-dev` | `techx-dev-corp` |
-| **Prod** | `gitops/clusters/prod/` | `techx-corp` | `techx-corp` | `techx-corp-prod` | `main` |
+| Môi trường | Bootstrap (once) | Child manifests | Root Application | Store Application | Destination NS | Branch |
+|---|---|---|---|---|---|---|
+| **Dev** | `gitops/bootstrap/dev/` | `gitops/clusters/dev/` | `root-dev` | `techx-corp-dev` | `techx-corp-dev` | `techx-dev-corp` |
+| **Prod** | `gitops/bootstrap/prod/` | `gitops/clusters/prod/` | `root-prod` | `techx-corp` | `techx-corp-prod` | `main` |
 
-- **Git source (cả hai env):** `https://github.com/tf2-team/tf2-corp-chart.git`
-- AppProject `spec.sourceRepos` **phải** chứa đúng URL đó (HTTPS và/hoặc SSH).
+- **Git source (prod):** `https://github.com/tf2-team/tf2-corp-chart.git`
+- **Git source (dev):** match child apps (may use fork URL in `gitops/clusters/dev/`).
+- AppProject `spec.sourceRepos` **phải** khớp đúng URL đó (HTTPS và/hoặc SSH).
 - AppProject `spec.destinations` **phải** khớp `Application.spec.destination` (server + namespace).
 - Value layer: `values.yaml` + `values-public-alb.yaml` + `values-dev|prod.yaml`.
+- Root Application path is `gitops/clusters/{env}` (directory of Application/AppProject CRs only).
 
 #### Bootstrap (một lần / cluster)
 
-```bash
-# 1) Context đúng cluster (dev vs prod)
-aws eks update-kubeconfig --region us-east-1 --name techx-dev   # or techx-tf2
+```cmd
+REM 1) Context đúng cluster (dev vs prod)
+aws eks update-kubeconfig --region us-east-1 --name techx-dev
+REM or: aws eks update-kubeconfig --region us-east-1 --name techx-tf2
 
-# 2) Apply AppProject + Application (từ working copy chart)
-kubectl apply -f gitops/clusters/dev/    # dev → techx-corp-dev
-# kubectl apply -f gitops/clusters/prod/ # prod → techx-corp-prod
+REM 2) Apply root app-of-apps only (creates/updates child Applications from Git)
+cd /d techx-corp-chart
+kubectl apply -f gitops\bootstrap\dev\
+REM Prod: kubectl apply -f gitops\bootstrap\prod\
 
-# 3) Hard refresh nếu UI còn stale error sau khi sửa project/repo
-kubectl -n argocd annotate application techx-corp-dev \
-  argocd.argoproj.io/refresh=hard --overwrite
+REM 3) Wait root then children
+argocd app wait root-dev --sync --health --timeout 300
+REM Prod: argocd app wait root-prod --sync --health --timeout 300
+
+REM 4) Hard refresh nếu UI còn stale error sau khi sửa project/repo
+kubectl -n argocd annotate application techx-corp-dev argocd.argoproj.io/refresh=hard --overwrite
 ```
 
 Nếu repo **private**, đăng ký credential trước sync (một lần):
@@ -823,24 +833,28 @@ kubectl -n argocd annotate application techx-corp-dev \
 
 Gatekeeper is Kubernetes policy infrastructure and is delivered entirely from
 this chart repository. `gatekeeper-chart/` pins the upstream chart; no Gatekeeper
-module or apply is required in `tf2-corp-infra`.
+module or apply is required in `tf2-corp-infra`. After root app-of-apps bootstrap
+(`gitops/bootstrap/prod/`), Argo owns the Gatekeeper AppProject and controller
+Application under `gitops/clusters/prod/`.
 
-```bash
-kubectl apply -f gitops/clusters/prod/gatekeeper-appproject.yaml
-kubectl apply -f gitops/clusters/prod/gatekeeper-application.yaml
+```cmd
+kubectl apply -f gitops\bootstrap\prod\
+argocd app wait root-prod --sync --health --timeout 300
 argocd app wait gatekeeper --sync --health --timeout 600
 ```
 
 After the controller is healthy, follow
 [`operations/runtime-hardening.md`](./operations/runtime-hardening.md) for the
-temporary `dryrun` audit and final policy Application bootstrap.
+temporary `dryrun` audit and final policy Application cutover (manual sync until
+deny is approved).
 
 ---
 
 ## Tài liệu liên quan
 
 - GitHub chart: [`tf2-team/tf2-corp-chart`](https://github.com/tf2-team/tf2-corp-chart) (branch dev `techx-dev-corp`)  
-- `gitops/clusters/dev|prod/` — Argo CD AppProject + app + secrets Applications  
+- `gitops/bootstrap/dev|prod/` — root app-of-apps (one-time bootstrap)  
+- `gitops/clusters/dev|prod/` — child AppProject + app + secrets (+ Gatekeeper on prod)  
 - `gitops/clusters/*/secrets-application.yaml` — secrets-chart GitOps (`techx-corp-secrets`)  
 - `gitops/README.md` — bootstrap tóm tắt  
 - `techx-corp-platform/docs/CICD.md` — build/push OIDC  
@@ -853,4 +867,4 @@ temporary `dryrun` audit and final policy Application bootstrap.
 - `templates/NOTES.txt` — post-install notes (port-forward, ALB, **Argo CD admin credential**)  
 - [operations/gitops-argocd.md](./operations/gitops-argocd.md) — GitOps runbook + UI access
 
-<!-- Change trail: @hungxqt - 2026-07-15 - Prefer Argo Application for secrets-chart over routine Helm. -->
+<!-- Change trail: @hungxqt - 2026-07-16 - Document root app-of-apps bootstrap for child Applications. -->

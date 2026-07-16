@@ -1,0 +1,32 @@
+# Root AppProject for development app-of-apps.
+# Allows the root Application to manage child Application + AppProject CRs in argocd only.
+# Bootstrap once: kubectl apply -f gitops/bootstrap/dev/
+# Do NOT place this file under gitops/clusters/dev/ (avoids self-management recursion).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform-root-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Root app-of-apps project for development child Applications and AppProjects
+
+  sourceRepos:
+    - https://github.com/tmcmanhcuong/tf2-corp-chart.git
+    - https://github.com/tmcmanhcuong/tf2-corp-chart.git/*
+    - git@github.com:tmcmanhcuong/tf2-corp-chart.git
+    - git@github.com:tmcmanhcuong/tf2-corp-chart.git/*
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application
+    - group: argoproj.io
+      kind: AppProject
+
+  clusterResourceWhitelist: []
+# Change trail: @hungxqt - 2026-07-16 - Root AppProject for dev app-of-apps bootstrap.

@@ -2,11 +2,11 @@
 
 ## Health and audit
 
-```bash
+```cmd
 argocd app get gatekeeper
 kubectl -n gatekeeper-system get deploy,pod,pdb,svc,endpoints
-kubectl get validatingwebhookconfiguration gatekeeper-validating-webhook-configuration \
-  -o jsonpath='{.webhooks[*].failurePolicy}'
+kubectl get validatingwebhookconfiguration gatekeeper-validating-webhook-configuration ^
+  -o jsonpath="{.webhooks[*].failurePolicy}"
 kubectl get constrainttemplates
 kubectl get k8scontainerhardening container-hardening -o yaml
 kubectl get k8sallowedimagetags allowed-image-tags -o yaml
@@ -19,12 +19,13 @@ Wait for at least two audit intervals. Every constraint must report
 ## Cutover
 
 Gatekeeper is installed only from this repository; no Terraform apply is part of
-the runtime-hardening rollout. Bootstrap the controller chart first and wait for
-it to become healthy:
+the runtime-hardening rollout. The **root** Application (`root-prod`) owns the
+Gatekeeper AppProject and Application CRs under `gitops/clusters/prod/`. Ensure
+root bootstrap is done once (`kubectl apply -f gitops/bootstrap/prod/`), then
+wait for the automated **controller** Application:
 
-```bash
-kubectl apply -f gitops/clusters/prod/gatekeeper-appproject.yaml
-kubectl apply -f gitops/clusters/prod/gatekeeper-application.yaml
+```cmd
+argocd app wait root-prod --sync --health --timeout 300
 argocd app wait gatekeeper --sync --health --timeout 600
 kubectl -n gatekeeper-system rollout status deployment/gatekeeper-controller-manager --timeout=10m
 kubectl -n gatekeeper-system rollout status deployment/gatekeeper-audit --timeout=10m
@@ -39,16 +40,21 @@ kubectl apply -f gatekeeper-dryrun.yaml
 Get-FileHash gatekeeper-dryrun.yaml -Algorithm SHA256
 ```
 
-After Platform Security approval, bootstrap the policy Application from the same
-chart revision:
+The `gatekeeper-policy` Application is Git-owned by root but uses **manual sync**
+until cutover (avoids deny on first bootstrap). After Platform Security approval:
 
-```bash
-kubectl apply -f gitops/clusters/prod/gatekeeper-policy-application.yaml
+1. Enable `syncPolicy.automated` (`prune: false`, `selfHeal: true`) on
+   `gitops/clusters/prod/gatekeeper-policy-application.yaml` via PR (or one-time
+   `argocd app sync gatekeeper-policy` during cutover if automated is already set).
+2. Wait for sync/health:
+
+```cmd
+argocd app sync gatekeeper-policy
 argocd app wait gatekeeper-policy --sync --health --timeout 600
 ```
 
-Argo CD applies the committed final state `deny`; no additional cutover commit
-is required. Do not change namespace exclusions during cutover.
+Committed constraints stay at final state `deny`. Do not change namespace exclusions
+during cutover.
 
 ## Mentor demo
 
@@ -77,3 +83,4 @@ For webhook failure, inspect controller readiness, service endpoints, certificat
 secret, and webhook configuration. Existing workloads keep running while new
 admissions fail closed. A temporary fail-open change is break-glass only and must
 be reverted immediately after recovery.
+<!-- Change trail: @hungxqt - 2026-07-16 - Root app-of-apps owns Gatekeeper Application CRs. -->

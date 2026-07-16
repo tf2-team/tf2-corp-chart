@@ -1,0 +1,39 @@
+# Root Application (prod) — app-of-apps entrypoint.
+# Sources gitops/clusters/prod so child Application/AppProject CRs are Git-reconciled.
+# One-time bootstrap: kubectl apply -f gitops/bootstrap/prod/
+# Primary rollback for children: git revert → merge → root self-heals Application specs.
+# prune OFF: deleting a YAML from Git must not cascade-delete live Applications in v1.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-prod
+  namespace: argocd
+spec:
+  project: platform-root
+
+  source:
+    repoURL: https://github.com/tf2-team/tf2-corp-chart.git
+    targetRevision: main
+    path: gitops/clusters/prod
+    directory:
+      recurse: false
+      include: '{*.yaml,*.yml}'
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      # Do NOT enable ServerSideApply in v1 baseline.
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+# Change trail: @hungxqt - 2026-07-16 - Root Application reconciles prod clusters/* apps.

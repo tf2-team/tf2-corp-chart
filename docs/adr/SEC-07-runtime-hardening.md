@@ -38,20 +38,28 @@ CRDs and generate the constraint CRDs before Constraints can be admitted. The
 webhook is fail-closed and runs with two controller replicas, a PDB, and the
 existing Critical MNG. Mutation, external data, generated-resource expansion,
 and CRD upgrade hooks are disabled. This adds no separately billed AWS service
-and requires no change in `tf2-corp-infra`.
+and requires no change in `tf2-corp-infra` beyond Argo bootstrap docs.
+
+**Application ownership:** A root app-of-apps Application (`root-prod` from
+`gitops/bootstrap/prod/`) reconciles child Application/AppProject CRs under
+`gitops/clusters/prod/` (including Gatekeeper). Operators bootstrap the root once;
+they do not hand-apply Gatekeeper Application manifests in steady state. The
+policy Application remains **manual sync** until deny cutover.
 
 ## Rollout and rollback
 
 1. Deploy chart cleanup and verify workload health, storefront access boundaries,
    and flagd behavior.
-2. Bootstrap the Gatekeeper controller Application from `gatekeeper-chart` and
-   wait for both controller and audit Deployments to become available.
+2. Ensure root-prod is applied; wait for the Gatekeeper controller Application
+   (`gatekeeper` / `gatekeeper-chart`) until both controller and audit Deployments
+   are available.
 3. Render the reviewed chart revision to a temporary output, change only that
-   output to `enforcementAction: dryrun`, and apply it before bootstrapping the
+   output to `enforcementAction: dryrun`, and apply it before syncing the
    Argo CD policy Application.
 4. Observe at least two audit cycles and record zero violations below.
-5. Bootstrap the policy Application from the same reviewed chart revision. Its source of truth
-   keeps all three constraints at final state `deny`; no cutover commit is needed.
+5. Enable automated sync on the policy Application (or run a one-time
+   `argocd app sync gatekeeper-policy`) from the same reviewed chart revision.
+   Its source of truth keeps all three constraints at final state `deny`.
 6. Run the mentor rejection demo and sign this ADR.
 
 For a false positive, revert constraints to `dryrun` through Git and Argo CD,
@@ -76,3 +84,5 @@ requires approval plus an audit trail.
 | Platform Engineering | @hungxqt | Pending |
 | Platform Security |  | Pending |
 | Service owner representative |  | Pending |
+
+<!-- Change trail: @hungxqt - 2026-07-16 - Document root app-of-apps ownership for Gatekeeper apps. -->

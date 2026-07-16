@@ -1,3 +1,5 @@
+# AppProject for Gatekeeper controller + policy Applications (production).
+# Managed by root-prod from gitops/bootstrap/prod (do not rely on one-off apply).
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -9,10 +11,15 @@ spec:
   description: Gatekeeper controller and runtime-hardening policy for production
   sourceRepos:
     - https://github.com/tf2-team/tf2-corp-chart.git
+    - https://github.com/tf2-team/tf2-corp-chart.git/*
+    - git@github.com:tf2-team/tf2-corp-chart.git
+    - git@github.com:tf2-team/tf2-corp-chart.git/*
   destinations:
     - server: https://kubernetes.default.svc
       namespace: gatekeeper-system
   clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
     - group: admissionregistration.k8s.io
@@ -27,3 +34,4 @@ spec:
       kind: "*"
     - group: constraints.gatekeeper.sh
       kind: "*"
+# Change trail: @hungxqt - 2026-07-16 - Allow Namespace; align sourceRepos with prod project.
