@@ -70,10 +70,8 @@ child Application CRs; fix Git afterward.
 ## Rules (REL-09)
 
 - **No ServerSideApply** in v1 Application specs.
-- **Default sync policy (app chart children):** `automated` with `selfHeal: true`,
-  `prune: true` (dev + prod main Applications).
-- **Secrets apps and root app-of-apps:** always `prune: false` (avoid deleting
-  ExternalSecrets / Application CRs accidentally).
+- **Default sync policy (children):** `automated` with `selfHeal: true`, `prune: false`
+  (secrets apps always `prune: false`). Root also uses `prune: false`.
 - **Primary rollback:** `git revert` → merge → Argo auto-syncs.
 - **History rollback:** break-glass only; disable auto-sync; fix Git afterward.
 - After cutover: do **not** routine `helm upgrade` for app **or** secrets releases (ownership is Argo CD).
@@ -121,4 +119,4 @@ Enable automated policy only after every `status.totalViolations` is zero and
 production smoke/SLO checks pass. Retain the temporary output checksum as evidence.
 Roll back a false positive through the approved break-glass process; do not delete
 the templates or disable flagd.
-<!-- Change trail: @hungxqt - 2026-07-16 - App chart children prune true; secrets and root stay false. -->
+<!-- Change trail: @hungxqt - 2026-07-16 - Note AppProject-before-Application bootstrap order. -->

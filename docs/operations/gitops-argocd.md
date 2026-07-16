@@ -79,8 +79,7 @@ REM Prod: kubectl apply -f gitops\bootstrap\prod\
 Do **not** place root manifests under `gitops/clusters/*` (avoids self-management).
 Steady-state: add/change children in `gitops/clusters/{env}/` via Git only.
 
-6. Child Applications bật **auto-sync + self-heal**. App chart uses **`prune: true`**
-   (dev + prod). Secrets apps and root stay **`prune: false`**.
+6. Child Applications bật **auto-sync + self-heal** (`prune: false` cho secrets và root).
    Thứ tự wait: **root** → **secrets** → **app chart**. Prod also creates Gatekeeper
    controller Application (`gatekeeper`); policy stays manual until SEC-07 cutover.
 
@@ -211,19 +210,12 @@ Required reviewers / CODEOWNERS không chỉ `values-prod.yaml`, mà cả:
 
 ## Auto-sync (mặc định)
 
-**App chart (dev + prod):** `automated.selfHeal: true`, **`prune: true`**
+**Dev và prod:** `automated.selfHeal: true`, `prune: false` trên Application
 (`gitops/clusters/*/application.yaml`).
-
-**Secrets Applications and root app-of-apps:** `selfHeal: true`, **`prune: false`**
-(do not auto-delete ExternalSecrets / child Application CRs).
 
 - Git commit → Argo reconcile → auto-apply khi OutOfSync.
 - Live cluster drift bị self-heal (Git thắng).
-- Resources removed from the **app chart** render are pruned automatically
-  (e.g. in-cluster `kafka` after MSK cutover). Confirm intended deletions in
-  `argocd app diff` before merge when removing components.
-- Secrets chart still requires manual cleanup for objects that need pruning;
-  never set secrets `prune: true` only to clear OutOfSync Secrets.
+- Resource xóa khỏi Git **không** bị prune tự động (an toàn; bật prune sau Phase 7 nếu cần).
 - Tắt tạm: `argocd app set <APP> --sync-policy none` (hoặc sửa manifest / bỏ `automated`).
 
 Không bật `ServerSideApply` trong baseline v1.
@@ -236,10 +228,9 @@ Hành động: `argocd app wait` / health; sửa Git; sync lại; hoặc Git rev
 ## Orphan cleanup: OpenSearch subchart leftovers
 
 OpenSearch was migrated from the official Helm subchart (`opensearch-3.6.0`) to a
-first-party `components.opensearch` StatefulSet. Objects still labeled with the
-old subchart chart name may remain until pruned. With app chart **`prune: true`**,
-Argo deletes managed leftovers that are no longer rendered; one-time manual delete
-remains valid for objects that never carried the Application tracking label.
+first-party `components.opensearch` StatefulSet. With **`prune: false`**, Argo CD
+will **not** delete the old subchart objects. They remain labeled
+`argocd.argoproj.io/instance=<app>` and show as **OutOfSync / Orphaned**.
 
 Identify leftovers (labels `helm.sh/chart: opensearch-3.6.0`):
 
@@ -268,69 +259,6 @@ Also remove any other `helm.sh/chart=opensearch-3.6.0` objects (old StatefulSet,
 NetworkPolicy, etc.) if present — only after confirming they are not the live
 first-party resources (`helm.sh/chart: techx-corp-*`).
 
-## Orphan cleanup: in-cluster kafka / valkey-cart after managed services (prod)
-
-Production overlays disable the in-cluster data plane when AWS managed services
-are in use:
-
-| Component | Prod values | Replacement |
-|---|---|---|
-| `components.kafka` | `enabled: false` | Amazon MSK (`techx-corp-msk` secret → `KAFKA_ADDR` / `KAFKA_TLS`) |
-| `components.valkey-cart` | `enabled: false` | ElastiCache Valkey |
-
-With app chart **`prune: true`**, Argo auto-deletes managed `Service` /
-`StatefulSet` objects that are no longer in the rendered manifest after the
-Application sync policy is updated and reconciled. AppProject orphaned ignore
-lists only the PVCs (`kafka-data-kafka-0`, `valkey-cart-data-valkey-cart-0`);
-PVCs may remain (StatefulSet retention Retain) and need optional manual reclaim.
-
-**Do not** re-enable in-cluster kafka/valkey in prod to “fix” sync — that
-fights the MSK/ElastiCache cutover. Prefer prune (or a one-time manual delete
-if prune is temporarily disabled).
-
-Identify (prod namespace example):
-
-```cmd
-kubectl -n techx-corp-prod get svc,sts kafka valkey-cart -o wide
-kubectl -n techx-corp-prod get pvc -l app.kubernetes.io/name=kafka
-kubectl -n techx-corp-prod get pvc -l app.kubernetes.io/name=valkey-cart
-argocd app diff techx-corp
-REM Expect: prune candidates for kafka / valkey-cart Service+StatefulSet when disabled in values-prod
-```
-
-After merge of `prune: true` on Application `techx-corp`, auto-sync removes
-managed leftovers. Manual delete remains valid for break-glass:
-
-```cmd
-REM Only if prune is off or objects lack the Argo tracking label
-kubectl -n techx-corp-prod delete service kafka --ignore-not-found
-kubectl -n techx-corp-prod delete statefulset kafka --ignore-not-found
-kubectl -n techx-corp-prod delete service valkey-cart --ignore-not-found
-kubectl -n techx-corp-prod delete statefulset valkey-cart --ignore-not-found
-
-REM Optional: reclaim disk after STS is gone (PVC retention is Retain)
-REM kubectl -n techx-corp-prod delete pvc kafka-data-kafka-0 --ignore-not-found
-REM kubectl -n techx-corp-prod delete pvc valkey-cart-data-valkey-cart-0 --ignore-not-found
-```
-
-```sh
-# sh/bash
-kubectl -n techx-corp-prod delete service kafka statefulset kafka --ignore-not-found
-kubectl -n techx-corp-prod delete service valkey-cart statefulset valkey-cart --ignore-not-found
-# optional PVC reclaim after STS delete:
-# kubectl -n techx-corp-prod delete pvc kafka-data-kafka-0 valkey-cart-data-valkey-cart-0 --ignore-not-found
-```
-
-Then re-check:
-
-```cmd
-argocd app get techx-corp
-REM Expect: Synced; kafka / valkey-cart Service+StatefulSet gone when disabled in Git
-```
-
-Secrets Application stays **`prune: false`** — do not enable secrets prune to
-clear Secret OutOfSync (see `docs/operations/external-secrets.md`).
-
 ## Liên quan
 
 - Workspace plan: `docs/gitops-argocd.md`
@@ -339,4 +267,4 @@ clear Secret OutOfSync (see `docs/operations/external-secrets.md`).
 - Secrets GitOps: `docs/operations/external-secrets.md`, `gitops/clusters/*/secrets-application.yaml`
 - Root bootstrap: `gitops/bootstrap/{dev,prod}/`, `gitops/README.md`
 
-<!-- Change trail: @hungxqt - 2026-07-16 - Document app-chart prune true; secrets/root stay prune false. -->
+<!-- Change trail: @hungxqt - 2026-07-16 - Document root app-of-apps bootstrap ownership. -->

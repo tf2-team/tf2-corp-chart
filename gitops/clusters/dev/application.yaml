@@ -1,4 +1,4 @@
-# Development Application — automated sync + self-heal + prune; NO ServerSideApply.
+# Development Application — automated sync + self-heal; prune OFF; NO ServerSideApply.
 #
 # Primary rollback: git revert → merge → Argo auto-syncs.
 # History rollback: break-glass only (disable auto-sync first; then update Git).
@@ -50,5 +50,3 @@ spec:
 
   # Ignore noisy fields if needed after first diff (add only with evidence).
   # ignoreDifferences: []
-
-# Change trail: @hungxqt - 2026-07-16 - Align header: dev app chart already uses prune true.

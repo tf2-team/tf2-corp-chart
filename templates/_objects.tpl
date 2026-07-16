@@ -28,9 +28,6 @@ spec:
   {{- if not (kindIs "invalid" $rollout.progressDeadlineSeconds) }}
   progressDeadlineSeconds: {{ $rollout.progressDeadlineSeconds }}
   {{- end }}
-  {{- else }}
-  {{- /* Required for StatefulSet stable network identity; matches the component Service name. */}}
-  serviceName: {{ .name }}
   {{- end }}
   {{- if not (kindIs "invalid" $rollout.minReadySeconds) }}
   minReadySeconds: {{ $rollout.minReadySeconds }}
@@ -323,11 +320,6 @@ spec:
         {{- tpl (toYaml (list $c)) $ | nindent 8 }}
         {{- end }}
       {{- end }}
-      {{- /* Emit volumes only when non-empty. Empty `volumes:` becomes volumes:null in
-           last-applied and keeps Argo CD OutOfSync for kafka/postgresql/valkey-style
-           StatefulSets that only use volumeClaimTemplates. */}}
-      {{- $hasVolumes := or .mountedConfigMaps .mountedEmptyDirs .additionalVolumes (and .modelDelivery .modelDelivery.enabled) }}
-      {{- if $hasVolumes }}
       volumes:
         {{- range .mountedConfigMaps }}
         - name: {{ .name | lower}}
@@ -350,7 +342,6 @@ spec:
         {{- if .additionalVolumes }}
         {{- tpl (toYaml .additionalVolumes) . | nindent 8 }}
         {{- end }}
-      {{- end }}
   {{- if and .stateful .volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- tpl (toYaml .volumeClaimTemplates) . | nindent 4 }}
@@ -593,4 +584,4 @@ spec:
     matchLabels:
       {{- include "techx-corp.selectorLabels" . | nindent 6 }}
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-16 - StatefulSet serviceName; omit empty volumes to stop Argo OutOfSync. */}}
+{{/* Change trail: @hungxqt - 2026-07-15 - Split AI model fetch (aws-cli) and extract (busybox; no tar in aws-cli). */}}

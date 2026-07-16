@@ -1,4 +1,4 @@
-# Production Application — automated sync + self-heal + prune; NO ServerSideApply.
+# Production Application — automated sync + self-heal; prune OFF; NO ServerSideApply.
 # Protect ALL prod-affecting paths in GitHub (not only values-prod.yaml):
 #   templates/**, charts/**, Chart.yaml, Chart.lock, values.yaml,
 #   values-prod.yaml, values-public-alb.yaml, gitops/clusters/prod/**, postgresql/**
@@ -6,8 +6,6 @@
 # Prefer SEC-05 (ESO) before production GitOps cutover for secrets.
 # Primary rollback: git revert → merge → Argo auto-syncs.
 # History rollback: break-glass only (disable auto-sync first; then update Git).
-# prune: true removes live objects no longer in the rendered manifest (e.g. in-cluster
-# kafka after MSK cutover). Secrets Application stays prune: false — see secrets-application.yaml.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -33,7 +31,7 @@ spec:
 
   syncPolicy:
     automated:
-      prune: true
+      prune: false
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
@@ -44,4 +42,3 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-# Change trail: @hungxqt - 2026-07-16 - Enable automated prune on production app chart Application.
