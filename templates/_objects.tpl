@@ -28,6 +28,9 @@ spec:
   {{- if not (kindIs "invalid" $rollout.progressDeadlineSeconds) }}
   progressDeadlineSeconds: {{ $rollout.progressDeadlineSeconds }}
   {{- end }}
+  {{- else }}
+  {{- /* Immutable after create. Must match live STS (e.g. opensearch has serviceName set). */}}
+  serviceName: {{ .name }}
   {{- end }}
   {{- if not (kindIs "invalid" $rollout.minReadySeconds) }}
   minReadySeconds: {{ $rollout.minReadySeconds }}
@@ -584,4 +587,4 @@ spec:
     matchLabels:
       {{- include "techx-corp.selectorLabels" . | nindent 6 }}
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-15 - Split AI model fetch (aws-cli) and extract (busybox; no tar in aws-cli). */}}
+{{/* Change trail: @hungxqt - 2026-07-16 - StatefulSet serviceName required; match live opensearch after 0.48.7 apply. */}}
