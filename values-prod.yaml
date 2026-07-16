@@ -200,7 +200,7 @@ components:
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-product-reviews-model-read
     modelDelivery:
-      s3Uri: s3://techx-prod-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/model.tar.gz
+      s3Uri: s3://techx-prod-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/artifacts/c6197e30a2dd6dd6ce7488cc775c7ae3f10b21df29192c085992f75befeedc50/model.tar.gz
   quote:
     autoscaling:
       minReplicas: 2
