@@ -248,6 +248,11 @@ components:
   # Scale back to 0 when tests stop to save Spot capacity.
   load-generator:
     replicas: 1
+    # Keep shared storefront load tests running while Groq quota is constrained.
+    # The matching task is tagged in the load-generator image.
+    envOverrides:
+      - name: LOCUST_EXCLUDE_TAGS
+        value: ai
 
   # Production cart state is provided by ElastiCache Valkey with a primary and
   # replica in different AZs plus automatic failover. Development keeps the
@@ -263,6 +268,9 @@ components:
   load-generator-worker:
     imageOverride:
       repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator
+    envOverrides:
+      - name: LOCUST_EXCLUDE_TAGS
+        value: ai
 
 # Explicit production APM resource context (same as values.yaml defaults).
 # Ensures prod overlay does not inherit a future base-values drift unintentionally.
