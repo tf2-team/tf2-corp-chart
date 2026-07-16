@@ -232,6 +232,32 @@ The key-name output must include both `SECRET_KEY_BASE` and `FLAGD_SYNC_TOKEN`. 
 
 `creationPolicy: Orphan` — deleting ExternalSecret during experiments should not GC the K8s Secret (verify on pinned ESO version in dev).
 
+### Argo CD sync status (ESO-generated Secrets)
+
+Application `techx-corp-secrets` / `techx-corp-secrets-dev` must manage **only** `ExternalSecret` CRs. ESO creates the target Kubernetes `Secret`s.
+
+**Do not** enable `prune: true` on the secrets Application to “clear” OutOfSync Secrets — that can delete live credential Secrets.
+
+From chart `0.1.2`, every ExternalSecret `target` sets `template.engineVersion: v2` (with or without `template.data`). On ESO v0.14+, a present `template` means the operator **does not** copy ExternalSecret labels/annotations (including `argocd.argoproj.io/instance` and Helm metadata) onto the generated Secret. Empty `template.data` still materializes keys from `spec.data` / `dataFrom`.
+
+After Argo syncs the ExternalSecret change, ESO re-reconciles and drops previously copied tracking labels from managed fields. Expected result:
+
+```cmd
+kubectl get application -n argocd techx-corp-secrets -o jsonpath="{.status.sync.status} {.status.health.status}{'\n'}"
+REM expect: Synced Healthy
+
+kubectl -n techx-corp-prod get secret techx-corp-flagd-ui -o jsonpath="{.metadata.labels}{'\n'}"
+REM expect: reconcile.external-secrets.io/managed only (no argocd.argoproj.io/instance)
+```
+
+If a Secret still carries `argocd.argoproj.io/instance` after ExternalSecrets are Ready (stale labels not owned by ESO field manager), remove **only** the tracking label (not the Secret):
+
+```cmd
+kubectl -n techx-corp-prod label secret techx-corp-flagd-ui techx-corp-grafana-admin techx-corp-grafana-discord techx-corp-opensearch techx-corp-postgresql-admin techx-corp-product-reviews techx-corp-valkey-cart argocd.argoproj.io/instance-
+```
+
+Do not print Secret data while diagnosing sync status.
+
 ---
 
 ## Phase 3 — App chart GitOps cutover
@@ -317,4 +343,4 @@ Repeat pattern for admin / Grafana / flagd-ui as needed. After admin rotation, u
 - Never restore a literal, superseded, or revoked credential to Git. If the replacement token is invalid, issue another replacement out-of-band and repeat the ordered GitOps cutover.
 - Local/demo only: `values-demo.yaml`
 
-<!-- Change trail: @hungxqt - 2026-07-16 - Prefer root app-of-apps for secrets Application bootstrap. -->
+<!-- Change trail: @hungxqt - 2026-07-16 - Document ESO target.template to prevent Argo OutOfSync on generated Secrets. -->

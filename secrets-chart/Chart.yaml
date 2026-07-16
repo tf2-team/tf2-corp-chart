@@ -1,9 +1,10 @@
 apiVersion: v2
 type: application
 name: techx-corp-secrets
-version: 0.1.1
+version: 0.1.2
 description: ExternalSecrets for TechX Corp (SEC-05) — deploy before the app chart
 maintainers:
   - name: TechX Corp Platform Team
 appVersion: "1.0"
-# Change trail: @hungxqt - 2026-07-15 - Chart 0.1.1: managed Valkey cart auth ExternalSecret.
+# Change trail: @hungxqt - 2026-07-16 - Chart 0.1.2: ESO template on all targets to avoid Argo OutOfSync on Secrets.
+
