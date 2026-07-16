@@ -120,6 +120,7 @@ components:
             key: KAFKA_ADDR
       - name: KAFKA_TLS
         value: "true"
+    initContainers: []
 
   fraud-detection:
     envOverrides:
@@ -130,6 +131,7 @@ components:
             key: KAFKA_ADDR
       - name: KAFKA_TLS
         value: "true"
+    initContainers: []
 
   currency:
     autoscaling:
