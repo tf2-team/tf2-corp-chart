@@ -3,7 +3,8 @@ kind: ConstraintTemplate
 metadata:
   name: k8scontainerhardening
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    # Apply before Constraints so Gatekeeper can register K8sContainerHardening CRD.
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   crd:
     spec:
@@ -83,3 +84,4 @@ spec:
                 count(object.get(capabilities, "add", [])) > 0
                 msg := sprintf("%s %s: %s %s must not add Linux capabilities", [input.review.kind.kind, input.review.object.metadata.name, ref.type, ref.container.name])
               }
+# Change trail: @hungxqt - 2026-07-16 - Sync-wave + SkipDryRun for Gatekeeper constraint CRDs.

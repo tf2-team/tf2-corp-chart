@@ -141,4 +141,14 @@ Expect `gatekeeper-policy` present without automated deny until cutover.
 the AppProject and left a sticky `InvalidSpecError`. Renamed to `00-` / `10-`
 prefixes so AppProject always applies first.
 
-<!-- Change trail: @hungxqt - 2026-07-16 - Fix bootstrap filename order for AppProject-first apply. -->
+### Gatekeeper policy CRD ordering (same change)
+
+Constraint CRDs (`K8sContainerHardening`, etc.) are created asynchronously when
+ConstraintTemplates are admitted. Argo dry-run of Constraints fails with "CRD not
+installed" even when sync-waves put templates first. Fixed by:
+
+* Template wave `0`, constraint wave `1`
+* `SkipDryRunOnMissingResource=true` on each Constraint and on the policy Application
+* Higher retry budget on `gatekeeper-policy`
+
+<!-- Change trail: @hungxqt - 2026-07-16 - Fix Gatekeeper policy CRD dry-run ordering. -->

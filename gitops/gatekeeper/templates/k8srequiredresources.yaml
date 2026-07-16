@@ -3,7 +3,8 @@ kind: ConstraintTemplate
 metadata:
   name: k8srequiredresources
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    # Apply before Constraints so Gatekeeper can register K8sRequiredResources CRD.
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   crd:
     spec:
@@ -56,3 +57,4 @@ spec:
                 object.get(section, field.resource, "") == ""
                 msg := sprintf("%s %s: %s %s must set resources.%s.%s", [input.review.kind.kind, input.review.object.metadata.name, ref.type, ref.container.name, field.section, field.resource])
               }
+# Change trail: @hungxqt - 2026-07-16 - Sync-wave + SkipDryRun for Gatekeeper constraint CRDs.

@@ -1,5 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+# Order is documentation-only; Argo uses sync-wave annotations on each resource.
+# Templates (wave 0) register dynamic constraint CRDs; constraints (wave 1) consume them.
 resources:
   - templates/k8scontainerhardening.yaml
   - templates/k8sallowedimagetags.yaml
@@ -7,3 +9,4 @@ resources:
   - constraints/container-hardening.yaml
   - constraints/allowed-image-tags.yaml
   - constraints/required-resources.yaml
+# Change trail: @hungxqt - 2026-07-16 - Note sync-wave CRD ordering for policy resources.

@@ -3,7 +3,9 @@ kind: K8sAllowedImageTags
 metadata:
   name: allowed-image-tags
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    # Wave after ConstraintTemplates; skip dry-run until Gatekeeper generates the CRD.
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   enforcementAction: deny
   match:
@@ -20,3 +22,4 @@ spec:
         kinds: ["Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"]
       - apiGroups: ["batch"]
         kinds: ["Job", "CronJob"]
+# Change trail: @hungxqt - 2026-07-16 - Sync-wave + SkipDryRun for Gatekeeper constraint CRDs.
