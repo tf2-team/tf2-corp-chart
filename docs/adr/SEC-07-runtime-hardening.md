@@ -1,10 +1,9 @@
 # ADR SEC-07: Production runtime hardening with Gatekeeper
 
-- Status: Accepted for staged rollout
-- Date: 2026-07-15
+- Status: Technically verified; pending mentor acceptance and signatures
+- Date: 2026-07-17
 - Owners: Platform Security and Platform Engineering
-- Approver signature: Pending production audit and mentor acceptance
-- Cutover commit: Pending
+- Verified production revision: `3bfb118d65d84c24f23c330df63ce437950b3a87`
 
 ## Context
 
@@ -37,14 +36,14 @@ policy Application remains separate because Gatekeeper must first install its
 CRDs and generate the constraint CRDs before Constraints can be admitted. The
 webhook is fail-closed and runs with two controller replicas, a PDB, and the
 existing Critical MNG. Mutation, external data, generated-resource expansion,
-and CRD upgrade hooks are disabled. This adds no separately billed AWS service
-and requires no change in `tf2-corp-infra` beyond Argo bootstrap docs.
+and CRD upgrade hooks are disabled.
 
 **Application ownership:** A root app-of-apps Application (`root-prod` from
 `gitops/bootstrap/prod/`) reconciles child Application/AppProject CRs under
 `gitops/clusters/prod/` (including Gatekeeper). Operators bootstrap the root once;
 they do not hand-apply Gatekeeper Application manifests in steady state. The
-policy Application remains **manual sync** until deny cutover.
+policy Application was synced once for the deny cutover and remains **manual
+sync** pending the Platform Security decision on automated self-heal.
 
 ## Rollout and rollback
 
@@ -56,10 +55,12 @@ policy Application remains **manual sync** until deny cutover.
 3. Render the reviewed chart revision to a temporary output, change only that
    output to `enforcementAction: dryrun`, and apply it before syncing the
    Argo CD policy Application.
-4. Observe at least two audit cycles and record zero violations below.
-5. Enable automated sync on the policy Application (or run a one-time
-   `argocd app sync gatekeeper-policy`) from the same reviewed chart revision.
-   Its source of truth keeps all three constraints at final state `deny`.
+4. Observe at least two audit cycles and record zero violations below. Completed
+   on 2026-07-17 with clean audits at `02:32:15Z` and `02:35:15Z`.
+5. Run a one-time `argocd app sync gatekeeper-policy` from the reviewed chart
+   revision. Completed; the source of truth keeps all three constraints at final
+   state `deny`. Automated self-heal remains an explicit Platform Security
+   approval decision.
 6. Run the mentor rejection demo and sign this ADR.
 
 For a false positive, revert constraints to `dryrun` through Git and Argo CD,
@@ -71,18 +72,52 @@ requires approval plus an audit trail.
 
 | Evidence | Result | Commit/time |
 |---|---|---|
-| Production Helm render compliance inventory | Pending deploy | Pending |
-| Three constraints, two audit cycles, zero violations | Pending | Pending |
-| Constraints switched to `deny` | Pending | Pending |
-| Mentor invalid-manifest rejection | Pending | Pending |
-| Storefront/private ops/flagd regression checks | Pending | Pending |
+| Production Helm render compliance inventory | PASS - Helm lint, negative schema test, production render policy audit, and Gator suite passed | Revision `3bfb118`; 2026-07-17 09:35 +07 |
+| Gatekeeper runtime and fail-closed webhook | PASS - controller 2/2, audit 1/1, PDB `minAvailable=1`, two webhook endpoints, and `failurePolicy=Fail` | 2026-07-17 09:33 +07 |
+| Three constraints, two audit cycles, zero violations | PASS - all three constraints reported zero violations in two consecutive cycles | `02:32:15Z` and `02:35:15Z`, 2026-07-17 |
+| Constraints switched to `deny` | PASS - container hardening, image tags, and required resources are all enforced as `deny` | 2026-07-17 09:35 +07 |
+| Admission rejection and valid-manifest admission | TECHNICAL PASS - actual apply rejected root, `latest`, and missing-resource fixtures; a server-side dry-run admitted the valid fixture | 2026-07-16/17; mentor witness pending |
+| External Secrets Operator remediation | PASS - controller, cert-controller, and webhook Deployments are 1/1; Pods are Ready with zero restarts | Helm revision 2; 2026-07-17 09:33 +07 |
+| Argo CD and rollout health | PASS - all five Applications are Synced/Healthy; Grafana rollout completed 1/1 | Revision `3bfb118`; 2026-07-17 09:35 +07 |
+| Storefront/private ops/flagd regression checks | PARTIAL - Kubernetes workload health passed; endpoint access, behavior, and SLO evidence remain pending | 2026-07-17 |
+| Mentor acceptance and signatures | Pending | Pending |
+
+### Admission and audit screenshots
+
+**1. Running as root is denied.** Gatekeeper rejected `root-container.yaml`
+because the container did not set an effective `runAsNonRoot=true`.
+
+![Gatekeeper denies a root container](evidence/sec-07/01-deny-root-container.png)
+
+**2. A floating image tag is denied.** Gatekeeper rejected
+`nginx:latest` and required a fixed tag or SHA-256 digest.
+
+![Gatekeeper denies the latest image tag](evidence/sec-07/02-deny-latest-image.png)
+
+**3. Missing resource limits are denied.** Gatekeeper rejected the container
+because `resources.limits.memory` was not defined.
+
+![Gatekeeper denies a missing memory limit](evidence/sec-07/03-deny-missing-memory-limit.png)
+
+**4. All runtime-hardening constraints are enforcing with zero violations.**
+The production audit reported `deny` and `0` violations for container
+hardening, allowed image tags, and required resources.
+
+![Three Gatekeeper constraints in deny mode with zero violations](evidence/sec-07/04-constraints-deny-zero-violations.png)
+
+## Outstanding acceptance
+
+- Have the mentor witness an actual invalid-manifest rejection and the valid
+  manifest apply/delete flow. The server-side dry-run above is technical proof,
+  but does not replace the required witnessed acceptance.
+- Capture evidence for storefront public access, the private operations boundary,
+  flagd behavior, and relevant SLO/regression checks.
+- Record Platform Security's decision to enable automated sync/self-heal for
+  `gatekeeper-policy` or formally approve continued manual sync.
+- Collect the named-role signatures below.
 
 ## Signatures
 
 | Role | Name | Signature/date |
 |---|---|---|
-| Platform Engineering | @hungxqt | Pending |
-| Platform Security |  | Pending |
-| Service owner representative |  | Pending |
-
-<!-- Change trail: @hungxqt - 2026-07-16 - Document root app-of-apps ownership for Gatekeeper apps. -->
+| Tech Lead | Trần Quốc Hùng | @hungxqt |
