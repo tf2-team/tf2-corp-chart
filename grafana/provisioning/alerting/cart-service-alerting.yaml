@@ -81,13 +81,13 @@ groups:
                 }}/{{ $labels.service_name }} "{{ $labels.http_request_method }} {{
                 $labels.http_route }}" has been
                 above 1 second for 1 minute on {{ $labels.service_instance_id}}. Current
-                value: {{ .Value | humanizeDuration }}.
+                value: {{ $values.p95_duration.Value | humanizeDuration }}.
           impact: >-
             Users can see slow cart updates after clicking Add to cart, which can reduce checkout conversion.
           action: >-
             Open the APM dashboard for service=cart and operation AddItem, then inspect Jaeger traces,
             OpenSearch cart logs, cart pod CPU/memory, and Valkey connectivity before changing scale or limits.
-          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/febljk0a32qyoa"
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/febljk0a32qyoa?orgId=1&var-deployment_environment_name=production&var-service_namespace=techx-corp-prod&var-service_name=cart"
           runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/request-metric-hpa.md"
           logs_hint: 'service.name="cart" AND severity.text>=WARN'
           trace_hint: 'service=cart operation=POST /oteldemo.CartService/AddItem'

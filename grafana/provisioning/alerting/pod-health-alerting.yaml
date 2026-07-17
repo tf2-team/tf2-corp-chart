@@ -48,7 +48,7 @@ groups:
                     namespace="techx-corp-prod",
                     pod!~"(frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping)-.*"
                   }[15m]
-                ) > 3
+                )
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -62,7 +62,7 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [0]
+                    params: [3]
                   operator:
                     type: and
                   query:
@@ -79,11 +79,11 @@ groups:
           description: >-
             Container <b>{{ $labels.container }}</b> trong pod
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
-            đã restart {{ $values.restarts | printf "%.0f" }} lần trong 15 phút.
+            đã restart {{ $values.restarts.Value | printf "%.0f" }} lần trong 15 phút.
             Kiểm tra: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} --previous
           discord_description: >-
             Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
-            restarted {{ $values.restarts | printf "%.0f" }} times in 15 minutes.
+            restarted {{ $values.restarts.Value | printf "%.0f" }} times in 15 minutes.
           impact: >-
             The workload is unstable and can lose capacity or fail requests if it backs a live service.
           action: >-
@@ -197,7 +197,7 @@ groups:
                     namespace="techx-corp-prod",
                     pod!~"(frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping)-.*"
                   }[1h]
-                ) > 10
+                )
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -211,7 +211,7 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [0]
+                    params: [10]
                   operator:
                     type: and
                   query:
@@ -228,10 +228,10 @@ groups:
           description: >-
             Container <b>{{ $labels.container }}</b> trong pod
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
-            đã restart <b>{{ $values.restarts_1h | printf "%.0f" }}</b> lần trong 1 giờ qua.
+            đã restart <b>{{ $values.restarts_1h.Value | printf "%.0f" }}</b> lần trong 1 giờ qua.
           discord_description: >-
             Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
-            restarted {{ $values.restarts_1h | printf "%.0f" }} times in the last hour.
+            restarted {{ $values.restarts_1h.Value | printf "%.0f" }} times in the last hour.
           impact: >-
             Repeated restarts indicate instability and can become a customer-impacting outage if traffic rises.
           action: >-

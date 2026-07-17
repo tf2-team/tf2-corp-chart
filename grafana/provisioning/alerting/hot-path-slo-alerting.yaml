@@ -72,12 +72,15 @@ groups:
                   )
                 )
                 /
-                sum by (service_name) (
-                  rate(
-                    traces_span_metrics_duration_milliseconds_count{
-                      service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
-                    }[5m]
-                  )
+                clamp_min(
+                  sum by (service_name) (
+                    rate(
+                      traces_span_metrics_duration_milliseconds_count{
+                        service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
+                      }[5m]
+                    )
+                  ),
+                  0.001
                 )
               instant: true
               intervalMs: 1000
@@ -92,7 +95,7 @@ groups:
             model:
               type: math
               refId: combined
-              expression: "($total_rate - 1) * ($error_rate - 1)"
+              expression: "($total_rate > 1) * ($error_rate > 1)"
           - refId: threshold
             datasourceUid: __expr__
             model:
@@ -118,16 +121,17 @@ groups:
           summary: "{{ $labels.service_name }} error rate > 1%"
           description: >-
             Service <b>{{ $labels.service_name }}</b> error rate:
-            <b>{{ $values.error_rate | printf "%.2f" }}%</b> (ngưỡng: 1%, window: 5m).
+            <b>{{ $values.error_rate.Value | printf "%.2f" }}%</b> (ngưỡng: 1%, window: 5m).
           discord_description: >-
-            Service {{ $labels.service_name }} error rate is {{ $values.error_rate | printf "%.2f" }}%
+            Service {{ $labels.service_name }} error rate is {{ $values.error_rate.Value | printf "%.2f" }}%
             (threshold: 1%, window: 5m, for: 2m).
           impact: >-
             User-visible flows can fail, especially cart, checkout, payment, product lookup, or shipping calls.
           action: >-
             Open the Webstore SLO dashboard, check the affected service error panel, then inspect Jaeger traces
             and OpenSearch logs for the same service before changing code or scaling.
-          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/webstore-perf-slo-res"
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/febljk0a32qyoa?orgId=1&var-deployment_environment_name=production&var-service_namespace=techx-corp-prod&var-service_name={{ $labels.service_name }}"
+          slo_dashboard_url: "https://internal.hungtran.id.vn/grafana/d/webstore-perf-slo-res?orgId=1"
           runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/request-metric-hpa.md"
           logs_hint: 'service.name="{{ $labels.service_name }}" AND severity.text>=ERROR'
           trace_hint: 'service={{ $labels.service_name }}'
@@ -146,7 +150,7 @@ groups:
       # ------------------------------------------------------------------ #
       - uid: hotpath-p95-latency-002
         title: HotPathHighP95Latency
-        condition: threshold
+        condition: latency_guard
         data:
           - refId: p95_ms
             relativeTimeRange:
@@ -170,16 +174,41 @@ groups:
               intervalMs: 1000
               maxDataPoints: 43200
               refId: p95_ms
+          - refId: p95_traffic_rate
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                sum by (service_name) (
+                  rate(
+                    traces_span_metrics_duration_milliseconds_count{
+                      service_name=~"frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping"
+                    }[5m]
+                  )
+                )
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: p95_traffic_rate
+          - refId: latency_guard
+            datasourceUid: __expr__
+            model:
+              type: math
+              refId: latency_guard
+              expression: "($p95_traffic_rate > 1) * ($p95_ms > 1000)"
           - refId: threshold
             datasourceUid: __expr__
             model:
               type: threshold
               refId: threshold
-              expression: p95_ms
+              expression: latency_guard
               conditions:
                 - evaluator:
                     type: gt
-                    params: [1000]
+                    params: [0]
                   operator:
                     type: and
                   query:
@@ -195,16 +224,17 @@ groups:
           summary: "{{ $labels.service_name }} P95 latency > 1s"
           description: >-
             Service <b>{{ $labels.service_name }}</b> P95 latency:
-            <b>{{ $values.p95_ms | printf "%.0f" }}ms</b> (ngưỡng: 1000ms, window: 5m).
+            <b>{{ $values.p95_ms.Value | printf "%.0f" }}ms</b> (ngưỡng: 1000ms, window: 5m).
           discord_description: >-
-            Service {{ $labels.service_name }} P95 latency is {{ $values.p95_ms | printf "%.0f" }}ms
+            Service {{ $labels.service_name }} P95 latency is {{ $values.p95_ms.Value | printf "%.0f" }}ms
             (threshold: 1000ms, window: 5m, for: 2m).
           impact: >-
             Users can experience slow page load, cart update, recommendation, shipping quote, or checkout flow.
           action: >-
-            Open the Webstore SLO dashboard, confirm traffic volume, inspect Jaeger traces for the affected
+            Open the service-scoped APM dashboard, confirm traffic volume, inspect Jaeger traces for the affected
             service, then compare pod CPU/memory and recent rollout state.
-          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/webstore-perf-slo-res"
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/febljk0a32qyoa?orgId=1&var-deployment_environment_name=production&var-service_namespace=techx-corp-prod&var-service_name={{ $labels.service_name }}"
+          slo_dashboard_url: "https://internal.hungtran.id.vn/grafana/d/webstore-perf-slo-res?orgId=1"
           runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/request-metric-hpa.md"
           logs_hint: 'service.name="{{ $labels.service_name }}" AND severity.text>=WARN'
           trace_hint: 'service={{ $labels.service_name }}'
@@ -239,7 +269,7 @@ groups:
                     namespace="techx-corp-prod",
                     pod=~"(frontend|frontend-proxy|cart|checkout|currency|product-catalog|product-reviews|quote|recommendation|shipping)-.*"
                   }[5m]
-                ) > 3
+                )
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -253,7 +283,7 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [0]
+                    params: [3]
                   operator:
                     type: and
                   query:
@@ -270,11 +300,11 @@ groups:
           description: >-
             Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             (container: <b>{{ $labels.container }}</b>) đã restart
-            <b>{{ $values.restarts_5m | printf "%.0f" }}</b> lần trong 5 phút.
+            <b>{{ $values.restarts_5m.Value | printf "%.0f" }}</b> lần trong 5 phút.
             Service này thuộc hot path — cần xử lý ngay.
           discord_description: >-
             Pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }}
-            restarted {{ $values.restarts_5m | printf "%.0f" }} times in 5 minutes.
+            restarted {{ $values.restarts_5m.Value | printf "%.0f" }} times in 5 minutes.
           impact: >-
             Repeated restarts can drop in-flight requests and reduce capacity for user-facing paths.
           action: >-

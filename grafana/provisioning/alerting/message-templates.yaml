@@ -3,7 +3,7 @@
 #
 # Grafana notification templates for Discord.
 #
-# Discord receives action-ready alert summaries only, never raw logs.
+# Discord receives compact, action-ready alert summaries only.
 # Detailed investigation stays in Grafana, OpenSearch, Jaeger, and runbooks.
 ---
 apiVersion: 1
@@ -13,42 +13,65 @@ templates:
     name: techx-discord-message-template
     template: |
       {{ define "techx.discord.title" -}}
-      [{{ .Status }}]{{ if .CommonLabels.severity }} [{{ .CommonLabels.severity }}]{{ end }} {{ if .CommonLabels.alertname }}{{ .CommonLabels.alertname }}{{ else }}TechX alert{{ end }}{{ if .CommonLabels.service_name }} - {{ .CommonLabels.service_name }}{{ else if .CommonLabels.pod }} - {{ .CommonLabels.pod }}{{ else if .CommonLabels.node }} - {{ .CommonLabels.node }}{{ else if .CommonLabels.alert_type }} - {{ .CommonLabels.alert_type }}{{ end }}
+      [{{ .Status }}]{{ if .CommonLabels.severity }} [{{ .CommonLabels.severity }}]{{ end }} {{ if .CommonLabels.alertname }}{{ .CommonLabels.alertname }}{{ else }}TechX alert{{ end }}{{ if .CommonLabels.service_name }} - {{ .CommonLabels.service_name }}{{ else if .CommonLabels.pod }} - {{ .CommonLabels.pod }}{{ else if .CommonLabels.node }} - {{ .CommonLabels.node }}{{ else if .CommonLabels.nodepool }} - {{ .CommonLabels.nodepool }}{{ else if .CommonLabels.alert_type }} - {{ .CommonLabels.alert_type }}{{ end }}
       {{- end }}
 
       {{ define "techx.discord.message" -}}
       {{ template "techx.discord.title" . }}
-
       {{ range .Alerts }}
+      ---
       **Status:** {{ .Status }}
-      **Severity:** {{ .Labels.severity }}
-      **Alert:** {{ .Labels.alertname }}
-      **Team:** {{ .Labels.team }}
-      **Domain:** {{ .Labels.domain }}
+      **Severity:** {{ or .Labels.severity "unknown" }}
+      **Alert:** {{ or .Labels.alertname "unknown" }}
+      **Team:** {{ or .Labels.team "unassigned" }}
+      **Domain:** {{ or .Labels.domain "unclassified" }}
       **Environment:** {{ or .Labels.environment .Labels.deployment_environment_name "production" }}
       **Namespace:** {{ or .Labels.namespace .Labels.service_namespace "techx-corp-prod" }}
-      {{ if .Labels.service_name }}**Service:** {{ .Labels.service_name }}{{ end }}
-      {{ if .Labels.pod }}**Pod:** {{ .Labels.pod }}{{ end }}
-      {{ if .Labels.container }}**Container:** {{ .Labels.container }}{{ end }}
-      {{ if .Labels.node }}**Node:** {{ .Labels.node }}{{ end }}
-      {{ if .Labels.nodepool }}**NodePool:** {{ .Labels.nodepool }}{{ end }}
-      {{ if .Labels.resource_type }}**Resource:** {{ .Labels.resource_type }}{{ end }}
-      {{ if .Labels.reason }}**Reason:** {{ .Labels.reason }}{{ end }}
-
-      {{ if .Annotations.summary }}**Summary:** {{ .Annotations.summary }}{{ end }}
-      {{ if .Annotations.discord_description }}**Description:** {{ .Annotations.discord_description }}{{ else if .Annotations.description }}**Description:** {{ .Annotations.description }}{{ end }}
-      {{ if .Annotations.impact }}**Impact:** {{ .Annotations.impact }}{{ end }}
-      {{ if .Annotations.action }}**First action:** {{ .Annotations.action }}{{ end }}
-      {{ if .Annotations.logs_hint }}**Logs hint:** `{{ .Annotations.logs_hint }}`{{ end }}
-      {{ if .Annotations.trace_hint }}**Trace hint:** `{{ .Annotations.trace_hint }}`{{ end }}
-
+      {{ with .Labels.service_name }}**Service:** {{ . }}
+      {{ end -}}
+      {{ with .Labels.pod }}**Pod:** {{ . }}
+      {{ end -}}
+      {{ with .Labels.container }}**Container:** {{ . }}
+      {{ end -}}
+      {{ with .Labels.node }}**Node:** {{ . }}
+      {{ end -}}
+      {{ with .Labels.nodepool }}**NodePool:** {{ . }}
+      {{ end -}}
+      {{ with .Labels.label_topology_kubernetes_io_zone }}**Zone:** {{ . }}
+      {{ end -}}
+      {{ with or .Labels.resource .Labels.resource_type }}**Resource:** {{ . }}
+      {{ end -}}
+      {{ with .Labels.reason }}**Reason:** {{ . }}
+      {{ end -}}
+      {{ with .Annotations.summary }}**Summary:** {{ . }}
+      {{ end -}}
+      {{ if .Annotations.discord_description }}**Description:** {{ .Annotations.discord_description }}
+      {{ else if .Annotations.description }}**Description:** {{ .Annotations.description }}
+      {{ end -}}
+      {{ with .Annotations.impact }}**Impact:** {{ . }}
+      {{ end -}}
+      {{ with .Annotations.action }}**First action:** {{ . }}
+      {{ end -}}
+      {{ with .Annotations.logs_hint }}**Logs hint:** `{{ . }}`
+      {{ end -}}
+      {{ with .Annotations.trace_hint }}**Trace hint:** `{{ . }}`
+      {{ end -}}
+      {{ if or .Annotations.dashboard_url .Annotations.slo_dashboard_url .Annotations.troubleshooting_dashboard_url .DashboardURL .PanelURL .GeneratorURL .Annotations.runbook_url }}
       **Links**
-      {{ if .Annotations.dashboard_url }}Dashboard: {{ .Annotations.dashboard_url }}{{ else if .DashboardURL }}Dashboard: {{ .DashboardURL }}{{ end }}
-      {{ if .PanelURL }}Panel: {{ .PanelURL }}{{ end }}
-      {{ if .GeneratorURL }}Rule: {{ .GeneratorURL }}{{ end }}
-      {{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
-
-
-      ---
+      {{ if .Annotations.dashboard_url }}Dashboard: {{ .Annotations.dashboard_url }}
+      {{ else if .DashboardURL }}Dashboard: {{ .DashboardURL }}
+      {{ end -}}
+      {{ with .Annotations.slo_dashboard_url }}SLO: {{ . }}
+      {{ end -}}
+      {{ with .Annotations.troubleshooting_dashboard_url }}Troubleshooting: {{ . }}
+      {{ end -}}
+      {{ with .PanelURL }}Panel: {{ . }}
+      {{ end -}}
+      {{ with .GeneratorURL }}Rule: {{ . }}
+      {{ end -}}
+      {{ with .Annotations.runbook_url }}Runbook: {{ . }}
+      {{ end -}}
+      {{ end }}
+      _Do not paste secrets, webhook URLs, payment data, customer PII, or raw logs into Discord._
       {{ end }}
       {{- end }}

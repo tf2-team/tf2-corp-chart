@@ -14,6 +14,15 @@ externalSecrets:
   enabled: true
   namespace: techx-corp-prod
 
+grafana:
+  grafana.ini:
+    server:
+      # Alert links are generated outside an HTTP request, so the base
+      # values.yaml macro can fall back to localhost. Pin prod to the private
+      # operator URL used through Client VPN / internal ALB.
+      root_url: "https://internal.hungtran.id.vn/grafana"
+      serve_from_sub_path: true
+
 default:
   # DIRECTIVE #3: stop routing first, then terminate. The native lifecycle sleep
   # works with distroless images because it does not execute a container binary.
