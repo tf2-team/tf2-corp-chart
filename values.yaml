@@ -2686,6 +2686,12 @@ grafana:
       enabled: true
     datasources:
       enabled: true
+      # Datasources must exist before Grafana's startup provisioning pass.
+      # The reload endpoint depends on the admin Secret matching Grafana's
+      # database password; use init provisioning so Athena is loaded even when
+      # the sidecar hot-reload call is rejected after a password reset.
+      initDatasources: true
+      skipReload: true
     resources:
       # kubectl top sidecars: sc-alerts ~74Mi, sc-dashboard ~75Mi, sc-datasources ~73Mi each.
       # P99 per sidecar: ~75Mi. 80Mi request per sidecar is sufficient.
