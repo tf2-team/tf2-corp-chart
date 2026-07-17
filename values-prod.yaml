@@ -15,6 +15,8 @@ externalSecrets:
   namespace: techx-corp-prod
 
 default:
+  # MANDATE-05: prune historical ReplicaSets so old non-compliant pod templates leave Gatekeeper audit scope.
+  revisionHistoryLimit: 0
   # DIRECTIVE #3: stop routing first, then terminate. The native lifecycle sleep
   # works with distroless images because it does not execute a container binary.
   terminationGracePeriodSeconds: 30
