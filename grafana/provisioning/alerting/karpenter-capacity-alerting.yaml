@@ -41,7 +41,23 @@ groups:
         annotations:
           summary: Karpenter cannot schedule one or more pods
           description: Inspect Pending pod events, NodePool limits, eligible instance categories, topology constraints, and Spot fallback health.
-        labels: {severity: warning, team: platform}
+          discord_description: >-
+            Karpenter reports one or more unschedulable pods after evaluating current NodePool capacity
+            and scheduling constraints.
+          impact: >-
+            New replicas may not start, so traffic spikes can turn into higher latency or failed requests.
+          action: >-
+            Check Pending pod events, NodePool limits, eligible instance types, topology spread constraints,
+            taints, tolerations, and Spot fallback capacity before relaxing placement rules.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'app.kubernetes.io/name="karpenter" AND severity.text>=WARN'
+        labels:
+          severity: warning
+          team: cdo03
+          domain: performance
+          environment: production
+          alert_type: scheduling
         isPaused: false
         notification_settings: {receiver: discord-alerts}
 
@@ -82,7 +98,22 @@ groups:
         annotations:
           summary: Karpenter NodePool exceeds 80 percent of its configured limit
           description: Review the affected nodepool and resource_type before raising limits; validate the workload request model and cost impact first.
-        labels: {severity: warning, team: platform}
+          discord_description: >-
+            A Karpenter NodePool is using more than 80 percent of its configured CPU or memory limit.
+          impact: >-
+            The cluster is close to a capacity ceiling; scale-out can fail or require a cost-impacting limit increase.
+          action: >-
+            Review the affected nodepool and resource_type, compare real usage versus requests, then validate
+            whether to tune requests, move workloads, or raise limits with cost approval.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'app.kubernetes.io/name="karpenter"'
+        labels:
+          severity: warning
+          team: cdo03
+          domain: cost
+          environment: production
+          alert_type: capacity
         isPaused: false
         notification_settings: {receiver: discord-alerts}
 
@@ -118,7 +149,22 @@ groups:
         annotations:
           summary: Karpenter cluster-state synchronization is unhealthy
           description: Check the controller deployment, Kubernetes API access, interruption queue, and controller logs without printing credentials.
-        labels: {severity: critical, team: platform}
+          discord_description: >-
+            Karpenter cluster-state synchronization is unhealthy for more than 5 minutes.
+          impact: >-
+            Autoscaling decisions can be delayed or incorrect, increasing the risk of unscheduled pods or unstable recovery.
+          action: >-
+            Check Karpenter controller pods, Kubernetes API access, interruption queue, controller logs,
+            and recent Helm/Terraform changes without exposing credentials.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'app.kubernetes.io/name="karpenter" AND severity.text>=ERROR'
+        labels:
+          severity: critical
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: karpenter_health
         isPaused: false
         notification_settings: {receiver: discord-alerts}
 
@@ -154,7 +200,22 @@ groups:
         annotations:
           summary: Production pods have been unschedulable for five minutes
           description: Check pod events for topology, taint, PDB, resource, NodePool-limit, or instance-capacity constraints.
-        labels: {severity: warning, team: platform}
+          discord_description: >-
+            One or more production pods in techx-corp-prod have been unschedulable for 5 minutes.
+          impact: >-
+            New replicas cannot start, so deployment, recovery, or HPA scale-out can be delayed.
+          action: >-
+            Check pod events for topology, taint, PDB, resource request, NodePool limit,
+            quota, and instance-capacity constraints.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/workload-placement.md"
+          logs_hint: 'k8s.namespace.name="techx-corp-prod" AND reason="FailedScheduling"'
+        labels:
+          severity: warning
+          team: cdo03
+          domain: performance
+          environment: production
+          alert_type: scheduling
         isPaused: false
         notification_settings: {receiver: discord-alerts}
 
@@ -190,7 +251,22 @@ groups:
         annotations:
           summary: Production pods remain unschedulable for fifteen minutes
           description: Escalate to the platform operator; preserve hard production spread unless an approved incident procedure explicitly changes it.
-        labels: {severity: critical, team: platform}
+          discord_description: >-
+            Production pods in techx-corp-prod remain unschedulable for 15 minutes.
+          impact: >-
+            The application can lose availability or remain under-capacity during incident recovery or rollout.
+          action: >-
+            Escalate to the platform operator, preserve hard production spread unless an approved incident
+            procedure changes it, and capture pod events plus NodePool status for the incident timeline.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/workload-placement.md"
+          logs_hint: 'k8s.namespace.name="techx-corp-prod" AND reason="FailedScheduling"'
+        labels:
+          severity: critical
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: scheduling
         isPaused: false
         notification_settings: {receiver: discord-alerts}
 
@@ -259,7 +335,22 @@ groups:
         annotations:
           summary: Critical managed-node requested resource headroom is below 25 percent
           description: Review the affected CPU or memory request ratio per node and Availability Zone before scheduling or infrastructure changes.
-        labels: {severity: warning, team: platform}
+          discord_description: >-
+            Critical managed-node CPU or memory request headroom is below 25 percent by node or Availability Zone.
+          impact: >-
+            Critical workloads have limited failover headroom; a rollout, node drain, or AZ issue can cause scheduling pressure.
+          action: >-
+            Review the affected CPU or memory request ratio by node and AZ, compare real usage against requests,
+            then tune workload requests or capacity with cost and reliability approval.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'k8s.node.name="{{ $labels.node }}"'
+        labels:
+          severity: warning
+          team: cdo03
+          domain: cost
+          environment: production
+          alert_type: capacity
         isPaused: false
         notification_settings: {receiver: discord-alerts}
 

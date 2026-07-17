@@ -119,9 +119,23 @@ groups:
           description: >-
             Service <b>{{ $labels.service_name }}</b> error rate:
             <b>{{ $values.error_rate | printf "%.2f" }}%</b> (ngưỡng: 1%, window: 5m).
+          discord_description: >-
+            Service {{ $labels.service_name }} error rate is {{ $values.error_rate | printf "%.2f" }}%
+            (threshold: 1%, window: 5m, for: 2m).
+          impact: >-
+            User-visible flows can fail, especially cart, checkout, payment, product lookup, or shipping calls.
+          action: >-
+            Open the Webstore SLO dashboard, check the affected service error panel, then inspect Jaeger traces
+            and OpenSearch logs for the same service before changing code or scaling.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/webstore-perf-slo-res"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/request-metric-hpa.md"
+          logs_hint: 'service.name="{{ $labels.service_name }}" AND severity.text>=ERROR'
+          trace_hint: 'service={{ $labels.service_name }}'
         labels:
           severity: warning
-          team: platform
+          team: cdo03
+          domain: performance
+          environment: production
           alert_type: error_rate
         isPaused: false
         notification_settings:
@@ -182,9 +196,23 @@ groups:
           description: >-
             Service <b>{{ $labels.service_name }}</b> P95 latency:
             <b>{{ $values.p95_ms | printf "%.0f" }}ms</b> (ngưỡng: 1000ms, window: 5m).
+          discord_description: >-
+            Service {{ $labels.service_name }} P95 latency is {{ $values.p95_ms | printf "%.0f" }}ms
+            (threshold: 1000ms, window: 5m, for: 2m).
+          impact: >-
+            Users can experience slow page load, cart update, recommendation, shipping quote, or checkout flow.
+          action: >-
+            Open the Webstore SLO dashboard, confirm traffic volume, inspect Jaeger traces for the affected
+            service, then compare pod CPU/memory and recent rollout state.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/webstore-perf-slo-res"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/request-metric-hpa.md"
+          logs_hint: 'service.name="{{ $labels.service_name }}" AND severity.text>=WARN'
+          trace_hint: 'service={{ $labels.service_name }}'
         labels:
           severity: warning
-          team: platform
+          team: cdo03
+          domain: performance
+          environment: production
           alert_type: latency
         isPaused: false
         notification_settings:
@@ -244,9 +272,23 @@ groups:
             (container: <b>{{ $labels.container }}</b>) đã restart
             <b>{{ $values.restarts_5m | printf "%.0f" }}</b> lần trong 5 phút.
             Service này thuộc hot path — cần xử lý ngay.
+          discord_description: >-
+            Pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }}
+            restarted {{ $values.restarts_5m | printf "%.0f" }} times in 5 minutes.
+          impact: >-
+            Repeated restarts can drop in-flight requests and reduce capacity for user-facing paths.
+          action: >-
+            Run kubectl describe pod and kubectl logs --previous for the pod, then check the K8s pod
+            troubleshooting dashboard before changing requests, limits, or rollout state.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/probe-thresholds.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
+          trace_hint: 'service={{ $labels.container }}'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
           alert_type: restart
         isPaused: false
         notification_settings:

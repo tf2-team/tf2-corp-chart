@@ -15,6 +15,7 @@ policies:
   - orgId: 1
     receiver: discord-alerts
     group_by:
+      - environment
       - namespace
       - alertname
       - severity
@@ -29,6 +30,7 @@ policies:
           - service_name
           - alert_type
           - severity
+          - environment
         group_wait: 30s
         group_interval: 2m
         repeat_interval: 30m
@@ -36,8 +38,23 @@ policies:
 
       - receiver: discord-alerts
         matchers:
+          - alert_type =~ "pod_health|node_health|scheduling|capacity|karpenter_health"
+        group_by:
+          - environment
+          - namespace
+          - alertname
+          - alert_type
+          - severity
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 1h
+        continue: false
+
+      - receiver: discord-alerts
+        matchers:
           - severity = critical
         group_by:
+          - environment
           - namespace
           - alertname
         group_wait: 10s
@@ -49,6 +66,7 @@ policies:
         matchers:
           - severity = warning
         group_by:
+          - environment
           - namespace
           - alertname
         group_wait: 30s

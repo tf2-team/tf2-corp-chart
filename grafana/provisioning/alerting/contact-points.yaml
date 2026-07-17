@@ -26,7 +26,8 @@ contactPoints:
         type: discord
         settings:
           url: "${DISCORD_WEBHOOK_URL}"
-          # Dùng @everyone mention cho critical nếu muốn — để trống để không mention
+          message: '{{ template "techx.discord.message" . }}'
+          # Do not mention @everyone by default. Use a dedicated on-call role only after approval.
           use_discord_username: false
         disableResolveMessage: false
       - uid: aiops-webhook-receiver

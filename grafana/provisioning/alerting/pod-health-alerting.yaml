@@ -81,9 +81,23 @@ groups:
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             đã restart {{ $values.restarts | printf "%.0f" }} lần trong 15 phút.
             Kiểm tra: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} --previous
+          discord_description: >-
+            Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
+            restarted {{ $values.restarts | printf "%.0f" }} times in 15 minutes.
+          impact: >-
+            The workload is unstable and can lose capacity or fail requests if it backs a live service.
+          action: >-
+            Run kubectl describe pod, kubectl logs --previous, and inspect recent rollout, image, config,
+            secret, and dependency errors before restarting or scaling.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/probe-thresholds.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -141,9 +155,23 @@ groups:
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             vừa bị OOMKilled (kernel kill do vượt memory limit).
             Xem xét tăng <code>resources.limits.memory</code>.
+          discord_description: >-
+            Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
+            was OOMKilled after exceeding its memory limit.
+          impact: >-
+            The service can restart, drop in-flight requests, and trigger user-visible failures or retries.
+          action: >-
+            Check the K8s pod troubleshooting dashboard, run kubectl logs --previous, compare memory usage
+            with requests/limits, then decide whether to tune code, HPA, or memory limits.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/backlogs/2026-07-10-rel-06-resource-requests-limits.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}" AND body:*OOM*'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -201,9 +229,22 @@ groups:
             Container <b>{{ $labels.container }}</b> trong pod
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             đã restart <b>{{ $values.restarts_1h | printf "%.0f" }}</b> lần trong 1 giờ qua.
+          discord_description: >-
+            Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
+            restarted {{ $values.restarts_1h | printf "%.0f" }} times in the last hour.
+          impact: >-
+            Repeated restarts indicate instability and can become a customer-impacting outage if traffic rises.
+          action: >-
+            Check previous logs, pod events, probes, resource pressure, and recent deployment changes.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/probe-thresholds.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: warning
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -270,9 +311,21 @@ groups:
             Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             không ở trạng thái Ready hơn 5 phút (và không phải do đang restart).
             Kiểm tra: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+          discord_description: >-
+            Pod {{ $labels.namespace }}/{{ $labels.pod }} has been NotReady for more than 5 minutes.
+          impact: >-
+            The pod is not serving traffic; replica shortage can reduce capacity or availability.
+          action: >-
+            Run kubectl describe pod, check readiness probe failures, endpoints, resource pressure, and dependencies.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/probe-thresholds.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: warning
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -328,9 +381,21 @@ groups:
             vẫn ở trạng thái <b>Pending</b> hơn 10 phút.
             Nguyên nhân thường gặp: node selector không match, PVC chưa bound, resource quota.
             Kiểm tra: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+          discord_description: >-
+            Pod {{ $labels.namespace }}/{{ $labels.pod }} has been Pending for more than 10 minutes.
+          impact: >-
+            New replicas are not starting, so HPA scale-out can fail and latency can increase under load.
+          action: >-
+            Inspect pod events, node selectors, taints, PVCs, requests, quotas, and Karpenter capacity before changing topology.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: warning
-          team: platform
+          team: cdo03
+          domain: performance
+          environment: production
+          alert_type: scheduling
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -384,9 +449,21 @@ groups:
           description: >-
             Pod <b>{{ $labels.namespace }}/{{ $labels.pod }}</b> đã vào phase <b>Failed</b>.
             Kiểm tra: kubectl logs {{ $labels.pod }} -n {{ $labels.namespace }} --previous
+          discord_description: >-
+            Pod {{ $labels.namespace }}/{{ $labels.pod }} entered Failed phase.
+          impact: >-
+            The workload may have lost capacity or left a failed job/pod that needs investigation.
+          action: >-
+            Run kubectl describe pod and kubectl logs --previous, then check image, command, config, and dependency errors.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/probe-thresholds.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -441,9 +518,22 @@ groups:
             Container <b>{{ $labels.container }}</b> trong pod
             <b>{{ $labels.namespace }}/{{ $labels.pod }}</b>
             đang stuck với lý do: <b>{{ $labels.reason }}</b>.
+          discord_description: >-
+            Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }}
+            is waiting with reason {{ $labels.reason }}.
+          impact: >-
+            The pod cannot start and can block rollout, scale-out, or service recovery.
+          action: >-
+            Check image tag/digest, registry access, secret/config references, and container command before forcing rollout.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/runtime-hardening.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -498,9 +588,21 @@ groups:
             Node <b>{{ $labels.node }}</b> đang trong trạng thái <b>MemoryPressure</b>.
             Kubelet có thể bắt đầu evict pod.
             Kiểm tra: kubectl describe node {{ $labels.node }}
+          discord_description: >-
+            Node {{ $labels.node }} is under MemoryPressure and may evict pods.
+          impact: >-
+            Pods can be evicted or throttled, reducing capacity and increasing latency or errors.
+          action: >-
+            Check node allocatable versus pod requests, top memory consumers, recent scale-in, and Karpenter node availability.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'k8s.node.name="{{ $labels.node }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo03
+          domain: cost
+          environment: production
+          alert_type: node_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -554,9 +656,21 @@ groups:
           description: >-
             Node <b>{{ $labels.node }}</b> đang trong trạng thái <b>DiskPressure</b>.
             Container runtime có thể bị ảnh hưởng. Kiểm tra disk usage trên node.
+          discord_description: >-
+            Node {{ $labels.node }} is under DiskPressure and container runtime may be affected.
+          impact: >-
+            Pods can be evicted, image pulls can fail, and rollout stability can degrade.
+          action: >-
+            Inspect node disk usage, image garbage collection, pod ephemeral storage, and recent rollout activity.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/runtime-hardening.md"
+          logs_hint: 'k8s.node.name="{{ $labels.node }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: node_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -611,9 +725,21 @@ groups:
             Node <b>{{ $labels.node }}</b> không ở trạng thái <b>Ready</b> hơn 5 phút.
             Tất cả pod trên node này có thể bị ảnh hưởng.
             Kiểm tra: kubectl describe node {{ $labels.node }}
+          discord_description: >-
+            Node {{ $labels.node }} has been NotReady for more than 5 minutes.
+          impact: >-
+            All pods on the node can lose availability until Kubernetes reschedules them.
+          action: >-
+            Check node conditions, kubelet, CNI, AZ health, Karpenter or managed node group status, then verify pod rescheduling.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/workload-placement.md"
+          logs_hint: 'k8s.node.name="{{ $labels.node }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: node_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
@@ -669,9 +795,21 @@ groups:
             thường do node <b>MemoryPressure</b> hoặc <b>DiskPressure</b>.
             Kiểm tra node và xem xét tăng resource limits.
             Cleanup: kubectl delete pod {{ $labels.pod }} -n {{ $labels.namespace }}
+          discord_description: >-
+            Pod {{ $labels.namespace }}/{{ $labels.pod }} was evicted, usually because of node memory or disk pressure.
+          impact: >-
+            Evictions reduce service capacity and can trigger user-visible errors if replicas are insufficient.
+          action: >-
+            Check the node pressure reason, pod requests/limits, current replica count, and replacement pod scheduling before cleanup.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/autoscaling-validation.md"
+          logs_hint: 'k8s.pod.name="{{ $labels.pod }}"'
         labels:
           severity: critical
-          team: platform
+          team: cdo06
+          domain: reliability
+          environment: production
+          alert_type: pod_health
         isPaused: false
         notification_settings:
           receiver: discord-alerts
