@@ -135,8 +135,6 @@ groups:
           environment: production
           alert_type: error_rate
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 2. P95 Latency > 1000ms                                             #
@@ -213,8 +211,6 @@ groups:
           environment: production
           alert_type: latency
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 3. Pod Restart > 3 lần / 5 phút — hot path pods only               #
@@ -289,5 +285,3 @@ groups:
           environment: production
           alert_type: restart
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts

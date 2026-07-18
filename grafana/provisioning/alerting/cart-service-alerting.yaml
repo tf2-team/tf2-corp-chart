@@ -103,5 +103,3 @@ groups:
           environment: production
           alert_type: latency
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts

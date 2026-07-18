@@ -59,7 +59,6 @@ groups:
           environment: production
           alert_type: scheduling
         isPaused: false
-        notification_settings: {receiver: discord-alerts}
 
       - uid: karpenter-capacity-high-002
         title: KarpenterNodePoolCapacityHigh
@@ -115,7 +114,6 @@ groups:
           environment: production
           alert_type: capacity
         isPaused: false
-        notification_settings: {receiver: discord-alerts}
 
       - uid: karpenter-state-sync-003
         title: KarpenterClusterStateNotSynced
@@ -166,7 +164,6 @@ groups:
           environment: production
           alert_type: karpenter_health
         isPaused: false
-        notification_settings: {receiver: discord-alerts}
 
       - uid: production-unschedulable-warning-004
         title: ProductionPodsUnschedulableWarning
@@ -217,7 +214,6 @@ groups:
           environment: production
           alert_type: scheduling
         isPaused: false
-        notification_settings: {receiver: discord-alerts}
 
       - uid: production-unschedulable-critical-005
         title: ProductionPodsUnschedulableCritical
@@ -268,7 +264,6 @@ groups:
           environment: production
           alert_type: scheduling
         isPaused: false
-        notification_settings: {receiver: discord-alerts}
 
       - uid: critical-headroom-006
         title: CriticalNodeResourceHeadroomLow
@@ -352,6 +347,5 @@ groups:
           environment: production
           alert_type: capacity
         isPaused: false
-        notification_settings: {receiver: discord-alerts}
 
 # Change trail: @hungxqt - 2026-07-15 - Add Karpenter, Pending-pod, and critical-capacity alerts.

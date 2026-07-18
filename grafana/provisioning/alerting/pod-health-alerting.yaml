@@ -99,8 +99,6 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 2. OOMKilled — container bị kernel kill do vượt memory limit        #
@@ -173,8 +171,6 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 3. Restart nhiều — non-hot-path, >10 lần/1h (early warning)        #
@@ -246,8 +242,6 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 4. Pod Not Ready >5m — loại trừ pod đang trong quá trình restart    #
@@ -327,8 +321,6 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 5. Pod Pending >10m                                                  #
@@ -397,8 +389,6 @@ groups:
           environment: production
           alert_type: scheduling
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 6. Pod Failed                                                        #
@@ -465,8 +455,6 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 7. Container Waiting Error                                           #
@@ -535,8 +523,6 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 8. Node Memory Pressure                                              #
@@ -604,8 +590,6 @@ groups:
           environment: production
           alert_type: node_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 9. Node Disk Pressure                                                #
@@ -672,8 +656,6 @@ groups:
           environment: production
           alert_type: node_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 10. Node Not Ready >5m                                               #
@@ -741,8 +723,6 @@ groups:
           environment: production
           alert_type: node_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts
 
       # ------------------------------------------------------------------ #
       # 11. Pod Evicted — bị kubelet evict do node pressure                 #
@@ -811,5 +791,3 @@ groups:
           environment: production
           alert_type: pod_health
         isPaused: false
-        notification_settings:
-          receiver: discord-alerts

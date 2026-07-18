@@ -30,6 +30,12 @@ contactPoints:
           # Do not mention @everyone by default. Use a dedicated on-call role only after approval.
           use_discord_username: false
         disableResolveMessage: false
+
+  # Keep AIOps as a separate contact point. Do not attach it to discord-alerts:
+  # one missing AIOps service must not make the Discord notification pipeline fail.
+  - orgId: 1
+    name: aiops-grafana-events
+    receivers:
       - uid: aiops-webhook-receiver
         type: webhook
         settings:

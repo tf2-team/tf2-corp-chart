@@ -18,7 +18,7 @@ templates:
 
       {{ define "techx.discord.message" -}}
       {{ template "techx.discord.title" . }}
-      {{ range .Alerts }}
+      {{- range .Alerts }}
       ---
       **Status:** {{ .Status }}
       **Severity:** {{ or .Labels.severity "unknown" }}
@@ -27,51 +27,70 @@ templates:
       **Domain:** {{ or .Labels.domain "unclassified" }}
       **Environment:** {{ or .Labels.environment .Labels.deployment_environment_name "production" }}
       **Namespace:** {{ or .Labels.namespace .Labels.service_namespace "techx-corp-prod" }}
-      {{ with .Labels.service_name }}**Service:** {{ . }}
-      {{ end -}}
-      {{ with .Labels.pod }}**Pod:** {{ . }}
-      {{ end -}}
-      {{ with .Labels.container }}**Container:** {{ . }}
-      {{ end -}}
-      {{ with .Labels.node }}**Node:** {{ . }}
-      {{ end -}}
-      {{ with .Labels.nodepool }}**NodePool:** {{ . }}
-      {{ end -}}
-      {{ with .Labels.label_topology_kubernetes_io_zone }}**Zone:** {{ . }}
-      {{ end -}}
-      {{ with or .Labels.resource .Labels.resource_type }}**Resource:** {{ . }}
-      {{ end -}}
-      {{ with .Labels.reason }}**Reason:** {{ . }}
-      {{ end -}}
-      {{ with .Annotations.summary }}**Summary:** {{ . }}
-      {{ end -}}
-      {{ if .Annotations.discord_description }}**Description:** {{ .Annotations.discord_description }}
+      {{- with .Labels.service_name }}
+      **Service:** {{ . }}
+      {{- end }}
+      {{- with .Labels.pod }}
+      **Pod:** {{ . }}
+      {{- end }}
+      {{- with .Labels.container }}
+      **Container:** {{ . }}
+      {{- end }}
+      {{- with .Labels.node }}
+      **Node:** {{ . }}
+      {{- end }}
+      {{- with .Labels.nodepool }}
+      **NodePool:** {{ . }}
+      {{- end }}
+      {{- with .Labels.label_topology_kubernetes_io_zone }}
+      **Zone:** {{ . }}
+      {{- end }}
+      {{- with or .Labels.resource .Labels.resource_type }}
+      **Resource:** {{ . }}
+      {{- end }}
+      {{- with .Labels.reason }}
+      **Reason:** {{ . }}
+      {{- end }}
+      {{- with .Annotations.summary }}
+      **Summary:** {{ . }}
+      {{- end }}
+      {{- if .Annotations.discord_description }}
+      **Description:** {{ .Annotations.discord_description }}
       {{ else if .Annotations.description }}**Description:** {{ .Annotations.description }}
-      {{ end -}}
-      {{ with .Annotations.impact }}**Impact:** {{ . }}
-      {{ end -}}
-      {{ with .Annotations.action }}**First action:** {{ . }}
-      {{ end -}}
-      {{ with .Annotations.logs_hint }}**Logs hint:** `{{ . }}`
-      {{ end -}}
-      {{ with .Annotations.trace_hint }}**Trace hint:** `{{ . }}`
-      {{ end -}}
-      {{ if or .Annotations.dashboard_url .Annotations.slo_dashboard_url .Annotations.troubleshooting_dashboard_url .DashboardURL .PanelURL .GeneratorURL .Annotations.runbook_url }}
+      {{- end }}
+      {{- with .Annotations.impact }}
+      **Impact:** {{ . }}
+      {{- end }}
+      {{- with .Annotations.action }}
+      **First action:** {{ . }}
+      {{- end }}
+      {{- with .Annotations.logs_hint }}
+      **Logs hint:** `{{ . }}`
+      {{- end }}
+      {{- with .Annotations.trace_hint }}
+      **Trace hint:** `{{ . }}`
+      {{- end }}
+      {{- if or .Annotations.dashboard_url .Annotations.slo_dashboard_url .Annotations.troubleshooting_dashboard_url .DashboardURL .PanelURL .GeneratorURL .Annotations.runbook_url }}
       **Links**
       {{ if .Annotations.dashboard_url }}Dashboard: {{ .Annotations.dashboard_url }}
       {{ else if .DashboardURL }}Dashboard: {{ .DashboardURL }}
-      {{ end -}}
-      {{ with .Annotations.slo_dashboard_url }}SLO: {{ . }}
-      {{ end -}}
-      {{ with .Annotations.troubleshooting_dashboard_url }}Troubleshooting: {{ . }}
-      {{ end -}}
-      {{ with .PanelURL }}Panel: {{ . }}
-      {{ end -}}
-      {{ with .GeneratorURL }}Rule: {{ . }}
-      {{ end -}}
-      {{ with .Annotations.runbook_url }}Runbook: {{ . }}
-      {{ end -}}
-      {{ end }}
+      {{- end }}
+      {{- with .Annotations.slo_dashboard_url }}
+      SLO: {{ . }}
+      {{- end }}
+      {{- with .Annotations.troubleshooting_dashboard_url }}
+      Troubleshooting: {{ . }}
+      {{- end }}
+      {{- with .PanelURL }}
+      Panel: {{ reReplaceAll "^http://localhost:3000/grafana" "https://internal.hungtran.id.vn/grafana" . }}
+      {{- end }}
+      {{- with .GeneratorURL }}
+      Rule: {{ reReplaceAll "^http://localhost:3000/grafana" "https://internal.hungtran.id.vn/grafana" . }}
+      {{- end }}
+      {{- with .Annotations.runbook_url }}
+      Runbook: {{ . }}
+      {{- end }}
+      {{- end }}
       _Do not paste secrets, webhook URLs, payment data, customer PII, or raw logs into Discord._
-      {{ end }}
+      {{- end }}
       {{- end }}

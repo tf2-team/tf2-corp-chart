@@ -2687,6 +2687,12 @@ grafana:
   sidecar:
     alerts:
       enabled: true
+      # Avoid runtime reload through Grafana admin API.
+      # The live cluster has shown 401 on /api/admin/provisioning/alerting/reload
+      # when the persisted Grafana admin password drifts from the Kubernetes Secret.
+      # Init mode makes alert provisioning deterministic on Grafana pod rollout.
+      skipReload: true
+      initAlerts: true
     dashboards:
       enabled: true
     datasources:
