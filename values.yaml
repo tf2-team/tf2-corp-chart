@@ -139,27 +139,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-# Mem0 self-hosted with Amazon RDS IAM database authentication. Keep disabled
-# in base values; an environment overlay must explicitly supply the RDS endpoint,
-# RDS-managed master-secret ARN and immutable image tag.
-mem0:
-  enabled: false
-  image:
-    repository: ""
-    tag: ""
-  rds:
-    host: ""
-    port: 5432
-    database: mem0
-    masterSecretArn: ""
-  runtimeSecretArn: ""
-  serviceAccount:
-    name: mem0
-    roleArn: ""
-  runtimeSecretName: techx-corp-mem0
-  masterSecretName: techx-corp-mem0-rds-master
-  cleanupSchedule: "17 3 * * *"
-
 # SEC-03 least-privilege: any component may declare its OWN serviceAccount to get
 # a distinct, auditable identity instead of sharing the global one above. Fallback
 # rules:

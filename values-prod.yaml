@@ -49,21 +49,6 @@ default:
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
 
-mem0:
-  enabled: true
-  image:
-    repository: "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/mem0"
-    tag: "sha-f6d015b"
-  rds:
-    host: "techx-prod-tf2-mem0-postgres.cijoii00i7pl.us-east-1.rds.amazonaws.com"
-    port: 5432
-    database: mem0
-    masterSecretArn: "arn:aws:secretsmanager:us-east-1:493499579600:secret:rds!db-380876ae-6adf-417d-8234-395538d8a904-w6oiGn"
-  runtimeSecretArn: "arn:aws:secretsmanager:us-east-1:493499579600:secret:techx-corp/production/mem0-kD4v9a"
-  serviceAccount:
-    name: mem0
-    roleArn: "arn:aws:iam::493499579600:role/techx-prod-tf2-mem0-model-read"
-
 components:
   # DIRECTIVE #3: keep at least two Ready instances for every stateless service
   # on the synchronous browse -> cart -> checkout path. HPA services use a
