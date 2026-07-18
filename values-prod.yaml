@@ -49,6 +49,29 @@ default:
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
 
+
+mem0:
+  enabled: true
+  awsRegion: us-east-1
+  # Image: inherit default.image.repository/mem0:default.image.tag (platform chart promote).
+  rds:
+    host: "techx-prod-tf2-mem0-postgres.cijoii00i7pl.us-east-1.rds.amazonaws.com"
+    port: 5432
+    database: mem0
+    appUser: mem0_app
+  serviceAccount:
+    name: mem0
+    roleArn: "arn:aws:iam::493499579600:role/techx-prod-tf2-mem0-model-read"
+  runtimeSecretName: techx-corp-mem0
+  masterSecretName: techx-corp-mem0-rds-master
+  modelDelivery:
+    enabled: true
+    awsRegion: us-east-1
+    # Composed as {{ s3Prefix }}/{{ default.image.tag }}/{{ archiveName }}.
+    # Set platform MEM0_FASTEMBED_ARTIFACT_S3_URI to this s3Prefix so CI publishes under the global tag.
+    s3Prefix: "s3://techx-prod-tf2-ai-models-493499579600/fastembed/paraphrase-multilingual-MiniLM-L12-v2"
+    archiveName: fastembed-paraphrase-multilingual-MiniLM-L12-v2-faf4aa422582.tar.gz
+    mountPath: /models/fastembed
 components:
   # DIRECTIVE #3: keep at least two Ready instances for every stateless service
   # on the synchronous browse -> cart -> checkout path. HPA services use a
@@ -421,4 +444,4 @@ opentelemetry-collector:
           value: techx-corp-prod
           action: upsert
 
-# Change trail: @hungxqt - 2026-07-17 - Raise frontend prod RPS HPA target to 80 (less aggressive).
+# Change trail: @hungxqt - 2026-07-18 - Prod Mem0 uses global image tag; FastEmbed s3Prefix tracks promote.

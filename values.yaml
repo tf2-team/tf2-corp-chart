@@ -139,6 +139,94 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# Mem0 self-hosted with Amazon RDS IAM database authentication.
+# Keep disabled in base values. An environment overlay must supply the RDS
+# endpoint, IRSA role, and FastEmbed modelDelivery.s3Prefix (+ archiveName).
+# Image follows the global release contract (default.image.repository/mem0:default.image.tag)
+# so platform chart promote keeps Mem0 in lockstep with the other 21 services.
+# Optional mem0.image.repository / mem0.image.tag are break-glass overrides only.
+# Runtime and RDS-master Kubernetes Secrets are synced by secrets-chart (SEC-05).
+mem0:
+  enabled: false
+  awsRegion: us-east-1
+  replicas: 1
+  image:
+    # Empty → {{ default.image.repository }}/mem0:{{ default.image.tag }}
+    repository: ""
+    tag: ""
+  rds:
+    host: ""
+    port: 5432
+    database: mem0
+    # IAM database user created by the migrate Job bootstrap script.
+    appUser: mem0_app
+  serviceAccount:
+    name: mem0
+    roleArn: ""
+  # Secret names only — ExternalSecrets live in secrets-chart.
+  runtimeSecretName: techx-corp-mem0
+  masterSecretName: techx-corp-mem0-rds-master
+  cleanupSchedule: "17 3 * * *"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  migrate:
+    ttlSecondsAfterFinished: 86400
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  cleanup:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  # Cold start covers FastEmbed load + first RDS IAM token after model fetch.
+  probes:
+    startup:
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 36
+    liveness:
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+  # FastEmbed cache is published by platform CI under the same VERSION as the image.
+  # Rendered URI: {{ s3Prefix }}/{{ imageTag }}/{{ archiveName }}
+  # IRSA prefix (infra): fastembed/paraphrase-multilingual-MiniLM-L12-v2/
+  # Optional s3Uri fully overrides the composed URI (break-glass only).
+  modelDelivery:
+    enabled: false
+    awsRegion: us-east-1
+    fetcherImage: public.ecr.aws/aws-cli/aws-cli:2.27.49
+    extractorImage: busybox:1.37.0
+    s3Prefix: ""
+    archiveName: fastembed-paraphrase-multilingual-MiniLM-L12-v2-faf4aa422582.tar.gz
+    s3Uri: ""
+    mountPath: /models/fastembed
+    cacheSizeLimit: 2Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
 # SEC-03 least-privilege: any component may declare its OWN serviceAccount to get
 # a distinct, auditable identity instead of sharing the global one above. Fallback
 # rules:
@@ -2814,4 +2902,4 @@ prometheus-adapter:
       memory: 128Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-17 - Loosen request-metric HPA RPS targets and dampen scale behavior.
+# Change trail: @hungxqt - 2026-07-18 - Mem0 defaults inherit global image tag; FastEmbed uses s3Prefix+tag.

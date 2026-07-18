@@ -14,6 +14,142 @@
     "default": {
       "$ref": "#/definitions/Default"
     },
+    "mem0": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "awsRegion": {
+          "type": "string"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            }
+          }
+        },
+        "rds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "database": {
+              "type": "string"
+            },
+            "appUser": {
+              "type": "string"
+            }
+          }
+        },
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "roleArn": {
+              "type": "string"
+            }
+          }
+        },
+        "runtimeSecretName": {
+          "type": "string"
+        },
+        "masterSecretName": {
+          "type": "string"
+        },
+        "cleanupSchedule": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "object"
+        },
+        "migrate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ttlSecondsAfterFinished": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resources": {
+              "type": "object"
+            }
+          }
+        },
+        "cleanup": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "resources": {
+              "type": "object"
+            }
+          }
+        },
+        "probes": {
+          "type": "object"
+        },
+        "modelDelivery": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "awsRegion": {
+              "type": "string"
+            },
+            "fetcherImage": {
+              "type": "string"
+            },
+            "extractorImage": {
+              "type": "string"
+            },
+            "s3Prefix": {
+              "type": "string",
+              "description": "S3 prefix for FastEmbed artifacts; URI is s3Prefix/imageTag/archiveName"
+            },
+            "archiveName": {
+              "type": "string",
+              "description": "Immutable FastEmbed archive filename under the image tag prefix"
+            },
+            "s3Uri": {
+              "type": "string",
+              "description": "Optional full object URI override; when set, skips s3Prefix composition"
+            },
+            "mountPath": {
+              "type": "string"
+            },
+            "cacheSizeLimit": {
+              "type": "string"
+            },
+            "resources": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
     "serviceAccount": {
       "type": "object",
       "additionalProperties": false,

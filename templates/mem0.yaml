@@ -1,0 +1,379 @@
+{{- if .Values.mem0.enabled }}
+{{- $mem0 := .Values.mem0 }}
+{{- $ctx := merge (dict "name" "mem0") . }}
+{{- /* Image contract: REGISTRY/PROJECT/mem0:VERSION — inherit default.image.* unless overridden. */}}
+{{- $imageRepo := $mem0.image.repository | default (printf "%s/mem0" .Values.default.image.repository) }}
+{{- $imageTag := $mem0.image.tag | default .Values.default.image.tag }}
+{{- $_ := required "default.image.repository (or mem0.image.repository) is required when Mem0 is enabled" $imageRepo }}
+{{- $_ := required "default.image.tag (or mem0.image.tag) is required when Mem0 is enabled" $imageTag }}
+{{- $_ := required "mem0.rds.host is required when Mem0 is enabled" $mem0.rds.host }}
+{{- $_ := required "mem0.serviceAccount.roleArn is required when Mem0 is enabled" $mem0.serviceAccount.roleArn }}
+{{- $_ := required "mem0.runtimeSecretName is required when Mem0 is enabled" $mem0.runtimeSecretName }}
+{{- $_ := required "mem0.masterSecretName is required when Mem0 is enabled" $mem0.masterSecretName }}
+{{- $s3Uri := $mem0.modelDelivery.s3Uri | default "" }}
+{{- $archiveName := "" }}
+{{- if $mem0.modelDelivery.enabled }}
+{{- $_ := required "mem0.modelDelivery.fetcherImage is required when modelDelivery is enabled" $mem0.modelDelivery.fetcherImage }}
+{{- $_ := required "mem0.modelDelivery.extractorImage is required when modelDelivery is enabled" $mem0.modelDelivery.extractorImage }}
+{{- if not $s3Uri }}
+{{- $_ := required "mem0.modelDelivery.s3Prefix is required when modelDelivery is enabled and s3Uri is empty" $mem0.modelDelivery.s3Prefix }}
+{{- $_ := required "mem0.modelDelivery.archiveName is required when modelDelivery is enabled and s3Uri is empty" $mem0.modelDelivery.archiveName }}
+{{- $s3Uri = printf "%s/%s/%s" ($mem0.modelDelivery.s3Prefix | trimSuffix "/") $imageTag $mem0.modelDelivery.archiveName }}
+{{- end }}
+{{- $archiveName = base $s3Uri }}
+{{- end }}
+{{- /* Job name includes image tag so Helm/Argo can replace immutable Jobs on promote. */}}
+{{- $tagSlug := $imageTag | lower | replace "_" "-" | replace "." "-" | trunc 40 | trimSuffix "-" }}
+{{- $migrateName := printf "mem0-migrate-%s" $tagSlug | trunc 63 | trimSuffix "-" }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $mem0.serviceAccount.name }}
+  labels:
+    {{- include "techx-corp.labels" $ctx | nindent 4 }}
+    app.kubernetes.io/component: mem0
+  annotations:
+    eks.amazonaws.com/role-arn: {{ $mem0.serviceAccount.roleArn | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $migrateName }}
+  labels:
+    {{- include "techx-corp.labels" $ctx | nindent 4 }}
+    app.kubernetes.io/component: mem0-migrate
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: {{ $mem0.migrate.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "techx-corp.labels" $ctx | nindent 8 }}
+        app.kubernetes.io/component: mem0-migrate
+        opentelemetry.io/name: mem0-migrate
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ $mem0.serviceAccount.name }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+          # Image WORKDIR is /app/server; scripts live under scripts/, not server/scripts/.
+          command: ["sh", "-ec", "python scripts/bootstrap_rds_iam.py && alembic upgrade head"]
+          env:
+            - name: POSTGRES_HOST
+              value: {{ $mem0.rds.host | quote }}
+            - name: POSTGRES_PORT
+              value: {{ $mem0.rds.port | quote }}
+            - name: POSTGRES_DB
+              value: {{ $mem0.rds.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ $mem0.rds.appUser | quote }}
+            - name: POSTGRES_SSLMODE
+              value: require
+            - name: MEM0_RDS_IAM_AUTH
+              value: "true"
+            - name: AWS_REGION
+              value: {{ $mem0.awsRegion | quote }}
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+          envFrom:
+            - secretRef:
+                name: {{ $mem0.masterSecretName }}
+          resources:
+            {{- toYaml $mem0.migrate.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mem0
+  labels:
+    {{- include "techx-corp.labels" $ctx | nindent 4 }}
+    app.kubernetes.io/component: mem0
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: {{ $mem0.replicas }}
+  selector:
+    matchLabels:
+      opentelemetry.io/name: mem0
+  template:
+    metadata:
+      labels:
+        {{- include "techx-corp.labels" $ctx | nindent 8 }}
+        app.kubernetes.io/component: mem0
+        opentelemetry.io/name: mem0
+    spec:
+      serviceAccountName: {{ $mem0.serviceAccount.name }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if $mem0.modelDelivery.enabled }}
+      initContainers:
+        {{/* aws-cli has aws + sha256sum but no tar; extract in a second init. */}}
+        - name: fetch-mem0-fastembed
+          image: {{ $mem0.modelDelivery.fetcherImage | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              archive=/tmp/{{ $archiveName }}
+              checksum=/tmp/{{ $archiveName }}.sha256
+              aws s3 cp {{ $s3Uri | quote }} "$archive" --only-show-errors
+              aws s3 cp {{ printf "%s.sha256" $s3Uri | quote }} "$checksum" --only-show-errors
+              cd /tmp
+              # Windows-uploaded .sha256 files may use CRLF; strip CR so the
+              # filename matches the archive basename.
+              sed -i 's/\r$//' "{{ $archiveName }}.sha256"
+              sha256sum -c "{{ $archiveName }}.sha256"
+          env:
+            - name: AWS_REGION
+              value: {{ $mem0.modelDelivery.awsRegion | default $mem0.awsRegion | quote }}
+            - name: AWS_EC2_METADATA_DISABLED
+              value: "true"
+            - name: HOME
+              value: /tmp
+            - name: AWS_CONFIG_FILE
+              value: /tmp/.aws/config
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /tmp/.aws/credentials
+          resources:
+            {{- toYaml $mem0.modelDelivery.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+        - name: extract-mem0-fastembed
+          image: {{ $mem0.modelDelivery.extractorImage | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              archive=/tmp/{{ $archiveName }}
+              mkdir -p {{ $mem0.modelDelivery.mountPath | quote }}
+              tar -xzf "$archive" -C {{ $mem0.modelDelivery.mountPath | quote }}
+              test -f {{ printf "%s/.model-ready" $mem0.modelDelivery.mountPath | quote }}
+              rm -f "$archive" "/tmp/{{ $archiveName }}.sha256"
+          resources:
+            {{- toYaml $mem0.modelDelivery.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: fastembed-cache
+              mountPath: {{ $mem0.modelDelivery.mountPath | quote }}
+            - name: tmp
+              mountPath: /tmp
+      {{- end }}
+      containers:
+        - name: mem0
+          image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+          # Keep parity with the production image CMD (includes --no-access-log).
+          command:
+            - uvicorn
+            - main:app
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8000"
+            - --no-access-log
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: POSTGRES_HOST
+              value: {{ $mem0.rds.host | quote }}
+            - name: POSTGRES_PORT
+              value: {{ $mem0.rds.port | quote }}
+            - name: POSTGRES_DB
+              value: {{ $mem0.rds.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ $mem0.rds.appUser | quote }}
+            - name: POSTGRES_SSLMODE
+              value: require
+            - name: MEM0_RDS_IAM_AUTH
+              value: "true"
+            - name: AWS_REGION
+              value: {{ $mem0.awsRegion | quote }}
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+            {{- if $mem0.modelDelivery.enabled }}
+            - name: FASTEMBED_CACHE_PATH
+              value: {{ $mem0.modelDelivery.mountPath | quote }}
+            - name: FASTEMBED_LOCAL_FILES_ONLY
+              value: "true"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ $mem0.runtimeSecretName }}
+          resources:
+            {{- toYaml $mem0.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: {{ $mem0.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ $mem0.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ $mem0.probes.startup.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: {{ $mem0.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ $mem0.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ $mem0.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: {{ $mem0.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ $mem0.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ $mem0.probes.readiness.failureThreshold }}
+          volumeMounts:
+            - name: history
+              mountPath: /app/history
+            - name: tmp
+              mountPath: /tmp
+            {{- if $mem0.modelDelivery.enabled }}
+            - name: fastembed-cache
+              mountPath: {{ $mem0.modelDelivery.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: history
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        {{- if $mem0.modelDelivery.enabled }}
+        - name: fastembed-cache
+          emptyDir:
+            sizeLimit: {{ $mem0.modelDelivery.cacheSizeLimit | quote }}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mem0
+  labels:
+    {{- include "techx-corp.labels" $ctx | nindent 4 }}
+    app.kubernetes.io/component: mem0
+spec:
+  selector:
+    opentelemetry.io/name: mem0
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mem0-cleanup
+  labels:
+    {{- include "techx-corp.labels" $ctx | nindent 4 }}
+    app.kubernetes.io/component: mem0-cleanup
+spec:
+  schedule: {{ $mem0.cleanupSchedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "techx-corp.labels" $ctx | nindent 12 }}
+            app.kubernetes.io/component: mem0-cleanup
+            opentelemetry.io/name: mem0-cleanup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ $mem0.serviceAccount.name }}
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cleanup
+              image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+              # Image WORKDIR is /app/server.
+              command: ["python", "scripts/cleanup_expired_memories.py"]
+              env:
+                - name: POSTGRES_HOST
+                  value: {{ $mem0.rds.host | quote }}
+                - name: POSTGRES_PORT
+                  value: {{ $mem0.rds.port | quote }}
+                - name: POSTGRES_DB
+                  value: {{ $mem0.rds.database | quote }}
+                - name: POSTGRES_USER
+                  value: {{ $mem0.rds.appUser | quote }}
+                - name: POSTGRES_SSLMODE
+                  value: require
+                - name: MEM0_RDS_IAM_AUTH
+                  value: "true"
+                - name: AWS_REGION
+                  value: {{ $mem0.awsRegion | quote }}
+                - name: HOME
+                  value: /tmp
+                - name: TMPDIR
+                  value: /tmp
+              resources:
+                {{- toYaml $mem0.cleanup.resources | nindent 16 }}
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}
+# Change trail: @hungxqt - 2026-07-18 - Mem0 inherits default.image.tag; FastEmbed URI built from s3Prefix+tag.

@@ -34,6 +34,9 @@ targets:
   grafanaDiscord: techx-corp-grafana-discord
   # AIOps inbound Grafana webhook auth secret
   aiopsGrafanaWebhook: techx-corp-aiops-grafana-webhook
+  # Mem0 runtime keys (Groq, JWT, API keys) and RDS master for migrate Job
+  mem0Runtime: techx-corp-mem0
+  mem0RdsMaster: techx-corp-mem0-rds-master
 
 # Managed cart Valkey auth token (Terraform commerce_ha module).
 # Dev keeps in-cluster valkey-cart without auth — leave enabled: false.
@@ -54,4 +57,11 @@ rdsPostgresql:
   enabled: false
   # Full ASM secret containing endpoint metadata; credentials stay in postgresql-app.
   remoteKey: ""
-# Change trail: @hungxqt - 2026-07-15 - Add optional managed Valkey cart auth ExternalSecret.
+
+# Mem0 self-hosted: runtime app secret + RDS-managed master secret for migrate.
+# remoteKey may be an ASM name or full ARN (ESO accepts both for Secrets Manager).
+mem0:
+  enabled: false
+  runtimeRemoteKey: ""
+  masterRemoteKey: ""
+# Change trail: @hungxqt - 2026-07-18 - Add optional Mem0 runtime and RDS-master ExternalSecret targets.

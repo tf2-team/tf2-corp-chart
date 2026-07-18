@@ -17,4 +17,11 @@ msk:
 rdsPostgresql:
   enabled: true
   remoteKey: techx-prod-tf2/rds-postgresql
-# Change trail: @hungxqt - 2026-07-15 - Enable managed Valkey auth secret for production cart.
+
+# Mem0: runtime ASM secret (operator-bootstrapped JSON) + RDS-managed master secret ARN.
+# Runtime keys are consumed via envFrom by the Mem0 Deployment; master keys by the migrate Job.
+mem0:
+  enabled: true
+  runtimeRemoteKey: techx-corp/production/mem0
+  masterRemoteKey: "arn:aws:secretsmanager:us-east-1:493499579600:secret:rds!db-380876ae-6adf-417d-8234-395538d8a904-w6oiGn"
+# Change trail: @hungxqt - 2026-07-18 - Enable production Mem0 runtime and RDS-master ExternalSecrets.
