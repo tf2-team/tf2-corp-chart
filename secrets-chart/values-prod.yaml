@@ -22,9 +22,14 @@ rdsPostgresql:
 # ESO pulls from ASM (masterRemoteKey) into K8s Secret targets.mem0RdsMaster (techx-corp-mem0-rds-master).
 # The migrate Job must reference the K8s Secret name, never the ASM "rds!db-..." id (invalid DNS-1123).
 # Runtime keys are consumed via envFrom by the Mem0 Deployment; master keys by the migrate Job only.
+#
+# AccessDenied on GetSecretValue: ESO IRSA allows only exact ARNs from Terraform
+# (module.mem0_postgresql.master_user_secret_arn). After RDS recreate, re-apply
+# production Terraform so the policy includes this secret's full ARN, then re-sync.
 mem0:
   enabled: true
   runtimeRemoteKey: techx-corp/production/mem0
-  # RDS-managed master secret name (or full ARN). Update if the Mem0 RDS instance is recreated.
+  # Prefer full ARN from: terraform output mem0_postgresql_master_user_secret_arn
+  # Name form is OK once IAM lists that secret's full ARN.
   masterRemoteKey: "rds!db-012e983a-9341-49cf-8a12-5928f016905d"
-# Change trail: @hungxqt - 2026-07-18 - Point Mem0 masterRemoteKey at ASM; keep K8s secret name separate.
+# Change trail: @hungxqt - 2026-07-18 - Mem0 master ES username/password only; document ESO ARN IAM.
