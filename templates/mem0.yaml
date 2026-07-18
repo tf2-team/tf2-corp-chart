@@ -67,11 +67,20 @@ spec:
           # Image WORKDIR is /app/server; scripts live under scripts/, not server/scripts/.
           command: ["sh", "-ec", "python scripts/bootstrap_rds_iam.py && alembic upgrade head"]
           env:
+            # bootstrap_rds_iam.py connects as master (host/port are NOT in the RDS-managed secret).
+            - name: MEM0_RDS_MASTER_HOST
+              value: {{ $mem0.rds.host | quote }}
+            - name: MEM0_RDS_MASTER_PORT
+              value: {{ $mem0.rds.port | quote }}
+            # Alembic/SQLAlchemy (db.py) use POSTGRES_* + APP_DB_NAME with IAM as app user.
             - name: POSTGRES_HOST
               value: {{ $mem0.rds.host | quote }}
             - name: POSTGRES_PORT
               value: {{ $mem0.rds.port | quote }}
             - name: POSTGRES_DB
+              value: {{ $mem0.rds.database | quote }}
+            # db.py reads APP_DB_NAME (default mem0_app); keep aligned with POSTGRES_DB / rds.database.
+            - name: APP_DB_NAME
               value: {{ $mem0.rds.database | quote }}
             - name: POSTGRES_USER
               value: {{ $mem0.rds.appUser | quote }}
@@ -221,6 +230,8 @@ spec:
               value: {{ $mem0.rds.port | quote }}
             - name: POSTGRES_DB
               value: {{ $mem0.rds.database | quote }}
+            - name: APP_DB_NAME
+              value: {{ $mem0.rds.database | quote }}
             - name: POSTGRES_USER
               value: {{ $mem0.rds.appUser | quote }}
             - name: POSTGRES_SSLMODE
@@ -347,6 +358,8 @@ spec:
                   value: {{ $mem0.rds.port | quote }}
                 - name: POSTGRES_DB
                   value: {{ $mem0.rds.database | quote }}
+                - name: APP_DB_NAME
+                  value: {{ $mem0.rds.database | quote }}
                 - name: POSTGRES_USER
                   value: {{ $mem0.rds.appUser | quote }}
                 - name: POSTGRES_SSLMODE
@@ -376,4 +389,4 @@ spec:
             - name: tmp
               emptyDir: {}
 {{- end }}
-# Change trail: @hungxqt - 2026-07-18 - Mem0 inherits default.image.tag; FastEmbed URI built from s3Prefix+tag.
+# Change trail: @hungxqt - 2026-07-19 - Wire MEM0_RDS_MASTER_HOST/PORT and APP_DB_NAME for migrate/bootstrap.
