@@ -10,7 +10,13 @@
     {{- $config := set . "serviceAccount" $.Values.serviceAccount }}
     {{- $config := set . "observability" $.Values.observability }}
     {{- $config := set . "defaultValues" $.Values.default }}
-    {{- $config := set . "postgresqlEnabled" (default dict $.Values.components.postgresql).enabled }}
+    {{- $pgEnabled := true }}
+    {{- if hasKey $.Values.components "postgresql" }}
+    {{-   if hasKey $.Values.components.postgresql "enabled" }}
+    {{-     $pgEnabled = $.Values.components.postgresql.enabled }}
+    {{-   end }}
+    {{- end }}
+    {{- $config := set . "postgresqlEnabled" $pgEnabled }}
 
     {{- if $config.enabled -}}
         {{- include "techx-corp.deployment" $config -}}
