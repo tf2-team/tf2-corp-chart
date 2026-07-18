@@ -14,6 +14,7 @@ Cluster-specific Argo CD `AppProject` + `Application` manifests for the platform
 | `root-prod` / `root-dev` | `gitops/clusters/{prod,dev}` (directory) | n/a (app-of-apps) | `argocd` |
 | `techx-corp` / `techx-corp-dev` | `.` (root chart) | `techx-corp` / `techx-corp-dev` | `techx-corp-prod` / `techx-corp-dev` |
 | `techx-corp-secrets` / `techx-corp-secrets-dev` | `secrets-chart` | `techx-corp-secrets` | same as app NS |
+| `runtime-hardening` (prod only) | `gitops/runtime-hardening/overlays/audit` then `enforce` | n/a | cluster-scoped |
 | `gatekeeper` (prod only) | `gatekeeper-chart` | `gatekeeper` | `gatekeeper-system` |
 | `gatekeeper-policy` (prod only) | `gitops/gatekeeper` | n/a (kustomize/dir) | `gatekeeper-system` |
 
@@ -21,7 +22,8 @@ Cluster-specific Argo CD `AppProject` + `Application` manifests for the platform
 mapping changes auto-sync without waiting for a manual `helm upgrade`.
 
 Root Applications reconcile **Application** and **AppProject** CRs only. They do **not**
-deploy workload charts. Child Applications own store, secrets, and Gatekeeper releases.
+deploy workload charts. Child Applications own store, secrets, admission policy,
+and the temporary Gatekeeper migration baseline.
 
 ## Prerequisites
 
@@ -81,44 +83,27 @@ child Application CRs; fix Git afterward.
 
 See `docs/operations/gitops-argocd.md` and workspace `docs/gitops-argocd.md`.
 
-## Gatekeeper runtime-hardening policy
+## Native runtime-hardening policy
 
-`tf2-corp-chart` owns the complete Kubernetes delivery for Gatekeeper. The
-dedicated wrapper chart in `gatekeeper-chart` pins the upstream Gatekeeper Helm
-chart and Argo CD installs it into `gatekeeper-system`. AWS infrastructure stays
-outside this change. A separate Argo CD Application owns the
-ConstraintTemplates and Constraints in `gitops/gatekeeper` so policy rollout can
-wait for the controller and generated constraint CRDs to become ready.
+MANDATE-05 is migrating from Gatekeeper to Kubernetes
+`ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding`. The native policy
+source is `gitops/runtime-hardening`; it creates no controller Pod, Service,
+certificate, CRD, Load Balancer, or AWS resource.
 
-After root-prod is applied, the **controller** Application (`gatekeeper`) is automated.
-The **policy** Application (`gatekeeper-policy`) stays **manual sync** until SEC-07 cutover.
+The production Application starts at `overlays/audit` with `Warn,Audit`. Promote
+its path to `overlays/enforce` only after VAP acceptance, zero live inventory,
+and regression approval. Gatekeeper remains temporarily at `deny` during audit so
+there is no admission gap, then moves to `dryrun` only for the native denial proof.
 
 ```cmd
-cd /d techx-corp-chart
-
-REM 1. Root already owns gatekeeper AppProject + controller Application.
-argocd app wait gatekeeper --sync --health --timeout 600
-kubectl -n gatekeeper-system rollout status deployment/gatekeeper-controller-manager
-kubectl -n gatekeeper-system rollout status deployment/gatekeeper-audit
-
-REM 2. Temporary dryrun policy from the reviewed revision.
-pwsh scripts\render-gatekeeper-dryrun.ps1 -OutputPath gatekeeper-dryrun.yaml
-kubectl apply -f gatekeeper-dryrun.yaml
-
-REM 3. Confirm templates and dry-run constraints; retain checksum.
-kubectl get constrainttemplates
-kubectl get k8scontainerhardening,k8sallowedimagetags,k8srequiredresources
-certutil -hashfile gatekeeper-dryrun.yaml SHA256
-
-REM 4. After two clean audit cycles: enable automated on gatekeeper-policy via Git PR,
-REM    then sync (or argocd app sync gatekeeper-policy once during cutover).
+argocd app wait runtime-hardening --sync --health --timeout 300
+kubectl get validatingadmissionpolicies
+kubectl get validatingadmissionpolicybindings
+pwsh scripts\audit-runtime-hardening.ps1
 ```
 
-The committed source of truth keeps all three constraints at `deny`. Before enabling
-policy Application auto-sync, render the reviewed revision, change only the temporary
-output to `dryrun`, apply it, and wait for at least two 60-second audit cycles.
-Enable automated policy only after every `status.totalViolations` is zero and
-production smoke/SLO checks pass. Retain the temporary output checksum as evidence.
-Roll back a false positive through the approved break-glass process; do not delete
-the templates or disable flagd.
-<!-- Change trail: @hungxqt - 2026-07-16 - App chart children prune true; secrets and root stay false. -->
+Gatekeeper entries in the table are migration-only. Remove them, their source
+paths, CRDs, webhook, workloads, Service, and namespace only after native Deny
+passes CREATE/UPDATE fixtures. Follow
+`docs/operations/runtime-hardening.md` for the ordered cutover and rollback.
+<!-- Change trail: @hungxqt - 2026-07-18 - Add native VAP migration ownership. -->

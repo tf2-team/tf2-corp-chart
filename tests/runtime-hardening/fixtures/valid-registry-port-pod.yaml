@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata: {name: vap-valid-registry-port, namespace: default}
+spec:
+  securityContext:
+    runAsNonRoot: true
+  containers:
+    - name: app
+      image: registry.example.com:5000/team/app:v1.2.3
+      securityContext:
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests: {cpu: 10m, memory: 16Mi}
+        limits: {cpu: 100m, memory: 64Mi}

@@ -5,7 +5,6 @@
 /Chart.yaml    @hungxqt
 /Chart.lock    @hungxqt
 /charts/       @hungxqt
-/gatekeeper-chart/ @hungxqt
 /templates/    @hungxqt
 /postgresql/   @hungxqt
 
@@ -16,11 +15,11 @@
 
 # Argo CD prod bootstrap
 /gitops/clusters/prod/    @hungxqt
-/gitops/gatekeeper/       @hungxqt
-/gitops/clusters/prod/gatekeeper-*.yaml @hungxqt
+/gitops/runtime-hardening/ @hungxqt
+/gitops/clusters/prod/runtime-hardening-application.yaml @hungxqt
 /docs/adr/SEC-07-runtime-hardening.md @hungxqt
 /.github/workflows/runtime-hardening.yml @hungxqt
-/scripts/render-gatekeeper-dryrun.ps1 @hungxqt
+/scripts/audit-runtime-hardening.ps1 @hungxqt
 /scripts/verify-runtime-hardening.ps1 @hungxqt
 /tests/runtime-hardening/ @hungxqt
 

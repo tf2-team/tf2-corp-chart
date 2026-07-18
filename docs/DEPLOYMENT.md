@@ -831,24 +831,25 @@ kubectl -n argocd annotate application techx-corp-dev \
 
 ---
 
-## Gatekeeper runtime hardening (MANDATE-05)
+## Native runtime hardening (MANDATE-05)
 
-Gatekeeper is Kubernetes policy infrastructure and is delivered entirely from
-this chart repository. `gatekeeper-chart/` pins the upstream chart; no Gatekeeper
-module or apply is required in `tf2-corp-infra`. After root app-of-apps bootstrap
-(`gitops/bootstrap/prod/`), Argo owns the Gatekeeper AppProject and controller
-Application under `gitops/clusters/prod/`.
+Runtime hardening is delivered through the Kubernetes built-in
+`ValidatingAdmissionPolicy` API. It adds no policy controller, Service, CRD,
+Load Balancer, AWS managed service, or Terraform apply. The production Argo
+Application begins with `Warn,Audit`; Gatekeeper remains only as a temporary
+migration guard until native `Deny` is proven.
 
 ```cmd
 kubectl apply -f gitops\bootstrap\prod\
 argocd app wait root-prod --sync --health --timeout 300
-argocd app wait gatekeeper --sync --health --timeout 600
+argocd app wait runtime-hardening --sync --health --timeout 300
+kubectl get validatingadmissionpolicies,validatingadmissionpolicybindings
+pwsh scripts\audit-runtime-hardening.ps1
 ```
 
-After the controller is healthy, follow
-[`operations/runtime-hardening.md`](./operations/runtime-hardening.md) for the
-temporary `dryrun` audit and final policy Application cutover (manual sync until
-deny is approved).
+Follow [`operations/runtime-hardening.md`](./operations/runtime-hardening.md) for
+the audit-to-enforce promotion, native CREATE/UPDATE evidence, ordered Gatekeeper
+retirement, and rollback. Do not retire Gatekeeper before VAP `Deny` is proven.
 
 ---
 
@@ -856,7 +857,7 @@ deny is approved).
 
 - GitHub chart: [`tf2-team/tf2-corp-chart`](https://github.com/tf2-team/tf2-corp-chart) (branch dev `techx-dev-corp`)  
 - `gitops/bootstrap/dev|prod/` — root app-of-apps (one-time bootstrap)  
-- `gitops/clusters/dev|prod/` — child AppProject + app + secrets (+ Gatekeeper on prod)  
+- `gitops/clusters/dev|prod/` — child AppProject + app + secrets + native admission policy
 - `gitops/clusters/*/secrets-application.yaml` — secrets-chart GitOps (`techx-corp-secrets`)  
 - `gitops/README.md` — bootstrap tóm tắt  
 - `techx-corp-platform/docs/CICD.md` — build/push OIDC  

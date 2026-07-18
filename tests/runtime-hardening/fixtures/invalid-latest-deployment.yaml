@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vap-invalid-latest, namespace: default}
+spec:
+  selector:
+    matchLabels: {app: vap-invalid-latest}
+  template:
+    metadata:
+      labels: {app: vap-invalid-latest}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: nginx:latest
+          securityContext:
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}

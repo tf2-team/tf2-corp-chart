@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: vap-invalid-cronjob, namespace: default}
+spec:
+  schedule: "0 0 1 1 *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: app
+              image: nginx:Latest

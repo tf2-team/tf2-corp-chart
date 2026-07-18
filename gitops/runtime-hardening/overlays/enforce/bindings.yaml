@@ -1,0 +1,48 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: runtime-hardening-pod-enforce.techx.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  policyName: runtime-hardening-pod.techx.io
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          # Temporary migration exclusion; remove after Gatekeeper retirement.
+          values: [kube-system, kube-public, kube-node-lease, gatekeeper-system]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: runtime-hardening-pod-template-enforce.techx.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  policyName: runtime-hardening-pod-template.techx.io
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [kube-system, kube-public, kube-node-lease, gatekeeper-system]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: runtime-hardening-cronjob-enforce.techx.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  policyName: runtime-hardening-cronjob.techx.io
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [kube-system, kube-public, kube-node-lease, gatekeeper-system]

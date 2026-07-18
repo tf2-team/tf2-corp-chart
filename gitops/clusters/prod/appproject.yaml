@@ -35,6 +35,10 @@ spec:
       kind: APIService
     - group: ""
       kind: Namespace
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicy
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicyBinding
 
   # Orphan ignore: kube defaults, Helm history Secrets, ESO-generated Secrets
   # (created by ESO, not by either Application), STS PVCs, ALB TargetGroupBindings.

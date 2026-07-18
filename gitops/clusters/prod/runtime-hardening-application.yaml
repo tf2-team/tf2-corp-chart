@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: runtime-hardening
+  namespace: argocd
+spec:
+  project: techx-corp
+  source:
+    repoURL: https://github.com/tf2-team/tf2-corp-chart.git
+    targetRevision: main
+    # Phase 2 starts in Warn + Audit. Promote this path to overlays/enforce only
+    # after inventory, CEL review, and production regression gates are clean.
+    path: gitops/runtime-hardening/overlays/audit
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: techx-corp-prod
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

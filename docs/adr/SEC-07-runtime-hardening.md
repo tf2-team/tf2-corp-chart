@@ -1,123 +1,98 @@
-# ADR SEC-07: Production runtime hardening with Gatekeeper
+# ADR SEC-07: Native Kubernetes runtime-hardening admission
 
-- Status: Technically verified; pending mentor acceptance and signatures
-- Date: 2026-07-17
+- Status: Phase 1 verified; production audit cutover pending
+- Date: 2026-07-18
 - Owners: Platform Security and Platform Engineering
-- Verified production revision: `3bfb118d65d84c24f23c330df63ce437950b3a87`
+- Target cluster: `techx-tf2-prod`, Kubernetes `v1.36.2`
+- Cutover commit: Pending
 
 ## Context
 
-The production render contained eight unpinned BusyBox init-container images,
-missing init-container resources, and Grafana's root `init-chown-data` container.
-Static chart cleanup removes those known violations, but future manifests also
-need an admission guardrail.
+The production chart has already remediated root containers, floating images,
+and missing CPU/memory requests and limits. Gatekeeper 3.23.0 currently prevents
+those violations from returning, but it adds controller and audit Deployments,
+a webhook Service, certificates, CRDs, and worker resource consumption. MANDATE-05
+requires admission policy without introducing another in-cluster policy service.
+
+The target EKS API server provides stable
+`ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding` APIs. Native CEL
+policy therefore preserves automatic admission enforcement without a controller,
+Service, certificate, CRD, network hop, or Terraform/AWS resource.
 
 ## Decision
 
-Install the pinned upstream Gatekeeper chart `3.23.0` from the dedicated
-`gatekeeper-chart` wrapper in this repository. Argo CD owns both the Gatekeeper
-Helm release and three policies; AWS Terraform is not part of this decision:
+Migrate the three runtime-hardening rules to native VAP/CEL:
 
-- `K8sContainerHardening`: effective `runAsNonRoot=true`, no effective
-  `runAsUser=0`, capability drop `ALL`, and no added Linux capabilities for
-  containers, init containers, and ephemeral containers.
-- `K8sAllowedImageTags`: fixed tags or valid SHA-256 digests; no missing tag or
-  case-insensitive `latest`.
-- `K8sRequiredResources`: CPU/memory requests and limits for containers and init
-  containers. Kubernetes does not support resources on ephemeral containers.
+1. Container hardening requires effective `runAsNonRoot=true`, forbids effective
+   UID 0, requires capability drop `ALL`, and rejects added capabilities.
+2. Image pinning rejects missing tags, case-insensitive `latest`, and malformed
+   digests; fixed tags and valid SHA-256 digests are accepted.
+3. Resource requirements enforce CPU/memory requests and limits for containers
+   and init containers. Ephemeral containers are excluded from this rule because
+   Kubernetes does not support resources on them.
 
-Policies cover Pod, Deployment, StatefulSet, DaemonSet, ReplicaSet, Job,
-CronJob, and ReplicationController. Only `kube-system`, `kube-public`,
-`kube-node-lease`, and `gatekeeper-system` are excluded. Any future exception
-must record owner, reason, expiry, and Platform Security approval.
+Three policies follow the three native PodSpec shapes: Pod,
+controller/Job template, and CronJob template. They cover CREATE and UPDATE for
+Pod, Deployment, StatefulSet, DaemonSet, ReplicaSet, ReplicationController, Job,
+and CronJob. Security and image checks include containers, init containers, and
+ephemeral containers when present.
 
-The controller Application installs the chart into `gatekeeper-system`. The
-policy Application remains separate because Gatekeeper must first install its
-CRDs and generate the constraint CRDs before Constraints can be admitted. The
-webhook is fail-closed and runs with two controller replicas, a PDB, and the
-existing Critical MNG. Mutation, external data, generated-resource expansion,
-and CRD upgrade hooks are disabled.
+The production Argo Application initially points to the audit overlay with
+`[Warn, Audit]`. A reviewed PR changes only the Application path to the enforce
+overlay with `[Deny]` after inventory and regression gates pass. System namespaces
+and the temporary `gatekeeper-system` migration namespace are excluded. The
+Gatekeeper exclusion must be removed after retirement; any later exception needs
+an owner, reason, expiry, and Platform Security approval.
 
-**Application ownership:** A root app-of-apps Application (`root-prod` from
-`gitops/bootstrap/prod/`) reconciles child Application/AppProject CRs under
-`gitops/clusters/prod/` (including Gatekeeper). Operators bootstrap the root once;
-they do not hand-apply Gatekeeper Application manifests in steady state. The
-policy Application was synced once for the deny cutover and remains **manual
-sync** pending the Platform Security decision on automated self-heal.
+## Migration safety
 
-## Rollout and rollback
+1. Keep Gatekeeper at `deny` while VAP source, tests, and audit binding are added.
+2. Deploy VAP `[Warn, Audit]`; require observed generations with zero type-check
+   warnings, zero live inventory violations, and no
+   storefront/private-route/flagd/SLO regression.
+3. Promote VAP to `[Deny]`, then temporarily set Gatekeeper Constraints to
+   `dryrun`. Prove invalid CREATE and UPDATE requests are denied by VAP and a
+   valid manifest is admitted.
+4. Remove the Gatekeeper webhook before its Service/controller, prove VAP still
+   denies, then remove Gatekeeper policy resources, workloads, CRDs, and namespace.
 
-1. Deploy chart cleanup and verify workload health, storefront access boundaries,
-   and flagd behavior.
-2. Ensure root-prod is applied; wait for the Gatekeeper controller Application
-   (`gatekeeper` / `gatekeeper-chart`) until both controller and audit Deployments
-   are available.
-3. Render the reviewed chart revision to a temporary output, change only that
-   output to `enforcementAction: dryrun`, and apply it before syncing the
-   Argo CD policy Application.
-4. Observe at least two audit cycles and record zero violations below. Completed
-   on 2026-07-17 with clean audits at `02:32:15Z` and `02:35:15Z`.
-5. Run a one-time `argocd app sync gatekeeper-policy` from the reviewed chart
-   revision. Completed; the source of truth keeps all three constraints at final
-   state `deny`. Automated self-heal remains an explicit Platform Security
-   approval decision.
-6. Run the mentor rejection demo and sign this ADR.
+There must never be a point where both VAP and Gatekeeper are non-enforcing.
+Existing workloads are not killed by a binding action change; rollout remains
+blocked whenever application health or SLO evidence is not clean.
 
-For a false positive, revert constraints to `dryrun` through Git and Argo CD,
-add a regression fixture, then repeat audit. If the fail-closed webhook is
-unavailable, restore its controller first; fail-open is break-glass only and
-requires approval plus an audit trail.
+## Rollback
+
+- Before Gatekeeper retirement, revert the VAP Application to the audit overlay
+  and restore all Gatekeeper Constraints to `deny`.
+- After retirement, revert the binding from `[Deny]` to `[Warn, Audit]`, add a
+  regression fixture, correct CEL, and repeat the cutover gates.
+- Reinstalling Gatekeeper is not the default response to a CEL false positive;
+  it requires a native API platform failure and Platform Security approval.
+- Never disable flagd or alter public/private routing to work around admission.
 
 ## Evidence
 
 | Evidence | Result | Commit/time |
 |---|---|---|
-| Production Helm render compliance inventory | PASS - Helm lint, negative schema test, production render policy audit, and Gator suite passed | Revision `3bfb118`; 2026-07-17 09:35 +07 |
-| Gatekeeper runtime and fail-closed webhook | PASS - controller 2/2, audit 1/1, PDB `minAvailable=1`, two webhook endpoints, and `failurePolicy=Fail` | 2026-07-17 09:33 +07 |
-| Three constraints, two audit cycles, zero violations | PASS - all three constraints reported zero violations in two consecutive cycles | `02:32:15Z` and `02:35:15Z`, 2026-07-17 |
-| Constraints switched to `deny` | PASS - container hardening, image tags, and required resources are all enforced as `deny` | 2026-07-17 09:35 +07 |
-| Admission rejection and valid-manifest admission | TECHNICAL PASS - actual apply rejected root, `latest`, and missing-resource fixtures; a server-side dry-run admitted the valid fixture | 2026-07-16/17; mentor witness pending |
-| External Secrets Operator remediation | PASS - controller, cert-controller, and webhook Deployments are 1/1; Pods are Ready with zero restarts | Helm revision 2; 2026-07-17 09:33 +07 |
-| Argo CD and rollout health | PASS - all five Applications are Synced/Healthy; Grafana rollout completed 1/1 | Revision `3bfb118`; 2026-07-17 09:35 +07 |
-| Storefront/private ops/flagd regression checks | PARTIAL - Kubernetes workload health passed; endpoint access, behavior, and SLO evidence remain pending | 2026-07-17 |
-| Mentor acceptance and signatures | Pending | Pending |
+| Legacy Gatekeeper baseline | PASS - three deny constraints, zero violations | 2026-07-17 |
+| VAP base/audit/enforce render | PASS locally | 2026-07-18 |
+| EKS 1.36 server-side dry-run of three policies | PASS | 2026-07-18 |
+| Full live inventory | PASS - 135 objects, 191 containers, zero violations | 2026-07-18 |
+| Native fixture suite on disposable cluster | PASS - valid Pod/Deployment/Job/CronJob admitted; invalid root, UID 0, capability, image, resources, CREATE and UPDATE denied | Minikube v1.35.1; 2026-07-18 |
+| Audit overlay behavior on disposable cluster | PASS - invalid root admitted with native VAP warning after binding cache propagation | Minikube v1.35.1; 2026-07-18 |
+| VAP audit conditions and warning observation | Pending Phase 2 | Pending |
+| VAP deny CREATE/UPDATE mentor demo | Pending Phase 3 | Pending |
+| Gatekeeper retirement inventory | Pending Phase 4 | Pending |
+| Storefront/private ops/flagd/SLO regression | Pending each production phase | Pending |
 
-### Admission and audit screenshots
-
-**1. Running as root is denied.** Gatekeeper rejected `root-container.yaml`
-because the container did not set an effective `runAsNonRoot=true`.
-
-![Gatekeeper denies a root container](evidence/sec-07/01-deny-root-container.png)
-
-**2. A floating image tag is denied.** Gatekeeper rejected
-`nginx:latest` and required a fixed tag or SHA-256 digest.
-
-![Gatekeeper denies the latest image tag](evidence/sec-07/02-deny-latest-image.png)
-
-**3. Missing resource limits are denied.** Gatekeeper rejected the container
-because `resources.limits.memory` was not defined.
-
-![Gatekeeper denies a missing memory limit](evidence/sec-07/03-deny-missing-memory-limit.png)
-
-**4. All runtime-hardening constraints are enforcing with zero violations.**
-The production audit reported `deny` and `0` violations for container
-hardening, allowed image tags, and required resources.
-
-![Three Gatekeeper constraints in deny mode with zero violations](evidence/sec-07/04-constraints-deny-zero-violations.png)
-
-## Outstanding acceptance
-
-- Have the mentor witness an actual invalid-manifest rejection and the valid
-  manifest apply/delete flow. The server-side dry-run above is technical proof,
-  but does not replace the required witnessed acceptance.
-- Capture evidence for storefront public access, the private operations boundary,
-  flagd behavior, and relevant SLO/regression checks.
-- Record Platform Security's decision to enable automated sync/self-heal for
-  `gatekeeper-policy` or formally approve continued manual sync.
-- Collect the named-role signatures below.
+Historical Gatekeeper screenshots remain under `docs/adr/evidence/sec-07/` as
+pre-migration evidence. Final acceptance must capture VAP denial output naming
+the native policy and binding, not `validation.gatekeeper.sh`.
 
 ## Signatures
 
 | Role | Name | Signature/date |
 |---|---|---|
-| Tech Lead | Trần Quốc Hùng | @hungxqt |
+| Tech Lead | Trần Quốc Hùng | Pending migration acceptance |
+| Platform Security |  | Pending |
+| Service owner representative |  | Pending |

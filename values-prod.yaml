@@ -25,8 +25,8 @@ grafana:
       serve_from_sub_path: true
 
 default:
-  # MANDATE-05: prune historical ReplicaSets so old non-compliant pod templates leave Gatekeeper audit scope.
-  revisionHistoryLimit: 0
+  # Keep a bounded rollback window while admission policy prevents new violations.
+  revisionHistoryLimit: 2
   # DIRECTIVE #3: stop routing first, then terminate. The native lifecycle sleep
   # works with distroless images because it does not execute a container binary.
   terminationGracePeriodSeconds: 30
