@@ -63,7 +63,7 @@ mem0:
     name: mem0
     roleArn: "arn:aws:iam::493499579600:role/techx-prod-tf2-mem0-model-read"
   runtimeSecretName: techx-corp-mem0
-  masterSecretName: techx-corp-mem0-rds-master
+  masterSecretName: rds!db-012e983a-9341-49cf-8a12-5928f016905d
   modelDelivery:
     enabled: true
     awsRegion: us-east-1
