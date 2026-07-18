@@ -207,6 +207,9 @@ spec:
         spec:
           restartPolicy: OnFailure
           serviceAccountName: {{ $mem0.serviceAccount.name }}
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: cleanup
               image: {{ printf "%s:%s" $mem0.image.repository $mem0.image.tag | quote }}
@@ -222,4 +225,12 @@ spec:
               resources:
                 requests: { cpu: 100m, memory: 256Mi }
                 limits: { cpu: 500m, memory: 512Mi }
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
 {{- end }}
