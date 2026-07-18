@@ -297,10 +297,22 @@ components:
   kafka:
     enabled: false
 
-  # Production PostgreSQL is private Multi-AZ RDS. The secrets chart assembles
-  # verify-full DSNs from ASM credentials and RDS connection metadata.
   postgresql:
-    enabled: false
+    enabled: true
+    command:
+      - docker-entrypoint.sh
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=4
+      - -c
+      - max_wal_senders=4
+    service:
+      port: 5432
+      type: NodePort
 
   load-generator-worker:
     imageOverride:
