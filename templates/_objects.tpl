@@ -306,9 +306,8 @@ spec:
             - name: tmp-dir
               mountPath: /tmp
         {{- end }}
-        {{- $skipPgInit := .skipPgInit }}
         {{- range $initContainer := .initContainers }}
-        {{- if not (and (eq $initContainer.name "wait-for-postgresql") $skipPgInit) }}
+        {{- if ne $initContainer.name "wait-for-postgresql" }}
         {{- $mergedSecurityContext := mergeOverwrite (dict) (default dict $.defaultValues.initContainerSecurityContext) (default dict $initContainer.securityContext) }}
         {{- $mergedResources := mergeOverwrite (dict) (default dict $.defaultValues.initContainerResources) (default dict $initContainer.resources) }}
         {{- $c := mergeOverwrite (dict) $initContainer }}
