@@ -142,6 +142,8 @@ components:
     initContainers: []
   
   accounting:
+    imageOverride:
+      tag: "sha-59fb903"
     envOverrides:
       - name: KAFKA_ADDR
         valueFrom:
