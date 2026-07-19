@@ -1,0 +1,98 @@
+2026-07-19T06:04:20.880752384Z == Sinatra (v4.2.1) has taken the stage on 8080 for production with backup from Puma
+2026-07-19T06:04:20.921199073Z I, [2026-07-19T06:04:20.576388 #1]  INFO -- : Instrumentation: OpenTelemetry::Instrumentation::Sinatra was successfully installed with the following options {install_rack: true}
+2026-07-19T06:04:20.921224561Z Puma starting in single mode...
+2026-07-19T06:04:20.921226548Z * Puma version: 7.1.0 ("Neon Witch")
+2026-07-19T06:04:20.921267150Z * Ruby version: ruby 3.4.7 (2025-10-08 revision 7a5688e2a2) +PRISM [aarch64-linux-musl]
+2026-07-19T06:04:20.921269580Z *  Min threads: 0
+2026-07-19T06:04:20.921271256Z *  Max threads: 5
+2026-07-19T06:04:20.921273055Z *  Environment: production
+2026-07-19T06:04:20.921274264Z *          PID: 1
+2026-07-19T06:04:20.921534632Z * Listening on http://0.0.0.0:8080
+2026-07-19T06:04:20.927280763Z Use Ctrl-C to stop
+2026-07-19T06:04:24.477517081Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:24.675862144Z 10.0.44.193 - - [19/Jul/2026:06:04:24 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 1.2874
+2026-07-19T06:04:24.676133252Z Order confirmation email sent to: moore@example.com
+2026-07-19T06:04:24.676641912Z 10.0.19.68 - - [19/Jul/2026:06:04:24 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.8013
+2026-07-19T06:04:25.079278019Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:25.080571748Z 10.0.44.193 - - [19/Jul/2026:06:04:25 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.4037
+2026-07-19T06:04:25.373688137Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:25.374359694Z 10.0.44.193 - - [19/Jul/2026:06:04:25 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.6968
+2026-07-19T06:04:26.428473815Z Order confirmation email sent to: jack@example.com
+2026-07-19T06:04:26.429247499Z 10.0.19.68 - - [19/Jul/2026:06:04:26 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2992
+2026-07-19T06:04:27.824128266Z Order confirmation email sent to: steve@example.com
+2026-07-19T06:04:27.824528215Z 10.0.19.68 - - [19/Jul/2026:06:04:27 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1870
+2026-07-19T06:04:28.824904075Z Order confirmation email sent to: reed@example.com
+2026-07-19T06:04:28.825345452Z 10.0.19.68 - - [19/Jul/2026:06:04:28 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1869
+2026-07-19T06:04:29.379131207Z Order confirmation email sent to: steve@example.com
+2026-07-19T06:04:29.473498965Z 10.0.44.193 - - [19/Jul/2026:06:04:29 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.3939
+2026-07-19T06:04:29.776148072Z Order confirmation email sent to: steve@example.com
+2026-07-19T06:04:29.776706157Z 10.0.19.68 - - [19/Jul/2026:06:04:29 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1631
+2026-07-19T06:04:30.073536295Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:30.074020510Z 10.0.44.193 - - [19/Jul/2026:06:04:30 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2973
+2026-07-19T06:04:30.679234908Z Order confirmation email sent to: jack@example.com
+2026-07-19T06:04:30.680850807Z 10.0.19.68 - - [19/Jul/2026:06:04:30 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2922
+2026-07-19T06:04:30.980120687Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:30.980949597Z 10.0.19.68 - - [19/Jul/2026:06:04:30 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2994
+2026-07-19T06:04:31.181515192Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:31.182068659Z 10.0.19.68 - - [19/Jul/2026:06:04:31 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.4084
+2026-07-19T06:04:31.580804990Z Order confirmation email sent to: jeff@example.com
+2026-07-19T06:04:31.581346983Z 10.0.44.193 - - [19/Jul/2026:06:04:31 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.3090
+2026-07-19T06:04:31.875500462Z Order confirmation email sent to: moore@example.com
+2026-07-19T06:04:31.877042297Z 10.0.44.193 - - [19/Jul/2026:06:04:31 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2037
+2026-07-19T06:04:32.124820849Z Order confirmation email sent to: jack@example.com
+2026-07-19T06:04:32.172828497Z 10.0.19.68 - - [19/Jul/2026:06:04:32 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2957
+2026-07-19T06:04:32.475409510Z Order confirmation email sent to: tobias@example.com
+2026-07-19T06:04:32.476007247Z 10.0.19.68 - - [19/Jul/2026:06:04:32 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.3036
+2026-07-19T06:04:32.973409178Z Order confirmation email sent to: reed@example.com
+2026-07-19T06:04:32.974523744Z 10.0.19.68 - - [19/Jul/2026:06:04:32 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.4983
+2026-07-19T06:04:33.180102988Z Order confirmation email sent to: bill@example.com
+2026-07-19T06:04:33.181079305Z 10.0.19.68 - - [19/Jul/2026:06:04:33 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2065
+2026-07-19T06:04:33.473740194Z Order confirmation email sent to: larry_sergei@example.com
+2026-07-19T06:04:33.474392787Z 10.0.19.68 - - [19/Jul/2026:06:04:33 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.4985
+2026-07-19T06:04:33.678416747Z Order confirmation email sent to: steve@example.com
+2026-07-19T06:04:33.678945320Z 10.0.44.193 - - [19/Jul/2026:06:04:33 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2043
+2026-07-19T06:04:34.724112273Z Order confirmation email sent to: moore@example.com
+2026-07-19T06:04:34.725123945Z 10.0.19.68 - - [19/Jul/2026:06:04:34 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.3642
+2026-07-19T06:04:35.074378734Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:35.075170791Z 10.0.19.68 - - [19/Jul/2026:06:04:35 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1753
+2026-07-19T06:04:36.323948329Z Order confirmation email sent to: larry_sergei@example.com
+2026-07-19T06:04:36.325085067Z 10.0.44.193 - - [19/Jul/2026:06:04:36 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1907
+2026-07-19T06:04:38.324147414Z Order confirmation email sent to: larry_sergei@example.com
+2026-07-19T06:04:38.324601431Z 10.0.44.193 - - [19/Jul/2026:06:04:38 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1992
+2026-07-19T06:04:39.324887880Z Order confirmation email sent to: steve@example.com
+2026-07-19T06:04:39.327418229Z 10.0.44.193 - - [19/Jul/2026:06:04:39 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.3749
+2026-07-19T06:04:39.622777337Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:39.623161455Z 10.0.19.68 - - [19/Jul/2026:06:04:39 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2956
+2026-07-19T06:04:40.374999429Z Order confirmation email sent to: moore@example.com
+2026-07-19T06:04:40.376096444Z 10.0.44.193 - - [19/Jul/2026:06:04:40 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.1811
+2026-07-19T06:04:40.928616857Z Order confirmation email sent to: reed@example.com
+2026-07-19T06:04:40.930135318Z 10.0.19.68 - - [19/Jul/2026:06:04:40 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2989
+2026-07-19T06:04:41.227191819Z Order confirmation email sent to: jeff@example.com
+2026-07-19T06:04:41.228014333Z 10.0.44.193 - - [19/Jul/2026:06:04:41 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.2978
+2026-07-19T06:04:41.521936845Z Order confirmation email sent to: bill@example.com
+2026-07-19T06:04:41.522675504Z 10.0.19.68 - - [19/Jul/2026:06:04:41 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.5014
+2026-07-19T06:04:42.021642045Z Order confirmation email sent to: bill@example.com
+2026-07-19T06:04:42.043544505Z 10.0.19.68 - - [19/Jul/2026:06:04:42 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.5193
+2026-07-19T06:04:42.224949600Z Order confirmation email sent to: reed@example.com
+2026-07-19T06:04:42.225980624Z 10.0.44.193 - - [19/Jul/2026:06:04:42 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.7026
+2026-07-19T06:04:42.631420153Z Order confirmation email sent to: bill@example.com
+2026-07-19T06:04:42.635542562Z 10.0.19.68 - - [19/Jul/2026:06:04:42 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.5917
+2026-07-19T06:04:42.925982785Z Order confirmation email sent to: tobias@example.com
+2026-07-19T06:04:42.927101702Z 10.0.44.193 - - [19/Jul/2026:06:04:42 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.7015
+2026-07-19T06:04:43.423223748Z Order confirmation email sent to: reed@example.com
+2026-07-19T06:04:43.453419428Z 10.0.19.68 - - [19/Jul/2026:06:04:43 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.7323
+2026-07-19T06:04:43.731417097Z Order confirmation email sent to: mark@example.com
+2026-07-19T06:04:43.822330011Z 10.0.19.68 - - [19/Jul/2026:06:04:43 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.8935
+2026-07-19T06:04:44.027060803Z Order confirmation email sent to: steve@example.com
+2026-07-19T06:04:44.029391027Z 10.0.19.68 - - [19/Jul/2026:06:04:44 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 1.0987
+2026-07-19T06:04:44.635745807Z Order confirmation email sent to: bill@example.com
+2026-07-19T06:04:44.665019213Z 10.0.19.68 - - [19/Jul/2026:06:04:44 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 0.6377
+2026-07-19T06:04:45.027637453Z Order confirmation email sent to: moore@example.com
+2026-07-19T06:04:45.425482858Z 10.0.19.68 - - [19/Jul/2026:06:04:45 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 1.3943
+2026-07-19T06:04:45.729905734Z Order confirmation email sent to: reed@example.com
+2026-07-19T06:04:45.821797508Z 10.0.44.193 - - [19/Jul/2026:06:04:45 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 1.7909
+2026-07-19T06:04:45.847961724Z Order confirmation email sent to: jack@example.com
+2026-07-19T06:04:45.849294795Z 10.0.19.68 - - [19/Jul/2026:06:04:45 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 1.8195
+2026-07-19T06:04:46.242836539Z Order confirmation email sent to: bill@example.com
+2026-07-19T06:04:46.829196222Z 10.0.44.193 - - [19/Jul/2026:06:04:46 +0000] "POST /send_order_confirmation HTTP/1.1" 200 - 1.4036
+2026-07-19T06:04:46.829552643Z Order confirmation email sent to: reed@example.com

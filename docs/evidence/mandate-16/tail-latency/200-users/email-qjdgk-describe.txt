@@ -1,0 +1,90 @@
+Name:             email-6855bfb778-qjdgk
+Namespace:        techx-corp-prod
+Priority:         0
+Service Account:  techx-corp
+Node:             ip-10-0-32-149.ec2.internal/10.0.32.149
+Start Time:       Sun, 19 Jul 2026 10:02:12 +0700
+Labels:           app.kubernetes.io/component=email
+                  app.kubernetes.io/name=email
+                  app.kubernetes.io/version=2.2.0
+                  opentelemetry.io/name=email
+                  pod-template-hash=6855bfb778
+                  topology.kubernetes.io/region=us-east-1
+                  topology.kubernetes.io/zone=us-east-1b
+Annotations:      resource.opentelemetry.io/service.namespace: techx-corp-prod
+Status:           Running
+SeccompProfile:   RuntimeDefault
+IP:               10.0.44.199
+IPs:
+  IP:           10.0.44.199
+Controlled By:  ReplicaSet/email-6855bfb778
+Containers:
+  email:
+    Container ID:   containerd://087f96748948d2037a993b6107b605199320cffd2c434c90a7f06507924510b3
+    Image:          493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/email:sha-bd3c049
+    Image ID:       493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/email@sha256:f29ed4e6518274f473d40342871bed157b7a5b800b383c2afa241fb3ab941c4e
+    Port:           8080/TCP (service)
+    Host Port:      0/TCP (service)
+    State:          Running
+      Started:      Sun, 19 Jul 2026 13:05:11 +0700
+    Last State:     Terminated
+      Reason:       OOMKilled
+      Exit Code:    137
+      Started:      Sun, 19 Jul 2026 13:04:12 +0700
+      Finished:     Sun, 19 Jul 2026 13:04:49 +0700
+    Ready:          True
+    Restart Count:  3
+    Limits:
+      cpu:     100m
+      memory:  128Mi
+    Requests:
+      cpu:      10m
+      memory:   64Mi
+    Liveness:   tcp-socket :8080 delay=0s timeout=5s period=15s #success=1 #failure=5
+    Readiness:  tcp-socket :8080 delay=0s timeout=3s period=10s #success=1 #failure=3
+    Environment:
+      OTEL_SERVICE_NAME:                                   (v1:metadata.labels['app.kubernetes.io/component'])
+      OTEL_COLLECTOR_NAME:                                otel-collector
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:  cumulative
+      EMAIL_PORT:                                         8080
+      APP_ENV:                                            production
+      OTEL_EXPORTER_OTLP_ENDPOINT:                        http://$(OTEL_COLLECTOR_NAME):4318
+      FLAGD_HOST:                                         flagd
+      FLAGD_PORT:                                         8013
+    Mounts:
+      /tmp from tmp-dir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-qmc8q (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp-dir:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  kube-api-access-qmc8q:
+    Type:                     Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:   3607
+    ConfigMapName:            kube-root-ca.crt
+    Optional:                 false
+    DownwardAPI:              true
+QoS Class:                    Burstable
+Node-Selectors:               workload-class=spot-tolerant
+Tolerations:                  node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                              node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+                              workload-class=spot-tolerant:NoSchedule
+Topology Spread Constraints:  kubernetes.io/hostname:DoNotSchedule when max skew 1 is exceeded for selector opentelemetry.io/name=email,pod-template-hash in (6855bfb778)
+                              topology.kubernetes.io/zone:DoNotSchedule when max skew 1 is exceeded for selector opentelemetry.io/name=email,pod-template-hash in (6855bfb778)
+Events:
+  Type     Reason     Age                    From     Message
+  ----     ------     ----                   ----     -------
+  Warning  BackOff    2m17s (x5 over 3m13s)  kubelet  spec.containers{email}: Back-off restarting failed container email in pod email-6855bfb778-qjdgk_techx-corp-prod(09bbace9-38a9-4a8e-b625-ae6c457bd52e)
+  Normal   Created    2m3s (x4 over 3h5m)    kubelet  spec.containers{email}: Container created
+  Normal   Started    2m3s (x4 over 3h5m)    kubelet  spec.containers{email}: Container started
+  Normal   Pulled     2m3s (x3 over 3m53s)   kubelet  spec.containers{email}: Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/email:sha-bd3c049" already present on machine and can be accessed by the pod
+  Warning  Unhealthy  2m2s (x6 over 3h5m)    kubelet  spec.containers{email}: Readiness probe failed: dial tcp 10.0.44.199:8080: connect: connection refused
+  Warning  Unhealthy  2m2s (x2 over 3m47s)   kubelet  spec.containers{email}: Liveness probe failed: dial tcp 10.0.44.199:8080: connect: connection refused

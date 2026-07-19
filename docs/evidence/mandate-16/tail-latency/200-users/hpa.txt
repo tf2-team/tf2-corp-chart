@@ -1,0 +1,12 @@
+NAME                    REFERENCE                          TARGETS                          MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 45%/70%, 34118m/150 (avg)   2         12        2          6d3h
+checkout                Deployment/checkout                cpu: 26%/70%, 8333m/50 (avg)     2         16        3          6d3h
+currency                Deployment/currency                cpu: 6%/70%, 2995m/250 (avg)     2         72        2          6d3h
+frontend                Deployment/frontend                cpu: 35%/65%, 60731m/80 (avg)    3         20        3          6d3h
+frontend-proxy          Deployment/frontend-proxy          cpu: 35%/80%, 43648m/300 (avg)   2         10        2          6d3h
+load-generator-worker   Deployment/load-generator-worker   cpu: 14%/70%                     1         8         3          5d5h
+product-catalog         Deployment/product-catalog         cpu: 1%/70%, 38248m/150 (avg)    2         12        2          6d3h
+product-reviews         Deployment/product-reviews         cpu: 2%/70%, 3010m/20 (avg)      2         6         2          4d14h
+quote                   Deployment/quote                   cpu: 4%/70%                      2         4         2          4d21h
+recommendation          Deployment/recommendation          cpu: 25%/70%, 5209m/25 (avg)     2         6         2          6d3h
+shipping                Deployment/shipping                cpu: 2%/70%                      2         4         2          4d21h
