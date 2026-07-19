@@ -1,6 +1,6 @@
 # ADR SEC-07: Native Kubernetes runtime-hardening admission
 
-- Status: Phase 1-3B complete; system exception approval and cluster-wide promotion pending
+- Status: Phase 1-3B complete; system exceptions approved; cluster-wide promotion pending
 - Date: 2026-07-19
 - Owners: Platform Security and Platform Engineering
 - Target cluster: `techx-tf2-prod`, Kubernetes `v1.36.2`
@@ -96,8 +96,9 @@ blocked whenever application health or SLO evidence is not clean.
 | Phase 3 formal SLO regression | BLOCKED - collect k6/Grafana p95 after the pre-existing Mem0 health failure is resolved | Pending |
 | Phase 3B system resource remediation | PASS - VPC CNI, CoreDNS, kube-proxy, EBS CSI, Karpenter, and AWS Load Balancer Controller rolled out with complete requests/limits; zero resource, image, or runtime-drift groups remain ([evidence](evidence/sec-07/07-system-resources-rollout-proof.md)) | 2026-07-19 |
 | Phase 3B post-remediation full inventory | EXPECTED EXCEPTIONS ONLY - 190 raw security-context findings across 33 objects and 33 root-owner groups; 25 running Pods; zero resource, image, or runtime-drift groups | 2026-07-19 |
-| Phase 3B exact system exceptions | READY FOR APPROVAL - six workload/service-account candidates documented; no namespace-wide exception and no candidate is active ([candidates](evidence/sec-07/06-system-exception-candidates.md)) | Pending Platform Security approval |
+| Phase 3B exact system exceptions | APPROVED - Trần Quốc Hùng approved the six exact workload/service-account profiles as Platform Engineering owner and Platform Security approver; no namespace-wide exception ([candidates](evidence/sec-07/06-system-exception-candidates.md)) | 2026-07-19 |
 | Phase 3B exception implementation test | PASS PRE-APPROVAL - all six exact workload and Pod profiles admitted on disposable Kubernetes v1.35.1; wrong owner, service account, stable label, capability set, image, resources, and container set denied ([evidence](evidence/sec-07/09-system-exception-preapproval-test.md)) | 2026-07-19 |
+| Production cluster-wide audit preflight | PASS - temporary `[Warn, Audit]` bindings evaluated all six live workload and equivalent Pod profiles with zero VAP warnings; bindings were removed and post-checks remained healthy ([evidence](evidence/sec-07/10-production-clusterwide-audit-preflight.md)) | 2026-07-19 |
 
 Historical Gatekeeper screenshots remain under `docs/adr/evidence/sec-07/` as
 pre-migration evidence. Final acceptance must capture VAP denial output naming
@@ -108,5 +109,5 @@ the native policy and binding, not `validation.gatekeeper.sh`.
 | Role | Name | Signature/date |
 |---|---|---|
 | Tech Lead | Trần Quốc Hùng | Pending migration acceptance |
-| Platform Security |  | Pending |
+| Platform Security | Trần Quốc Hùng | Approved exact system exception scope, 2026-07-19 |
 | Service owner representative |  | Pending |
