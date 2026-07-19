@@ -1,6 +1,6 @@
 # ADR SEC-07: Native Kubernetes runtime-hardening admission
 
-- Status: Phase 1-4 complete; Gatekeeper retired; cluster-wide promotion staged
+- Status: Technical implementation and production verification complete
 - Date: 2026-07-19
 - Owners: Platform Security and Platform Engineering
 - Target cluster: `techx-tf2-prod`, Kubernetes `v1.36.2`
@@ -101,6 +101,7 @@ blocked whenever application health or SLO evidence is not clean.
 | Phase 3B exception implementation test | PASS PRE-APPROVAL - all six exact workload and Pod profiles admitted on disposable Kubernetes v1.35.1; wrong owner, service account, stable label, capability set, image, resources, and container set denied ([evidence](evidence/sec-07/09-system-exception-preapproval-test.md)) | 2026-07-19 |
 | Production cluster-wide audit preflight | PASS - temporary `[Warn, Audit]` bindings evaluated all six live workload and equivalent Pod profiles with zero VAP warnings; bindings were removed and post-checks remained healthy ([evidence](evidence/sec-07/10-production-clusterwide-audit-preflight.md)) | 2026-07-19 |
 | Final cluster-wide promotion gate | PASS - Gatekeeper absent; Cluster Autoscaler remediated; literal inventory contains only six approved exact profiles with zero resource, image, or runtime drift; audit dry-run, Argo, flagd, routes, and SLO passed ([evidence](evidence/sec-07/12-clusterwide-promotion-gate.md)) | 2026-07-19 |
+| Post-promotion production acceptance | PASS - live state has exactly three cluster-wide `[Deny]` bindings with no namespace selector; valid system workloads admitted, invalid and near-miss manifests denied; inventory, Argo, pods, flagd, routes, transactions, and clean-window SLO passed ([evidence](evidence/sec-07/13-clusterwide-production-acceptance.md)) | `54d1a03`; 2026-07-19 |
 
 Historical Gatekeeper screenshots remain under `docs/adr/evidence/sec-07/` as
 pre-migration evidence. Final acceptance must capture VAP denial output naming
