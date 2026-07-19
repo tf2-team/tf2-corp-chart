@@ -1,39 +1,45 @@
-# 🚨 INCIDENT REPORT — Production Multi-Service Degradation
-## Cluster: `techx-tf2-prod` · 2026-07-20 · 00:22 ICT → Ongoing
+# INCIDENT REPORT — Production Multi-Service Degradation
+## Cluster: techx-tf2-prod · 2026-07-20 · 00:22 ICT -> Ongoing
 
 ---
 
-> **Severity**: 🔴 Critical (escalating)  
+> **Severity**: Critical (escalating)  
 > **Impact**: Multi-Service SLO breach (Checkout, Frontend, Frontend-Proxy, Product-Catalog)  
 > **Root Cause**: Karpenter consolidation (WhenUnderutilized) evicting pods without safe PDB limits  
-> **Status**: ⚠️ **PARTIALLY RECOVERED — ROOT CAUSE STILL ACTIVE**  
+> **Status**: PARTIALLY RECOVERED — ROOT CAUSE STILL ACTIVE  
 > **Investigated at**: 01:07 ICT  
-> **Thư mục ảnh chụp màn hình**: `tf2-corp-chart/docs/postmortems/screenshots/`  
+> **Screenshot Directory**: `tf2-corp-chart/docs/postmortems/screenshots/`  
 
 ---
 
-## 📸 Danh Sách Minh Họa Thực Tế (Evidence)
-*Báo cáo được đính kèm đầy đủ các ảnh chụp minh chứng thu thập trực tiếp từ hệ thống monitoring:*
+## Screenshot Evidence List
+The report is compiled with the following screenshot evidence collected from Discord and Grafana:
 
-1. **Danh sách Alert Firing**: `01_grafana_alert_list_firing.png`
-2. **Rule HotPathHighErrorRate**: `02_grafana_alert_hotpath_rule.png`
-3. **Rule PodRestartingFrequently**: `04_grafana_alert_podrestart_rule.png`
-4. **Rule CriticalNodeResourceHeadroomLow**: `05_grafana_alert_headroom_rule.png`
-5. **SLO Dashboard**: `06_grafana_slo_dashboard.png`
-6. **Pod Troubleshoot (Shopping Copilot & Node)**: `13_grafana_pod_troubleshoot_shopping_copilot.png`
-7. **ArgoCD App List Degraded**: `22_argocd_app_list_degraded.png`
-8. **ArgoCD techx-corp App Detail**: `23_argocd_techx_corp_detail.png`
+1. **Discord Alert Firing History**: `01_discord_alert_list_firing_1.png` to `_4.png`
+2. **HotPathHighErrorRate Configuration (Grafana Rule)**: `02_grafana_alert_hotpath_rule.png`
+3. **KarpenterClusterStateNotSynced Alert (Discord)**: `03_discord_alert_karpenter_firing.png`
+4. **PodRestartingFrequently Alert (Discord & Grafana)**: `04_discord_alert_podrestart_firing.png` & `04_grafana_alert_podrestart_rule.png`
+5. **CriticalNodeResourceHeadroomLow Alert (Discord & Grafana)**: `05_discord_alert_headroom_firing.png` & `05_grafana_alert_headroom_rule.png`
+6. **SLO Dashboard**: `06_grafana_slo_dashboard.png`
+7. **Pod Troubleshooting (Shopping Copilot)**: `13_grafana_pod_troubleshoot_shopping_copilot.png`
+8. **ArgoCD App List Degraded**: `22_argocd_app_list_degraded.png`
+9. **ArgoCD techx-corp App Detail**: `23_argocd_techx_corp_detail.png`
 
 ---
 
-## 🔔 1. Alert Channel
+## 1. Alerting Channel (Discord Integration)
 
-### Alert Firing
-![01_grafana_alert_list_firing.png](./screenshots/01_grafana_alert_list_firing.png)
+### Firing Alert Logs (Discord Notification History)
+The automated alerts received in the SRE direct channel during the incident window:
+
+![Alert List Firing 1](./screenshots/01_discord_alert_list_firing_1.png)
+![Alert List Firing 2](./screenshots/01_discord_alert_list_firing_2.png)
+![Alert List Firing 3](./screenshots/01_discord_alert_list_firing_3.png)
+![Alert List Firing 4](./screenshots/01_discord_alert_list_firing_4.png)
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║  🔴  ALERT FIRING                                                ║
+║  ALERT FIRING                                                    ║
 ║  Name     : checkout_success_rate_slo_breach                     ║
 ║  Severity : CRITICAL                                             ║
 ║  Cluster  : techx-tf2-prod (EKS us-east-1)                      ║
@@ -44,52 +50,59 @@
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
-*   **Alert Rules cấu hình chi tiết**:
-    *   **HotPathHighErrorRate (Warning)**: ![02_grafana_alert_hotpath_rule.png](./screenshots/02_grafana_alert_hotpath_rule.png)
-    *   **PodRestartingFrequently (Warning)**: ![04_grafana_alert_podrestart_rule.png](./screenshots/04_grafana_alert_podrestart_rule.png)
-    *   **CriticalNodeResourceHeadroomLow (Warning)**: ![05_grafana_alert_headroom_rule.png](./screenshots/05_grafana_alert_headroom_rule.png)
+### Alert Rule Configurations and Discord Notifications
+
+#### A. HotPathHighErrorRate (Warning)
+Rule configuration for shopping hotpath error checking:
+![02_grafana_alert_hotpath_rule.png](./screenshots/02_grafana_alert_hotpath_rule.png)
+
+#### B. KarpenterClusterStateNotSynced (Critical)
+Discord notification received for Karpenter state sync failure:
+![03_discord_alert_karpenter_firing.png](./screenshots/03_discord_alert_karpenter_firing.png)
+
+#### C. PodRestartingFrequently (Warning)
+Discord notification and the corresponding Grafana Rule configuration:
+
+![PodRestartingFrequently Discord Alert](./screenshots/04_discord_alert_podrestart_firing.png)
+![PodRestartingFrequently Grafana Rule](./screenshots/04_grafana_alert_podrestart_rule.png)
+
+#### D. CriticalNodeResourceHeadroomLow (Warning)
+Discord notification and the corresponding Grafana Rule configuration:
+
+![CriticalNodeResourceHeadroomLow Discord Alert](./screenshots/05_discord_alert_headroom_firing.png)
+![CriticalNodeResourceHeadroomLow Grafana Rule](./screenshots/05_grafana_alert_headroom_rule.png)
 
 ---
 
-## 📊 2. Dashboard — Metrics & SLO
+## 2. Dashboards — Metrics & SLOs
 
 ### 2.1 SLO Performance Dashboard
 
-*Tổng quan SLO và điểm rơi drop của Checkout:*
+Outage window and checkout success rate drop overview:
 ![06_grafana_slo_dashboard.png](./screenshots/06_grafana_slo_dashboard.png)
 
-**Các metric vi phạm SLO tại thời điểm sự cố:**
+**Violated SLO Metrics during the Incident Window:**
 
-| SLO | Target | Thực Tế | Trạng Thái |
-|-----|--------|---------|------------|
-| Checkout Success Rate | ≥ 99% | **88.158%** | 🔴 BREACH |
-| Browse Success Rate | ≥ 99.5% | 100.000% | ✅ OK |
-| Cart Success Rate | ≥ 99.5% | 100.000% | ✅ OK |
-| Storefront p95 Latency | < 1s | 36.644ms | ✅ OK |
+| SLO | Target | Actual | Status |
+|-----|--------|--------|--------|
+| Checkout Success Rate | ≥ 99% | **88.158%** | BREACH |
+| Browse Success Rate | ≥ 99.5% | 100.000% | OK |
+| Cart Success Rate | ≥ 99.5% | 100.000% | OK |
+| Storefront p95 Latency | < 1s | 36.644ms | OK |
 
 > [!CAUTION]
-> Checkout bị ảnh hưởng nghiêm trọng trong khi Browse và Cart hoàn toàn bình thường — xác nhận sự cố cô lập tại tầng checkout service do mất capacity, không phải lỗi hạ tầng diện rộng.
+> The checkout service was severely degraded while browse and cart remained normal. This confirms the incident was isolated to the checkout service due to capacity loss, rather than a broad platform network issue.
 
-### 2.2 Node Resource & Pod Troubleshooting
+### 2.2 Pod Troubleshooting (Shopping Copilot)
 
-*Trạng thái Node quá tải tài nguyên và Pod Copilot liên tục bị Crash Loop:*
+Shopping Copilot pod crash loop status:
 ![13_grafana_pod_troubleshoot_shopping_copilot.png](./screenshots/13_grafana_pod_troubleshoot_shopping_copilot.png)
-
-```
-NAME                          CPU(cores)  CPU%   MEMORY(bytes)  MEMORY%
-ip-10-0-22-101.ec2.internal   128m         6%    758Mi           10%
-ip-10-0-24-114.ec2.internal   1146m       59%    4269Mi          60%
-ip-10-0-46-45.ec2.internal    524m        27%    3314Mi         100%  ← ⚠️ MEMORY FULL
-```
-
-> [!WARNING]
-> Node `ip-10-0-46-45` đang sử dụng **100% memory**. Đây là nguyên nhân có khả năng gây Kubelet eviction nếu các container tiếp tục rò rỉ bộ nhớ.
 
 ---
 
-## 📄 3. Logs — Karpenter Controller & Kubernetes Events
+## 3. Logs — Karpenter Controller & Kubernetes Events
 
-### 3.1 Karpenter Disruption Events (Trích xuất từ logs controller)
+### 3.1 Karpenter Disruption Events (Extracted from controller logs)
 ```json
 // 17:26:30 UTC — Wave 1: node ip-10-0-34-164 (stateless-spot-9g9bc) -> DELETE
 {"level":"INFO","time":"2026-07-19T17:26:30.642Z","message":"disrupting node(s)","command":"Underutilized/df119f30: delete: nodepools=[stateless-spot]"}
@@ -110,39 +123,39 @@ LAST SEEN   TYPE      REASON             OBJECT                              MES
 21m         Normal    Evicted            pod/cart-86b779dcd6-7vlzz           Evicted pod: Underutilized
 14m         Normal    Evicted            pod/checkout-54d668c7cf-6lglt       Evicted pod: Underutilized ⚡
 ```
-*   **Tổng cộng**: 15 pods bị evict trong 8 phút, trong đó **2 pods là checkout**.
+*   **Total**: 15 pods evicted in 8 minutes, including **2 checkout pods**.
 
 ---
 
-## ⚙️ 4. Trạng Thái Đồng Bộ ArgoCD
+## 4. ArgoCD Synchronization Status
 
 ### 4.1 ArgoCD Application Status
-*Trạng thái của ứng dụng bị Degraded do pods liên tục restart:*
+ArgoCD application reports Degraded status due to crash looping pods:
 ![22_argocd_app_list_degraded.png](./screenshots/22_argocd_app_list_degraded.png)
 
-*Sơ đồ chi tiết tài nguyên của techx-corp trên ArgoCD:*
+Detailed techx-corp resource tree status in ArgoCD:
 ![23_argocd_techx_corp_detail.png](./screenshots/23_argocd_techx_corp_detail.png)
 
 ---
 
-## 🔍 5. Phân Tích Nguyên Nhân Gốc Rễ (Root Cause)
+## 5. Root Cause Analysis
 
 ### 5.1 Primary Root Cause
-Karpenter thực hiện chính sách tối ưu hóa tài nguyên (`WhenUnderutilized`) đã đồng loạt terminate 5 node trong vòng 8 phút để giảm thiểu chi phí. Do dịch vụ `checkout` có PDB mặc định quá lỏng lẻo (`minAvailable: 1`), Kubernetes cho phép evict cùng lúc 15/16 pods của checkout, làm giảm đột ngột năng lực xử lý giao dịch.
+Karpenter's resource optimization policy (`WhenUnderutilized`) aggressively terminated 5 nodes in 8 minutes to save costs. Because the `checkout` service's PodDisruptionBudget (PDB) was loosely configured with the default value (`minAvailable: 1`), Kubernetes allowed the concurrent eviction of 15 out of 16 running checkout pods, causing a severe capacity collapse.
 
-### 5.2 Mâu thuẫn logic PDB và Directive #3
-*   **Directive #3**: Yêu cầu giữ tối thiểu **2 instances Ready** cho luồng thanh toán synchronous path.
-*   **PDB**: Bị cấu hình cứng `minAvailable: 1` do bị ràng buộc bởi script kiểm tra CI/CD cũ.
-*   **Kết quả**: Karpenter đã tuân thủ PDB (chừa lại đúng 1 pod) nhưng vô tình vi phạm Directive #3, dẫn đến SLO breach.
+### 5.2 PDB and Directive 3 Configuration Conflict
+*   **Directive #3**: Mandates maintaining **at least 2 Ready instances** for critical storefront path services (`browse -> cart -> checkout`).
+*   **PDB**: Hardcoded to `minAvailable: 1` previously to prevent pipeline build check blockages.
+*   **Result**: Karpenter successfully respected the PDB (leaving exactly 1 pod running) but violated the availability goals of Directive #3, resulting in the SLO breach.
 
 ---
 
-## 🛠. Kế Hoạch Khắc Phục (GitOps Resolution)
+## 6. Remediation Plan (GitOps Resolution)
 
-Để xử lý triệt để, chúng ta đã thực hiện chỉnh sửa cấu hình thông qua Git và tạo Pull Request:
+To resolve the root cause permanently, configuration updates have been committed to the git repository and submitted via Pull Request:
 
-1.  **Sửa PDB Template (`templates/_objects.tpl`)**: Cho phép ghi đè động `maxUnavailable` hoặc `minAvailable`.
-2.  **Cấu hình bảo vệ Checkout & Cart (`values-prod.yaml`)**:
+1.  **Dynamic PDB Template (`templates/_objects.tpl`)**: Updated to support dynamic `maxUnavailable` or `minAvailable` parameters based on values configurations.
+2.  **Checkout & Cart Service Protection (`values-prod.yaml`)**:
     ```yaml
       checkout:
         pdb:
@@ -151,12 +164,12 @@ Karpenter thực hiện chính sách tối ưu hóa tài nguyên (`WhenUnderutil
         pdb:
           maxUnavailable: 1
     ```
-    *Cấu hình này giới hạn Karpenter chỉ được phép evict tối đa 1 pod cùng một lúc.*
-3.  **Cập nhật Script Kiểm Tra (`scripts/verify-directive-03.ps1`)**: Cho phép kiểm thử CI/CD chấp nhận `maxUnavailable: 1`.
-4.  **Cập nhật Schema (`values.schema.json`)**: Cho phép thuộc tính `pdb` vượt qua Helm lint validation.
+    *This configuration limits Karpenter to evicting at most 1 pod at a time for these critical services.*
+3.  **CI Validation Update (`scripts/verify-directive-03.ps1`)**: Updated regex matching to accept `maxUnavailable: 1` as valid PDB configurations.
+4.  **Schema Validation Update (`values.schema.json`)**: Allowed the `pdb` property in component definitions for Helm linting validation.
 
 ---
 
-*Báo cáo cập nhật lần cuối: 2026-07-20 02:18 ICT*  
+*Last Updated: 2026-07-20 02:27 ICT*  
 *Cluster: `arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod`*  
-*Trạng thái: ⚠️ ROOT CAUSE STILL ACTIVE — Đang chờ merge PR để tự động đồng bộ qua ArgoCD.*
+*Status: ⚠️ ROOT CAUSE STILL ACTIVE — Awaiting PR merge for ArgoCD automatic synchronization.*
