@@ -1,0 +1,3 @@
+# Override values for mem0
+mem0:
+  image: {}

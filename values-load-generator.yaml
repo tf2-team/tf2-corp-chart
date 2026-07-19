@@ -1,0 +1,4 @@
+# Override values for load-generator
+components:
+  load-generator:
+    imageOverride: {}

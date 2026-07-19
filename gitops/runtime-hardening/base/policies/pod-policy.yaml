@@ -174,18 +174,18 @@ spec:
       reason: Invalid
     - expression: >-
         variables.containers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Container images must use a fixed tag or SHA-256 digest; latest and untagged images are forbidden.
+          (object.metadata.namespace == 'kube-system' && c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
+      message: Container images must use a SHA-256 digest (kube-system supports fixed tags); latest and untagged images are forbidden.
       reason: Invalid
     - expression: >-
         variables.initContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Init container images must use a fixed tag or SHA-256 digest.
+          (object.metadata.namespace == 'kube-system' && c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
+      message: Init container images must use a SHA-256 digest (kube-system supports fixed tags).
       reason: Invalid
     - expression: >-
         variables.ephemeralContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Ephemeral container images must use a fixed tag or SHA-256 digest.
+          (object.metadata.namespace == 'kube-system' && c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
+      message: Ephemeral container images must use a SHA-256 digest (kube-system supports fixed tags).
       reason: Invalid
     - expression: >-
         variables.containers.all(c, has(c.resources) && has(c.resources.requests) &&

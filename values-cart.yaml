@@ -1,0 +1,4 @@
+# Override values for cart
+components:
+  cart:
+    imageOverride: {}

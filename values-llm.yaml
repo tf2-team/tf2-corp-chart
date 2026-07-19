@@ -1,0 +1,4 @@
+# Override values for llm
+components:
+  llm:
+    imageOverride: {}

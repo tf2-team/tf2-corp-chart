@@ -1,0 +1,4 @@
+# Override values for frontend-proxy
+components:
+  frontend-proxy:
+    imageOverride: {}

@@ -1,0 +1,4 @@
+# Override values for product-catalog
+components:
+  product-catalog:
+    imageOverride: {}

@@ -1,0 +1,4 @@
+# Override values for payment
+components:
+  payment:
+    imageOverride: {}

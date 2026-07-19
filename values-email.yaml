@@ -1,0 +1,4 @@
+# Override values for email
+components:
+  email:
+    imageOverride: {}

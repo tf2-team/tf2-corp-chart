@@ -1,0 +1,4 @@
+# Override values for quote
+components:
+  quote:
+    imageOverride: {}

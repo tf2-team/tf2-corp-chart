@@ -1,0 +1,4 @@
+# Override values for product-reviews
+components:
+  product-reviews:
+    imageOverride: {}

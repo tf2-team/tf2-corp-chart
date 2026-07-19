@@ -1,0 +1,4 @@
+# Override values for flagd-ui
+components:
+  flagd-ui:
+    imageOverride: {}

@@ -1,0 +1,4 @@
+# Override values for opensearch
+components:
+  opensearch:
+    imageOverride: {}

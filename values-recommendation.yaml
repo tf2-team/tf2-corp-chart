@@ -1,0 +1,4 @@
+# Override values for recommendation
+components:
+  recommendation:
+    imageOverride: {}

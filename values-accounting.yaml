@@ -1,0 +1,4 @@
+# Override values for accounting
+components:
+  accounting:
+    imageOverride: {}

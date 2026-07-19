@@ -4,6 +4,22 @@
 {{- /* Image contract: REGISTRY/PROJECT/mem0:VERSION — inherit default.image.* unless overridden. */}}
 {{- $imageRepo := $mem0.image.repository | default (printf "%s/mem0" .Values.default.image.repository) }}
 {{- $imageTag := $mem0.image.tag | default .Values.default.image.tag }}
+{{- $ref := "" }}
+{{- $sep := ":" }}
+{{- if $mem0.image.digest }}
+{{-   $ref = $mem0.image.digest }}
+{{-   $sep = "@" }}
+{{- else if $mem0.image.tag }}
+{{-   $ref = $mem0.image.tag }}
+{{-   $sep = ":" }}
+{{- else if .Values.default.image.digest }}
+{{-   $ref = .Values.default.image.digest }}
+{{-   $sep = "@" }}
+{{- else }}
+{{-   $ref = .Values.default.image.tag }}
+{{-   $sep = ":" }}
+{{- end }}
+{{- $imageRef := printf "%s%s%s" $imageRepo $sep $ref }}
 {{- $_ := required "default.image.repository (or mem0.image.repository) is required when Mem0 is enabled" $imageRepo }}
 {{- $_ := required "default.image.tag (or mem0.image.tag) is required when Mem0 is enabled" $imageTag }}
 {{- $_ := required "mem0.rds.host is required when Mem0 is enabled" $mem0.rds.host }}
@@ -63,7 +79,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+          image: {{ $imageRef | quote }}
           # Image WORKDIR is /app/server; scripts live under scripts/, not server/scripts/.
           command: ["sh", "-ec", "python scripts/bootstrap_rds_iam.py && alembic upgrade head"]
           env:
@@ -210,7 +226,7 @@ spec:
       {{- end }}
       containers:
         - name: mem0
-          image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+          image: {{ $imageRef | quote }}
           # Keep parity with the production image CMD (includes --no-access-log).
           command:
             - uvicorn

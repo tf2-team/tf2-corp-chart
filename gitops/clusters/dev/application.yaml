@@ -26,6 +26,29 @@ spec:
         - values.yaml
         - values-public-alb.yaml
         - values-dev.yaml
+        - values-accounting.yaml
+        - values-ad.yaml
+        - values-cart.yaml
+        - values-checkout.yaml
+        - values-currency.yaml
+        - values-email.yaml
+        - values-flagd-ui.yaml
+        - values-fraud-detection.yaml
+        - values-frontend.yaml
+        - values-frontend-proxy.yaml
+        - values-image-provider.yaml
+        - values-kafka.yaml
+        - values-llm.yaml
+        - values-load-generator.yaml
+        - values-mem0.yaml
+        - values-opensearch.yaml
+        - values-payment.yaml
+        - values-product-catalog.yaml
+        - values-product-reviews.yaml
+        - values-quote.yaml
+        - values-recommendation.yaml
+        - values-shipping.yaml
+        - values-shopping-copilot.yaml
       # releaseName = Helm Release.Name (app.kubernetes.io/instance on subcharts).
       # Argo tracking label uses metadata.name above, not releaseName.
       releaseName: techx-corp-dev

@@ -123,10 +123,25 @@ spec:
                Full override: imageOverride.repository (+ optional tag)
                Service rename only: imageOverride.name keeps default.image.repository/tag
                (e.g. load-generator-worker → …/load-generator:<global-tag>) */ -}}
+          {{- $ref := "" -}}
+          {{- $sep := ":" -}}
+          {{- if ((.imageOverride).digest) -}}
+            {{- $ref = .imageOverride.digest -}}
+            {{- $sep = "@" -}}
+          {{- else if ((.imageOverride).tag) -}}
+            {{- $ref = .imageOverride.tag -}}
+            {{- $sep = ":" -}}
+          {{- else if ((.defaultValues.image).digest) -}}
+            {{- $ref = .defaultValues.image.digest -}}
+            {{- $sep = "@" -}}
+          {{- else -}}
+            {{- $ref = (.defaultValues.image.tag) | default .Chart.AppVersion -}}
+            {{- $sep = ":" -}}
+          {{- end -}}
           {{- if ((.imageOverride).repository) }}
-          image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
+          image: '{{ .imageOverride.repository }}{{ $sep }}{{ $ref }}'
           {{- else }}
-          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
+          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}{{ $sep }}{{ $ref }}'
           {{- end }}
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
@@ -206,10 +221,25 @@ spec:
         {{- $sidecar := set . "Release" $.Release }}
         {{- $sidecar := set . "defaultValues" $.defaultValues }}
         - name: {{ .name   }}
+          {{- $ref := "" -}}
+          {{- $sep := ":" -}}
+          {{- if ((.imageOverride).digest) -}}
+            {{- $ref = .imageOverride.digest -}}
+            {{- $sep = "@" -}}
+          {{- else if ((.imageOverride).tag) -}}
+            {{- $ref = .imageOverride.tag -}}
+            {{- $sep = ":" -}}
+          {{- else if ((.defaultValues.image).digest) -}}
+            {{- $ref = .defaultValues.image.digest -}}
+            {{- $sep = "@" -}}
+          {{- else -}}
+            {{- $ref = (.defaultValues.image.tag) | default .Chart.AppVersion -}}
+            {{- $sep = ":" -}}
+          {{- end -}}
           {{- if ((.imageOverride).repository) }}
-          image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
+          image: '{{ .imageOverride.repository }}{{ $sep }}{{ $ref }}'
           {{- else }}
-          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
+          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}{{ $sep }}{{ $ref }}'
           {{- end }}
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}

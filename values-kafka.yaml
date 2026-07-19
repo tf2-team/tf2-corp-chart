@@ -1,0 +1,4 @@
+# Override values for kafka
+components:
+  kafka:
+    imageOverride: {}

@@ -1,0 +1,4 @@
+# Override values for fraud-detection
+components:
+  fraud-detection:
+    imageOverride: {}

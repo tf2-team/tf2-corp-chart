@@ -1,0 +1,4 @@
+# Override values for checkout
+components:
+  checkout:
+    imageOverride: {}

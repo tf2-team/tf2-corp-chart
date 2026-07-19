@@ -1,0 +1,4 @@
+# Override values for shopping-copilot
+components:
+  shopping-copilot:
+    imageOverride: {}

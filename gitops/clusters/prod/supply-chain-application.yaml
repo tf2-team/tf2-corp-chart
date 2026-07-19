@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: supply-chain
+  namespace: argocd
+spec:
+  project: techx-corp
+  source:
+    repoURL: https://github.com/tf2-team/tf2-corp-chart.git
+    targetRevision: main
+    path: gitops/supply-chain/overlays/enforce-clusterwide
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cosign-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

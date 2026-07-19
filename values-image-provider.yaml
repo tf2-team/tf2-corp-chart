@@ -1,0 +1,4 @@
+# Override values for image-provider
+components:
+  image-provider:
+    imageOverride: {}
