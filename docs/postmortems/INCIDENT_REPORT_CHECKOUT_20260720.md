@@ -5,7 +5,7 @@
 
 > **Severity**: 🔴 Critical (escalating)  
 > **Impact**: Multi-Service SLO breach (Checkout, Frontend, Frontend-Proxy, Product-Catalog)  
-> **Root Cause**: Karpenter mass node eviction (Underutilized) & Cluster State Out-Of-Sync  
+> **Root Cause**: Karpenter consolidation (WhenUnderutilized) evicting pods without safe PDB limits  
 > **Status**: ⚠️ **PARTIALLY RECOVERED — ROOT CAUSE STILL ACTIVE**  
 > **Investigated at**: 01:07 ICT  
 > **Thư mục ảnh chụp màn hình**: `tf2-corp-chart/docs/postmortems/screenshots/`  
@@ -17,27 +17,28 @@
 
 1. **Danh sách Alert Firing**: `01_grafana_alert_list_firing.png`
 2. **Rule HotPathHighErrorRate**: `02_grafana_alert_hotpath_rule.png`
-3. **Rule KarpenterClusterStateNotSynced**: `03_grafana_alert_karpenter_rule.png`
-4. **Rule PodRestartingFrequently**: `04_grafana_alert_podrestart_rule.png`
-5. **Rule CriticalNodeResourceHeadroomLow**: `05_grafana_alert_headroom_rule.png`
-6. **SLO Dashboard (Last 1 hour)**: `06_grafana_slo_dashboard_1h.png`
-7. **SLO Checkout Drop**: `07_grafana_slo_checkout_drop.png`
-8. **SLO Browse & Cart OK**: `08_grafana_slo_browse_cart_ok.png`
-9. **APM Frontend Error Rate**: `09_grafana_apm_frontend_errorrate.png`
-10. **APM Frontend-Proxy Error Rate**: `10_grafana_apm_frontend_proxy_errorrate.png`
-11. **APM Product-Catalog Error Rate**: `11_grafana_apm_product_catalog_errorrate.png`
-12. **APM Checkout Error Rate**: `12_grafana_apm_checkout_errorrate.png`
-13. **Pod Troubleshoot (Shopping Copilot)**: `13_grafana_pod_troubleshoot_shopping_copilot.png`
-14. **Pod Troubleshoot (Node Headroom)**: `14_grafana_pod_troubleshoot_node_headroom.png`
-15. **Karpenter Health**: `15_grafana_karpenter_health.png`
-16. **Jaeger Frontend Error Trace**: `16_jaeger_trace_frontend_error.png`
-17. **Jaeger Checkout Error Trace**: `17_jaeger_trace_checkout_error.png`
-18. **Jaeger Trace Waterfall**: `18_jaeger_trace_waterfall.png`
-19. **OpenSearch Frontend Error Logs**: `19_opensearch_logs_frontend_error.png`
-20. **OpenSearch Checkout Error Logs**: `20_opensearch_logs_checkout_error.png`
-21. **OpenSearch Shopping-Copilot Crash Logs**: `21_opensearch_logs_shopping_copilot_crash.png`
-22. **ArgoCD App List Degraded**: `22_argocd_app_list_degraded.png`
-23. **ArgoCD techx-corp App Detail**: `23_argocd_techx_corp_detail.png`
+3. **Rule PodRestartingFrequently**: `04_grafana_alert_podrestart_rule.png`
+4. **Rule CriticalNodeResourceHeadroomLow**: `05_grafana_alert_headroom_rule.png`
+5. **SLO Dashboard (Last 1 hour)**: `06_grafana_slo_dashboard_1h.png`
+6. **SLO Checkout Drop**: `07_grafana_slo_checkout_drop.png`
+7. **SLO Browse & Cart OK**: `08_grafana_slo_browse_cart_ok.png`
+8. **APM Frontend Error Rate**: `09_grafana_apm_frontend_errorrate.png`
+9. **APM Frontend-Proxy Error Rate**: `10_grafana_apm_frontend_proxy_errorrate.png`
+10. **APM Product-Catalog Error Rate**: `11_grafana_apm_product_catalog_errorrate.png`
+11. **APM Checkout Error Rate**: `12_grafana_apm_checkout_errorrate.png`
+12. **Pod Troubleshoot (Shopping Copilot)**: `13_grafana_pod_troubleshoot_shopping_copilot.png`
+13. **Pod Troubleshoot (Node Headroom)**: `14_grafana_pod_troubleshoot_node_headroom.png`
+14. **Jaeger Frontend Error Trace**: `16_jaeger_trace_frontend_error.png`
+15. **Jaeger Checkout Error Trace**: `17_jaeger_trace_checkout_error.png`
+16. **Jaeger Trace Waterfall**: `18_jaeger_trace_waterfall.png`
+17. **OpenSearch Frontend Error Logs**: `19_opensearch_logs_frontend_error.png`
+18. **OpenSearch Checkout Error Logs**: `20_opensearch_logs_checkout_error.png`
+19. **OpenSearch Shopping-Copilot Crash Logs**: `21_opensearch_logs_shopping_copilot_crash.png`
+20. **ArgoCD App List Degraded**: `22_argocd_app_list_degraded.png`
+21. **ArgoCD techx-corp App Detail**: `23_argocd_techx_corp_detail.png`
+
+> [!NOTE]
+> Cảnh báo `KarpenterClusterStateNotSynced` (cũ) đã được xác minh là **Báo động giả (False Alarm)** do thiếu metric (`No Data` ở Prometheus dẫn đến tự kích hoạt alert). Ảnh chụp rule này đã được loại bỏ khỏi danh sách.
 
 ---
 
@@ -61,7 +62,6 @@
 
 *   **Alert Rules cấu hình chi tiết**:
     *   **HotPathHighErrorRate (Warning)**: ![02_grafana_alert_hotpath_rule.png](./screenshots/02_grafana_alert_hotpath_rule.png)
-    *   **KarpenterClusterStateNotSynced (Critical)**: ![03_grafana_alert_karpenter_rule.png](./screenshots/03_grafana_alert_karpenter_rule.png)
     *   **PodRestartingFrequently (Warning)**: ![04_grafana_alert_podrestart_rule.png](./screenshots/04_grafana_alert_podrestart_rule.png)
     *   **CriticalNodeResourceHeadroomLow (Warning)**: ![05_grafana_alert_headroom_rule.png](./screenshots/05_grafana_alert_headroom_rule.png)
 
@@ -75,7 +75,7 @@
 | Storefront p95 Latency | < 1s | 36.644ms | ✅ OK |
 
 > [!CAUTION]
-> Checkout bị ảnh hưởng nghiêm trọng trong khi Browse và Cart hoàn toàn bình thường — xác nhận sự cố cô lập tại tầng checkout service, không phải infrastructure-wide.
+> Checkout bị ảnh hưởng nghiêm trọng trong khi Browse và Cart hoàn toàn bình thường — xác nhận sự cố cô lập tại tầng checkout service, không phải lỗi hệ thống điều phối.
 
 ---
 
@@ -168,8 +168,6 @@ NodePool:  stateless-on-demand  NODES=0
 ## 📄 3. Logs — Karpenter Controller
 
 ### 3.1 Disruption Events (chronological)
-
-![15_grafana_karpenter_health.png](./screenshots/15_grafana_karpenter_health.png)
 
 ```json
 // 17:26:30 UTC (00:26 ICT) — Wave 1: node ip-10-0-34-164 (stateless-spot-9g9bc)
@@ -545,6 +543,6 @@ Assert-Match $pdb[0] "(?m)^  (minAvailable: [12]|maxUnavailable: 1)$" "${name}: 
 
 ---
 
-*Báo cáo cập nhật lần cuối: 2026-07-20 01:39 ICT*  
+*Báo cáo cập nhật lần cuối: 2026-07-20 01:52 ICT*  
 *Cluster: `arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod`*  
 *Trạng thái: ⚠️ ROOT CAUSE STILL ACTIVE — Thực hiện Phase 1 ngay lập tức.*
