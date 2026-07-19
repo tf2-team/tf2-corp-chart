@@ -96,6 +96,8 @@ components:
   cart:
     autoscaling:
       minReplicas: 2
+    pdb:
+      maxUnavailable: 1
     schedulingRules: *directive03-hard-spread
     envOverrides:
       # Stable private DNS (Route53 CNAME → ElastiCache primary). TCP-only init
@@ -127,6 +129,8 @@ components:
   checkout:
     autoscaling:
       minReplicas: 2
+    pdb:
+      maxUnavailable: 1
     schedulingRules: *directive03-hard-spread
     serviceAccount:
       create: true

@@ -587,7 +587,15 @@ metadata:
   labels:
     {{- include "techx-corp.labels" . | nindent 4 }}
 spec:
+  {{- if .pdb }}
+    {{- if hasKey .pdb "minAvailable" }}
+  minAvailable: {{ .pdb.minAvailable }}
+    {{- else if hasKey .pdb "maxUnavailable" }}
+  maxUnavailable: {{ .pdb.maxUnavailable }}
+    {{- end }}
+  {{- else }}
   minAvailable: 1
+  {{- end }}
   selector:
     matchLabels:
       {{- include "techx-corp.selectorLabels" . | nindent 6 }}

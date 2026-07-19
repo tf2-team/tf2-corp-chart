@@ -91,7 +91,7 @@ foreach ($name in $criticalServices) {
     if ($pdb.Count -ne 1) {
         throw "${name}: expected exactly one PodDisruptionBudget"
     }
-    Assert-Match $pdb[0] "(?m)^  minAvailable: 1$" "${name}: PDB minAvailable must be 1"
+    Assert-Match $pdb[0] "(?m)^  (minAvailable: [12]|maxUnavailable: 1)$" "${name}: PDB configuration is invalid"
     Assert-Match $deployment[0] "(?ms)^  strategy:\s+rollingUpdate:\s+maxSurge: 1\s+maxUnavailable: 0\s+type: RollingUpdate" "${name}: unsafe rolling update strategy"
     Assert-Match $deployment[0] "(?m)^      terminationGracePeriodSeconds: 30$" "${name}: termination grace must be 30 seconds"
     Assert-Match $deployment[0] "(?ms)^          readinessProbe:.*?          lifecycle:\s+preStop:\s+sleep:\s+seconds: 10" "${name}: readiness and native preStop drain hook are required"
