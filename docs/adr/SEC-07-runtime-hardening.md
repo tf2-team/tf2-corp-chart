@@ -1,7 +1,7 @@
 # ADR SEC-07: Native Kubernetes runtime-hardening admission
 
-- Status: Phase 1-2 complete; VAP enforce active; cluster-wide system audit pending
-- Date: 2026-07-18
+- Status: Phase 1-2 complete; Phase 3 admission proof passed; application/SLO acceptance blocked; cluster-wide system audit pending
+- Date: 2026-07-19
 - Owners: Platform Security and Platform Engineering
 - Target cluster: `techx-tf2-prod`, Kubernetes `v1.36.2`
 - Cutover commit: `7605191c5367985fa091580c84a4c076fcd6462c`
@@ -87,9 +87,15 @@ blocked whenever application health or SLO evidence is not clean.
 | Native fixture suite on disposable cluster | PASS - valid Pod/Deployment/Job/CronJob admitted; invalid root, UID 0, capability, image, resources, CREATE and UPDATE denied | Minikube v1.35.1; 2026-07-18 |
 | Audit overlay behavior on disposable cluster | PASS - invalid root admitted with native VAP warning after binding cache propagation | Minikube v1.35.1; 2026-07-18 |
 | VAP audit conditions and warning observation | PASS - Phase 2 completed; audit bindings retired after enforce promotion | 2026-07-18 |
-| VAP deny CREATE/UPDATE mentor demo | Pending Phase 3 | Pending |
+| Native VAP deny CREATE/UPDATE production proof | PASS - with all three Gatekeeper Constraints temporarily at `dryrun`, VAP denied root, UID 0, added capability, `latest`, missing resources, and invalid UPDATE fixtures; a valid Pod was admitted; Gatekeeper was then restored to `deny` ([evidence](evidence/sec-07/05-native-vap-phase3-proof.md)) | 2026-07-19 |
+| Phase 3 post-proof non-system inventory | PASS - 175 workload objects and 239 containers checked; zero violations | 2026-07-19 |
+| Phase 3 post-proof policy state | PASS - three VAP bindings remain `[Deny]`; three Gatekeeper Constraints restored to `deny` with zero violations; no fixture objects remain | 2026-07-19 |
+| Phase 3 application/SLO gate | BLOCKED - pre-existing Mem0 init failure (`HeadObject 403` while fetching the S3 model) keeps `techx-corp` Degraded; other Argo Applications are Synced/Healthy | 2026-07-19 |
 | Gatekeeper retirement inventory | Pending Phase 4 | Pending |
-| Storefront/private ops/flagd/SLO regression | Pending each production phase | Pending |
+| Phase 3 storefront/private ops/flagd smoke | PASS - storefront 200; Grafana, Jaeger, Argo CD, and feature operations routes 403; flagd Running with zero restarts | 2026-07-19 |
+| Phase 3 formal SLO regression | BLOCKED - collect k6/Grafana p95 after the pre-existing Mem0 health failure is resolved | Pending |
+| Phase 3B system resource remediation | READY FOR REVIEW - Terraform/EKS add-on and Helm configuration prepared for VPC CNI, CoreDNS, kube-proxy, EBS CSI, Karpenter, and AWS Load Balancer Controller | 2026-07-19 |
+| Phase 3B exact system exceptions | PENDING APPROVAL - six workload/service-account candidates documented; no namespace-wide exception and no candidate is active ([candidates](evidence/sec-07/06-system-exception-candidates.md)) | Pending Platform Security approval |
 
 Historical Gatekeeper screenshots remain under `docs/adr/evidence/sec-07/` as
 pre-migration evidence. Final acceptance must capture VAP denial output naming
