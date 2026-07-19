@@ -1378,7 +1378,7 @@ components:
       # busybox: extract verified archive into the model emptyDir.
       extractorImage: busybox:1.37.0
       s3Uri: s3://techx-dev-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/model.tar.gz
-      mountPath: /models/huggingface
+      mountPath: /models
       cacheSizeLimit: 2Gi
       resources:
         requests:
@@ -1500,7 +1500,7 @@ components:
       fetcherImage: public.ecr.aws/aws-cli/aws-cli:2.27.49
       extractorImage: busybox:1.37.0
       s3Uri: s3://techx-dev-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/model.tar.gz
-      mountPath: /models/huggingface
+      mountPath: /models
       cacheSizeLimit: 2Gi
       resources:
         requests:
