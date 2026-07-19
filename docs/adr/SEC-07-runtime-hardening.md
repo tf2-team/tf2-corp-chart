@@ -111,6 +111,6 @@ the native policy and binding, not `validation.gatekeeper.sh`.
 
 | Role | Name | Signature/date |
 |---|---|---|
-| Tech Lead | Trần Quốc Hùng | Pending migration acceptance |
+| Tech Lead | Trần Quốc Hùng | Approved production migration acceptance, 2026-07-19 |
 | Platform Security | Trần Quốc Hùng | Approved exact system exception scope, 2026-07-19 |
-| Service owner representative |  | Pending |
+| Service owner representative | Trần Quốc Hùng | Approved production acceptance, 2026-07-19 |
