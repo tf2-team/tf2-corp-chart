@@ -37,6 +37,9 @@
             },
             "tag": {
               "type": "string"
+            },
+            "digest": {
+              "type": "string"
             }
           }
         },
@@ -753,6 +756,9 @@
           "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames …/<component> to …/<name>."
         },
         "tag": {
+          "type": "string"
+        },
+        "digest": {
           "type": "string"
         },
         "pullPolicy": {

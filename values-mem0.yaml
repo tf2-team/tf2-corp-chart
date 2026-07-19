@@ -1,3 +1,3 @@
-# Override values for mem0
 mem0:
-  image: {}
+  image:
+    digest: sha256:0aa00e120dd45f3668c70496ed4962e36a9c31bbe3d12e867dfdc3c6e768433e

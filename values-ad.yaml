@@ -1,4 +1,4 @@
-# Override values for ad
 components:
   ad:
-    imageOverride: {}
+    imageOverride:
+      digest: sha256:496ed4962e36a9c31bbe3d12e867dfdc3c6e768433e895846bd3c049d59fb903
