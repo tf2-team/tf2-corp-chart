@@ -1,6 +1,6 @@
 # ADR SEC-07: Native Kubernetes runtime-hardening admission
 
-- Status: Phase 1-3B complete; system exceptions approved; cluster-wide promotion pending
+- Status: Phase 1-4 complete; Gatekeeper retired; cluster-wide promotion pending
 - Date: 2026-07-19
 - Owners: Platform Security and Platform Engineering
 - Target cluster: `techx-tf2-prod`, Kubernetes `v1.36.2`
@@ -9,10 +9,11 @@
 ## Context
 
 The production chart has already remediated root containers, floating images,
-and missing CPU/memory requests and limits. Gatekeeper 3.23.0 currently prevents
-those violations from returning, but it adds controller and audit Deployments,
-a webhook Service, certificates, CRDs, and worker resource consumption. MANDATE-05
-requires admission policy without introducing another in-cluster policy service.
+and missing CPU/memory requests and limits. Gatekeeper 3.23.0 provided the
+migration baseline, but added controller and audit Deployments, a webhook
+Service, certificates, CRDs, and worker resource consumption. It was retired
+after native VAP denial was proved in production. MANDATE-05 requires admission
+policy without introducing another in-cluster policy service.
 
 The target EKS API server provides stable
 `ValidatingAdmissionPolicy`/`ValidatingAdmissionPolicyBinding` APIs. Native CEL
@@ -91,7 +92,7 @@ blocked whenever application health or SLO evidence is not clean.
 | Phase 3 post-proof non-system inventory | PASS - 175 workload objects and 239 containers checked; zero violations | 2026-07-19 |
 | Phase 3 post-proof policy state | PASS - three VAP bindings remain `[Deny]`; three Gatekeeper Constraints restored to `deny` with zero violations; no fixture objects remain | 2026-07-19 |
 | Phase 3 application health gate | PASS - all Argo Applications are Synced/Healthy after the production rollout | 2026-07-19 |
-| Gatekeeper retirement inventory | Pending Phase 4 | Pending |
+| Gatekeeper retirement inventory | PASS - webhook removed first; native VAP denial re-proved; Applications cascade-deleted; no Gatekeeper workload, webhook, RBAC, custom resource, CRD, or namespace remains ([evidence](evidence/sec-07/11-gatekeeper-retirement-proof.md)) | 2026-07-19 |
 | Phase 3 storefront/private ops/flagd smoke | PASS - storefront 200; Grafana, Jaeger, Argo CD, and feature operations routes 403; flagd Running with zero restarts | 2026-07-19 |
 | Phase 3 formal SLO regression | BLOCKED - collect k6/Grafana p95 after the pre-existing Mem0 health failure is resolved | Pending |
 | Phase 3B system resource remediation | PASS - VPC CNI, CoreDNS, kube-proxy, EBS CSI, Karpenter, and AWS Load Balancer Controller rolled out with complete requests/limits; zero resource, image, or runtime-drift groups remain ([evidence](evidence/sec-07/07-system-resources-rollout-proof.md)) | 2026-07-19 |
