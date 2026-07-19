@@ -51,7 +51,9 @@ default:
 
 
 mem0:
-  enabled: true
+  # TEMPORARY: disable Mem0 workload (Deployment/Job/SA). Re-enable when ready.
+  # secrets-chart Mem0 ExternalSecrets stay enabled (overlay unchanged).
+  enabled: false
   awsRegion: us-east-1
   # Image: inherit default.image.repository/mem0:default.image.tag (platform chart promote).
   rds:
@@ -439,4 +441,4 @@ opentelemetry-collector:
           value: techx-corp-prod
           action: upsert
 
-# Change trail: @hungxqt - 2026-07-19 - Remove per-service imageOverride pins; use global default.image only.
+# Change trail: @hungxqt - 2026-07-19 - Temporarily disable mem0.enabled in prod app chart only.
