@@ -8,6 +8,7 @@ spec:
     - name: app
       image: registry.example.com:5000/team/app:v1.2.3
       securityContext:
+        allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
       resources:

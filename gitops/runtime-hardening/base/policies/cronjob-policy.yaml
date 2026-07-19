@@ -32,8 +32,10 @@ spec:
             (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
           has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
           c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
-          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0))
-      message: Containers must run as non-root, must not use UID 0, must drop ALL capabilities, and must not add capabilities.
+          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+          (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+          has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: Containers must run as non-root, must not use UID 0, must not be privileged or allow privilege escalation, must drop ALL capabilities, and must not add capabilities.
       reason: Invalid
     - expression: >-
         variables.initContainers.all(c,
@@ -43,8 +45,10 @@ spec:
             (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
           has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
           c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
-          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0))
-      message: Init containers must run as non-root, must not use UID 0, must drop ALL capabilities, and must not add capabilities.
+          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+          (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+          has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: Init containers must run as non-root, must not use UID 0, must not be privileged or allow privilege escalation, must drop ALL capabilities, and must not add capabilities.
       reason: Invalid
     - expression: >-
         variables.ephemeralContainers.all(c,
@@ -54,9 +58,18 @@ spec:
             (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
           has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
           c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
-          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0))
-      message: Ephemeral containers must run as non-root, must not use UID 0, must drop ALL capabilities, and must not add capabilities.
+          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+          (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+          has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: Ephemeral containers must run as non-root, must not use UID 0, must not be privileged or allow privilege escalation, must drop ALL capabilities, and must not add capabilities.
       reason: Invalid
+    - expression: >-
+        (!has(variables.podSpec.hostNetwork) || !variables.podSpec.hostNetwork) &&
+        (!has(variables.podSpec.hostPID) || !variables.podSpec.hostPID) &&
+        (!has(variables.podSpec.hostIPC) || !variables.podSpec.hostIPC) &&
+        (!has(variables.podSpec.volumes) || variables.podSpec.volumes.all(v, !has(v.hostPath)))
+      message: CronJob Pod templates must not use host network, host PID/IPC namespaces, or hostPath volumes.
+      reason: Forbidden
     - expression: >-
         variables.containers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
           (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))

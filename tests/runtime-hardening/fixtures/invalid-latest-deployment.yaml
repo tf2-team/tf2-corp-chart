@@ -14,6 +14,7 @@ spec:
         - name: app
           image: nginx:latest
           securityContext:
+            allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
           resources:

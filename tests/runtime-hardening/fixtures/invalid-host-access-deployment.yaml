@@ -1,12 +1,16 @@
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: vap-valid-job
-  namespace: default
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vap-invalid-host-access, namespace: default}
 spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: vap-invalid-host-access}
   template:
+    metadata:
+      labels: {app: vap-invalid-host-access}
     spec:
-      restartPolicy: Never
+      hostNetwork: true
+      hostPID: true
       securityContext:
         runAsNonRoot: true
       containers:

@@ -50,6 +50,12 @@ function Add-Violation {
         "effective runAsUser is 0" { "UID_0" }
         "capabilities.drop does not contain ALL" { "DROP_ALL" }
         "capabilities.add is not empty" { "ADDED_CAPS" }
+        "container is privileged" { "PRIVILEGED" }
+        "allowPrivilegeEscalation is not false" { "PRIV_ESC" }
+        "hostNetwork is enabled" { "HOST_NETWORK" }
+        "hostPID is enabled" { "HOST_PID" }
+        "hostIPC is enabled" { "HOST_IPC" }
+        "hostPath volume is present" { "HOST_PATH" }
         "image is latest, untagged, or has an invalid digest" { "IMAGE_PIN" }
         "CPU/memory requests or limits are missing" { "RESOURCES" }
         default { "UNKNOWN" }
@@ -167,6 +173,23 @@ foreach ($item in $inventory.items) {
     $checkedWorkloads++
     $rootOwner = Get-RootOwner -Item $item -ItemsByUid $itemsByUid
     $podSpec = Get-PodSpec -Item $item
+    $podSpecSubject = [pscustomobject]@{ name = "<pod-spec>" }
+
+    if ((Test-Property $podSpec "hostNetwork") -and $podSpec.hostNetwork -eq $true) {
+        Add-Violation $violations $item $rootOwner "podSpec" $podSpecSubject "hostNetwork is enabled"
+    }
+    if ((Test-Property $podSpec "hostPID") -and $podSpec.hostPID -eq $true) {
+        Add-Violation $violations $item $rootOwner "podSpec" $podSpecSubject "hostPID is enabled"
+    }
+    if ((Test-Property $podSpec "hostIPC") -and $podSpec.hostIPC -eq $true) {
+        Add-Violation $violations $item $rootOwner "podSpec" $podSpecSubject "hostIPC is enabled"
+    }
+    foreach ($volume in @($podSpec.volumes)) {
+        if ($null -ne $volume -and (Test-Property $volume "hostPath")) {
+            Add-Violation $violations $item $rootOwner "podSpec" $podSpecSubject "hostPath volume is present"
+        }
+    }
+
     $containerGroups = @(
         @{ Type = "container"; Items = @($podSpec.containers); RequireResources = $true },
         @{ Type = "initContainer"; Items = @($podSpec.initContainers); RequireResources = $true },
@@ -229,6 +252,15 @@ foreach ($item in $inventory.items) {
             }
             if ($adds.Count -gt 0) {
                 Add-Violation $violations $item $rootOwner $group.Type $container "capabilities.add is not empty"
+            }
+
+            if ((Test-Property $containerSecurity "privileged") -and $containerSecurity.privileged -eq $true) {
+                Add-Violation $violations $item $rootOwner $group.Type $container "container is privileged"
+            }
+
+            if (-not (Test-Property $containerSecurity "allowPrivilegeEscalation") -or
+                $containerSecurity.allowPrivilegeEscalation -ne $false) {
+                Add-Violation $violations $item $rootOwner $group.Type $container "allowPrivilegeEscalation is not false"
             }
 
             if (-not (Test-FixedImage -Image $container.image)) {

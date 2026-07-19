@@ -71,6 +71,13 @@ function ConvertTo-TestPod {
     )
 
     $safeName = ($Workload.metadata.name -replace "[^a-z0-9-]", "-").Trim("-")
+    $ownerKind = if ($Workload.kind -eq "DaemonSet") { "DaemonSet" } else { "ReplicaSet" }
+    $ownerName = if ($ownerKind -eq "DaemonSet") {
+        $Workload.metadata.name
+    }
+    else {
+        "$($Workload.metadata.name)-mandate5-test"
+    }
     return [pscustomobject][ordered]@{
         apiVersion = "v1"
         kind       = "Pod"
@@ -78,6 +85,13 @@ function ConvertTo-TestPod {
             name      = "mandate5-$safeName-$Suffix"
             namespace = "kube-system"
             labels    = Copy-Object $Workload.spec.template.metadata.labels
+            ownerReferences = @([pscustomobject][ordered]@{
+                apiVersion = "apps/v1"
+                kind       = $ownerKind
+                name       = $ownerName
+                uid        = "00000000-0000-0000-0000-000000000001"
+                controller = $true
+            })
         }
         spec       = Copy-Object $Workload.spec.template.spec
     }
@@ -225,6 +239,10 @@ try {
         Assert-Admitted -Object (ConvertTo-TestPod -Workload $workload -Suffix "valid") `
             -Case "Pod/$($item.Name) exact profile"
     }
+
+    $ownerlessSystemPod = ConvertTo-TestPod -Workload $workloads.coredns -Suffix "ownerless"
+    $ownerlessSystemPod.metadata.PSObject.Properties.Remove("ownerReferences")
+    Assert-Denied -Object $ownerlessSystemPod -Case "Pod/coredns ownerless lookalike"
 
     $replicaSet = [pscustomobject][ordered]@{
         apiVersion = "apps/v1"
