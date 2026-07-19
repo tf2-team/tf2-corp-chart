@@ -5,7 +5,7 @@
 - Requested owner: Platform Engineering
 - Requested approver: Platform Security
 - Proposed expiry: 2026-10-17
-- Status: Pending approval; no exception is active
+- Status: Approved; cluster-wide promotion pending
 
 ## Invariants
 
@@ -57,5 +57,5 @@ additional container is outside the requested exception.
 
 | Role | Name | Decision | Date | Notes |
 |---|---|---|---|---|
-| Platform Engineering owner |  | Pending |  |  |
-| Platform Security approver |  | Pending |  |  |
+| Platform Engineering owner | Trần Quốc Hùng | Approved | 2026-07-19 | Approved the exact workload, container, identity, and expiry scope in this packet |
+| Platform Security approver | Trần Quốc Hùng | Approved | 2026-07-19 | Approved for controlled cluster-wide enforcement after the recorded audit preflight |
