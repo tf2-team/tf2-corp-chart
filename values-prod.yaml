@@ -34,7 +34,7 @@ default:
   image:
     repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp
     # Replace with currently running tag before cutover (e.g. sha-a1b2c3d or v1.2.3).
-    tag: "sha-53f7fb1"
+    tag: "sha-c54c2dc"
   # Production replicas must occupy distinct hosts and, where capacity exists,
   # both configured AZs. minDomains=2 prevents a one-zone placement from being
   # treated as balanced. Karpenter can add the missing stateless capacity.
