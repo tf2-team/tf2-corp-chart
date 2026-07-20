@@ -1,23 +1,84 @@
-# Container Escape Alerting Report
+# Báo Cáo Runtime Hardening Alerting
 
-Status: pending production verification.
+Cluster: `techx-tf2-prod`  
+Namespace chính: `techx-corp-prod`  
+Trạng thái: đã apply và kiểm chứng trên production
 
-## Scope
+## Mục Tiêu
 
-This report tracks Mandate 05 alerting for container escape and runtime-hardening drift. It covers scheduled inventory and Grafana/Discord alert routing. GuardDuty Runtime Monitoring, EKS audit-log classifiers and node-role anomaly classifiers require separate infra approval before they can be marked complete.
+Triển khai alert cho Mandate 05 để phát hiện khi có manifest hoặc workload vi
+phạm runtime hardening, đặc biệt là các hành vi như chạy privileged, dùng host
+access, thiếu hardening security context hoặc bị admission policy từ chối.
 
-## Evidence Checklist
+## Cách Triển Khai
 
-| Gate | Command | Expected result | Evidence |
-| --- | --- | --- | --- |
-| CronJob rendered | `helm template techx-corp . -n techx-corp-prod -f values-prod.yaml \| sls 'runtime-hardening-inventory'` | CronJob, ServiceAccount, RBAC and ConfigMap render | Screenshot after command |
-| RBAC read-only | `kubectl auth can-i --as system:serviceaccount:techx-corp-prod:runtime-hardening-inventory list pods --all-namespaces` | `yes` | Screenshot |
-| No write RBAC | `kubectl auth can-i --as system:serviceaccount:techx-corp-prod:runtime-hardening-inventory create pods -n techx-corp-prod` | `no` | Screenshot |
-| Inventory clean | `kubectl -n techx-corp-prod create job --from=cronjob/runtime-hardening-inventory runtime-hardening-inventory-manual; kubectl -n techx-corp-prod logs job/runtime-hardening-inventory-manual` | JSON `status: pass`, `violationCount: 0` | Screenshot/log |
-| Missed-scan alert | Temporarily suspend CronJob in a non-prod test or approved window | Grafana alert `RuntimeHardeningInventoryMissedSchedule` fires | Screenshot |
-| Violation alert | Use approved non-prod fixture or controlled prod dry run path | Grafana alert `RuntimeHardeningInventoryViolation` fires | Screenshot |
-| Post-check | `kubectl get pods -A; kubectl -n argocd get applications` | No new regression; Argo CD Healthy/Synced | Screenshot |
+Alerting được triển khai bằng hai phần:
 
-## Result
+| Thành phần                | Cách apply                         | Vai trò                                                   |
+| ------------------------- | ---------------------------------- | --------------------------------------------------------- |
+| Runtime hardening policy  | GitOps/Helm trong `tf2-corp-chart` | Chặn manifest vi phạm bằng Kubernetes admission           |
+| Runtime inventory scanner | GitOps/Helm trong `tf2-corp-chart` | Quét định kỳ workload đang tồn tại để phát hiện drift     |
+| Audit classifier          | Terraform trong `tf2-corp-infra`   | Đọc EKS audit log, phân loại deny event runtime-hardening |
+| SNS email alert           | Terraform trong `tf2-corp-infra`   | Gửi cảnh báo tới email đã confirm                         |
+| CloudWatch alarm          | Terraform trong `tf2-corp-infra`   | Theo dõi lỗi của Lambda classifier                        |
 
-Fill after production verification.
+Luồng alert chính:
+
+```text
+Manifest vi phạm
+-> ValidatingAdmissionPolicy deny
+-> EKS audit log
+-> CloudWatch Logs subscription
+-> Lambda classifier
+-> SNS
+-> Email alert
+```
+
+Luồng kiểm tra drift:
+
+```text
+CronJob runtime-hardening-inventory
+-> đọc workload trong cluster bằng quyền read-only
+-> kiểm tra theo runtime-hardening rules và exception đã duyệt
+-> ghi kết quả pass/fail ra log
+```
+
+## Kết Quả Kiểm Chứng
+
+| Hạng mục                  | Kết quả | Evidence                                                                           |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------- |
+| SNS email alert           | Pass    | Email `[P2] Runtime hardening deny on techx-tf2-prod` đã nhận được                 |
+| Lambda audit classifier   | Pass    | Lambda log có `classified_runtime_security_event`                                  |
+| CloudWatch metric         | Pass    | Metric `TechX/RuntimeSecurity RuntimeHardeningDenies` có datapoint khi test deny   |
+| Audit log subscription    | Pass    | CloudWatch Logs subscription filter trỏ tới Lambda classifier                      |
+| SNS subscription          | Pass    | Email subscription đã confirm                                                      |
+| Alert trigger             | Pass    | Manifest privileged bị deny bởi `runtime-hardening-pod.techx.io` để tạo test event |
+| Runtime inventory scanner | Pass    | Job mới nhất `Complete`, log có `"status": "pass"` và `"violationCount": 0`        |
+
+## Evidence Đính Kèm
+
+### 1. Email alert đã nhận
+
+![Email alert runtime hardening deny](runtime-hardening-alerting-images/01-email-alert.jpg)
+
+### 2. Lambda classifier xử lý event
+
+![Lambda classifier log](runtime-hardening-alerting-images/02-lambda-classifier-log.jpg)
+
+### 3. Metric ghi nhận deny event
+
+![CloudWatch metric RuntimeHardeningDenies](runtime-hardening-alerting-images/03-cloudwatch-metric.jpg)
+
+### 4. Audit log subscription nối vào Lambda
+
+![CloudWatch Logs subscription filter](runtime-hardening-alerting-images/04-log-subscription-filter.jpg)
+
+### 5. SNS subscription đã confirm
+
+![SNS subscription confirmed](runtime-hardening-alerting-images/05-sns-subscription-confirmed.jpg)
+
+## Kết Luận
+
+Runtime hardening alerting đã được apply và kiểm chứng trên production. Hệ thống
+hiện có admission policy để chặn manifest vi phạm, inventory scanner để phát
+hiện drift, và email alert khi có request bị deny bởi runtime-hardening policy.
