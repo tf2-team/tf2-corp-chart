@@ -19,19 +19,21 @@ helm upgrade --install techx-corp ./ -n techx-corp-prod --create-namespace \
 ## AIOps Runtime
 
 The AIOps workload is disabled in base values. After publishing the image,
-enable `values-aiops.yaml` and set `aiops.image.repository` and
-`aiops.image.tag` for the published artifact. The opt-in workload includes an
+enable `values-aiops.yaml`; secure delivery writes the immutable
+`aiops.image.digest` into that overlay. Repository/tag remain available only
+for a reviewed break-glass deployment. The opt-in workload includes an
 internal Service, readiness/liveness probes, Prometheus scrape annotations,
 read-only Kubernetes RBAC, and a persistent volume for incident and audit
 state. It intentionally runs one replica with a non-overlapping rollout because
 the current store is SQLite.
 
-Sensitive `AIOPS_*` values must come from a Kubernetes Secret referenced by
-`aiops.existingSecret`. The default policy remains `dry-run`; switching to live
-remediation is a separate operational approval. The AIOps overlay also injects
-the shared webhook secret into Grafana and provisions a dual notification route:
-the existing email receiver plus the internal AIOps webhook for warning,
-critical, SEV1, and SEV2 alerts.
+Sensitive `AIOPS_*` values must come from the ESO-managed
+`techx-corp-aiops-grafana-webhook` Secret referenced by `aiops.existingSecret`.
+The runtime is exposed only inside the cluster as `aiops-runtime:8080`, backed
+by the FastAPI container on port 8000. The default policy remains `dry-run`;
+switching to live remediation is a separate operational approval. Grafana's
+single notification-policy tree keeps the existing Discord route and mirrors
+warning, critical, SEV1, and SEV2 alerts to the separate AIOps contact point.
 
 ## ALB-Backed Public Ingress for frontend-proxy
 

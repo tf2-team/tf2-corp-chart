@@ -336,14 +336,16 @@ aiops:
   image:
     repository: ""
     tag: ""
+    digest: ""
     pullPolicy: IfNotPresent
   existingSecret: ""
   service:
-    port: 8000
+    port: 8080
+    containerPort: 8000
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/path: /metrics
-      prometheus.io/port: "8000"
+      prometheus.io/port: "8080"
   serviceAccount:
     create: true
     name: aiops

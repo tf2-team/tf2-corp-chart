@@ -86,9 +86,10 @@ The table below is the authoritative source of truth; the Helm template encodes 
 | Service | Receives from | Calls |
 |---------|---------------|-------|
 | **otel-collector** | all pods (:4317/:4318), kafka (:9092 kafkametrics), redis/pg scrape | jaeger, prometheus, opensearch |
-| **prometheus** | otel-collector, grafana, jaeger, prometheus-adapter | all pods (scrape), kube-system nodes |
+| **prometheus** | otel-collector, grafana, jaeger, prometheus-adapter, aiops-runtime | all pods (scrape), kube-system nodes |
 | **jaeger** | otel-collector (:4317), frontend-proxy, grafana | prometheus |
-| **grafana** | frontend-proxy | prometheus, jaeger, opensearch |
+| **grafana** | frontend-proxy | prometheus, jaeger, opensearch, aiops-runtime |
+| **aiops-runtime** | grafana (:8000 webhook), prometheus (:8000 scrape) | prometheus (:9090), Kubernetes API and approved HTTPS enrichment (:443) |
 
 ---
 
@@ -101,6 +102,7 @@ helm upgrade techx-corp . \
   --set networkPolicy.enabled=true \
   --dry-run | grep "kind: NetworkPolicy" | wc -l
 # Expected: 29
+# Expected with -f values-aiops.yaml: 30
 
 # Step 2: apply in dev
 helm upgrade techx-corp . \

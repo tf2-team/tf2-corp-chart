@@ -1454,7 +1454,7 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [grafana, jaeger, prometheus-adapter]
+                values: [aiops-runtime, grafana, jaeger, prometheus-adapter]
       ports:
         - protocol: TCP
           port: 9090
@@ -1584,6 +1584,59 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+{{ if .Values.aiops.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aiops-runtime
+      ports:
+        - protocol: TCP
+          port: 8000
+{{ end }}
+{{- end }}
+
+{{/* â”€â”€ 30. AIOPS RUNTIME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+{{- if .Values.aiops.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aiops-runtime
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: aiops-runtime
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [grafana, prometheus]
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    # Kubernetes API and approved HTTPS enrichment endpoints. Authentication
+    # and AIOps policy mode remain the authorization boundary.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
 {{- end }}
 
 {{- end }}{{/* end networkPolicy.enabled */}}

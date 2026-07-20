@@ -1,9 +1,13 @@
 {{- if .Values.aiops.enabled }}
-{{- $name := "aiops" }}
+{{- $name := "aiops-runtime" }}
 {{- $serviceAccountName := default $name .Values.aiops.serviceAccount.name }}
 {{- $claimName := default (printf "%s-state" $name) .Values.aiops.persistence.existingClaim }}
-{{- $repository := default (printf "%s/%s" .Values.default.image.repository $name) .Values.aiops.image.repository }}
+{{- $repository := default (printf "%s/aiops" .Values.default.image.repository) .Values.aiops.image.repository }}
 {{- $tag := default (default .Chart.AppVersion .Values.default.image.tag) .Values.aiops.image.tag }}
+{{- $imageRef := printf "%s:%s" $repository $tag }}
+{{- with .Values.aiops.image.digest }}
+{{- $imageRef = printf "%s@%s" $repository . }}
+{{- end }}
 {{- if .Values.aiops.serviceAccount.create }}
 apiVersion: v1
 kind: ServiceAccount
@@ -97,7 +101,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: /metrics
-        prometheus.io/port: {{ .Values.aiops.service.port | quote }}
+        prometheus.io/port: {{ .Values.aiops.service.containerPort | quote }}
     spec:
       serviceAccountName: {{ $serviceAccountName }}
       automountServiceAccountToken: true
@@ -111,11 +115,11 @@ spec:
           type: RuntimeDefault
       containers:
         - name: {{ $name }}
-          image: {{ printf "%s:%s" $repository $tag | quote }}
+          image: {{ $imageRef | quote }}
           imagePullPolicy: {{ .Values.aiops.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.aiops.service.port }}
+              containerPort: {{ .Values.aiops.service.containerPort }}
               protocol: TCP
           env:
             - name: AIOPS_ENVIRONMENT

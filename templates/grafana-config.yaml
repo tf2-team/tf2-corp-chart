@@ -16,22 +16,14 @@ metadata:
     {{- include "techx-corp.labels" . | nindent 4 }}
     grafana_alert: "1"
 data:
-  {{- (.Files.Glob "grafana/provisioning/alerting/*.yaml").AsConfig | nindent 2 }}
-
-{{ if .Values.aiops.enabled }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-aiops-alert-routing
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "techx-corp.labels" . | nindent 4 }}
-    grafana_alert: "1"
-data:
-  aiops-alert-routing.yaml: |-
-{{ .Files.Get "grafana/aiops/alert-routing.yaml" | indent 4 }}
+{{- range $path, $_ := .Files.Glob "grafana/provisioning/alerting/*.yaml" }}
+{{- if ne (base $path) "notification-policies.yaml" }}
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
 {{- end }}
+{{- end }}
+  notification-policies.yaml: |-
+{{ tpl (.Files.Get "grafana/provisioning/alerting/notification-policies.yaml") . | indent 4 }}
 
 {{- range $path, $_ := .Files.Glob "grafana/provisioning/dashboards/*.json" }}
 {{- $name := base $path | trimSuffix ".json" }}

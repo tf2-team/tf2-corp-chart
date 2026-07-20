@@ -2,13 +2,5 @@
 # Publish the aiops image to the chart's default repository before applying.
 aiops:
   enabled: true
-  existingSecret: techx-corp-aiops
-
-# Grafana and AIOps read the same webhook secret from this Secret. The Secret
-# must contain an AIOPS_GRAFANA_WEBHOOK_SECRET key before applying this overlay.
-grafana:
-  envValueFrom:
-    AIOPS_GRAFANA_WEBHOOK_SECRET:
-      secretKeyRef:
-        name: techx-corp-aiops
-        key: AIOPS_GRAFANA_WEBHOOK_SECRET
+  # ESO provisions this Secret from techx-corp/production/aiops-grafana-webhook.
+  existingSecret: techx-corp-aiops-grafana-webhook
