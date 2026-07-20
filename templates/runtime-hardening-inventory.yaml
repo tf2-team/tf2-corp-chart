@@ -1,0 +1,312 @@
+{{- if .Values.runtimeHardeningInventory.enabled -}}
+{{- $inventory := .Values.runtimeHardeningInventory -}}
+{{- $name := $inventory.serviceAccountName | default "runtime-hardening-inventory" -}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-hardening-inventory
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ printf "%s-%s" (include "techx-corp.name" .) "runtime-hardening-inventory" | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-hardening-inventory
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "replicationcontrollers"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ printf "%s-%s" (include "techx-corp.name" .) "runtime-hardening-inventory" | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-hardening-inventory
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ printf "%s-%s" (include "techx-corp.name" .) "runtime-hardening-inventory" | trunc 63 | trimSuffix "-" }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: runtime-hardening-inventory
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-hardening-inventory
+data:
+  exceptions.json: |-
+{{ $inventory.exceptionProfiles | default (list) | toPrettyJson | indent 4 }}
+  scan.py: |-
+    import json
+    import os
+    import re
+    import ssl
+    import sys
+    import time
+    import urllib.request
+
+    TOKEN_PATH = "/var/run/secrets/runtime-hardening/token"
+    CA_PATH = "/var/run/secrets/runtime-hardening/ca.crt"
+    API_HOST = os.environ.get("KUBERNETES_SERVICE_HOST")
+    API_PORT = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
+    CLUSTER = os.environ.get("CLUSTER_NAME", "unknown")
+    ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
+
+    WORKLOADS = [
+        ("Pod", "/api/v1/pods", "spec"),
+        ("Deployment", "/apis/apps/v1/deployments", "spec.template.spec"),
+        ("StatefulSet", "/apis/apps/v1/statefulsets", "spec.template.spec"),
+        ("DaemonSet", "/apis/apps/v1/daemonsets", "spec.template.spec"),
+        ("ReplicationController", "/api/v1/replicationcontrollers", "spec.template.spec"),
+        ("Job", "/apis/batch/v1/jobs", "spec.template.spec"),
+        ("CronJob", "/apis/batch/v1/cronjobs", "spec.jobTemplate.spec.template.spec"),
+    ]
+
+    FIXED_IMAGE = re.compile(r"^.+@sha256:[0-9A-Fa-f]{64}$|^[^@]+:[^/:@]+$")
+
+    def load(path):
+        with open(path, "r", encoding="utf-8") as handle:
+            return handle.read()
+
+    def api_get(path):
+        token = load(TOKEN_PATH).strip()
+        url = f"https://{API_HOST}:{API_PORT}{path}"
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+        context = ssl.create_default_context(cafile=CA_PATH)
+        with urllib.request.urlopen(req, context=context, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+
+    def nested(obj, path):
+        cur = obj
+        for part in path.split("."):
+            if not isinstance(cur, dict):
+                return {}
+            cur = cur.get(part, {})
+        return cur if isinstance(cur, dict) else {}
+
+    def owner_kind(item):
+        owners = item.get("metadata", {}).get("ownerReferences", []) or []
+        controller = [o for o in owners if o.get("controller") is True]
+        owner = controller[0] if controller else (owners[0] if owners else {})
+        return owner.get("kind", "")
+
+    def fixed_image(image):
+        return bool(image and FIXED_IMAGE.match(image) and not image.lower().endswith(":latest"))
+
+    def exception_set():
+        raw = load("/etc/runtime-hardening/exceptions.json")
+        profiles = json.loads(raw or "[]")
+        allowed = set()
+        for profile in profiles:
+            root = profile.get("rootKey")
+            for container in profile.get("containers", []):
+                for rule in profile.get("rules", []):
+                    allowed.add((root, container, rule))
+        return allowed
+
+    def add_violation(violations, allowed, root_key, container_type, container, rule, message):
+        name = container.get("name", "<pod-spec>") if isinstance(container, dict) else "<pod-spec>"
+        if (root_key, name, rule) in allowed:
+            return
+        violations.append({
+            "root": root_key,
+            "containerType": container_type,
+            "container": name,
+            "ruleId": rule,
+            "message": message,
+        })
+
+    def check_container(violations, allowed, root_key, pod_spec, container_type, container, require_resources):
+        csec = container.get("securityContext", {}) or {}
+        psec = pod_spec.get("securityContext", {}) or {}
+        name = container.get("name", "<unnamed>")
+
+        if csec.get("runAsNonRoot", psec.get("runAsNonRoot")) is not True:
+            add_violation(violations, allowed, root_key, container_type, container, "NON_ROOT", "effective runAsNonRoot is not true")
+        if csec.get("runAsUser", psec.get("runAsUser")) == 0:
+            add_violation(violations, allowed, root_key, container_type, container, "UID_0", "effective runAsUser is 0")
+
+        caps = csec.get("capabilities", {}) or {}
+        drops = caps.get("drop", []) or []
+        adds = caps.get("add", []) or []
+        if "ALL" not in drops:
+            add_violation(violations, allowed, root_key, container_type, container, "DROP_ALL", "capabilities.drop does not contain ALL")
+        if len(adds) > 0:
+            add_violation(violations, allowed, root_key, container_type, container, "ADDED_CAPS", "capabilities.add is not empty")
+        if csec.get("privileged") is True:
+            add_violation(violations, allowed, root_key, container_type, container, "PRIVILEGED", "container is privileged")
+        if csec.get("allowPrivilegeEscalation") is not False:
+            add_violation(violations, allowed, root_key, container_type, container, "PRIV_ESC", "allowPrivilegeEscalation is not false")
+        if not fixed_image(container.get("image", "")):
+            add_violation(violations, allowed, root_key, container_type, container, "IMAGE_PIN", "image is latest, untagged, or has an invalid digest")
+
+        if require_resources:
+            resources = container.get("resources", {}) or {}
+            requests = resources.get("requests", {}) or {}
+            limits = resources.get("limits", {}) or {}
+            if not all([requests.get("cpu"), requests.get("memory"), limits.get("cpu"), limits.get("memory")]):
+                add_violation(violations, allowed, root_key, container_type, container, "RESOURCES", "CPU/memory requests or limits are missing")
+
+    def check_pod_spec(violations, allowed, root_key, pod_spec):
+        pod_subject = {"name": "<pod-spec>"}
+        if pod_spec.get("hostNetwork") is True:
+            add_violation(violations, allowed, root_key, "podSpec", pod_subject, "HOST_NETWORK", "hostNetwork is enabled")
+        if pod_spec.get("hostPID") is True:
+            add_violation(violations, allowed, root_key, "podSpec", pod_subject, "HOST_PID", "hostPID is enabled")
+        if pod_spec.get("hostIPC") is True:
+            add_violation(violations, allowed, root_key, "podSpec", pod_subject, "HOST_IPC", "hostIPC is enabled")
+        for volume in pod_spec.get("volumes", []) or []:
+            if isinstance(volume, dict) and "hostPath" in volume:
+                add_violation(violations, allowed, root_key, "podSpec", pod_subject, "HOST_PATH", "hostPath volume is present")
+
+        for container in pod_spec.get("containers", []) or []:
+            check_container(violations, allowed, root_key, pod_spec, "container", container, True)
+        for container in pod_spec.get("initContainers", []) or []:
+            check_container(violations, allowed, root_key, pod_spec, "initContainer", container, True)
+        for container in pod_spec.get("ephemeralContainers", []) or []:
+            check_container(violations, allowed, root_key, pod_spec, "ephemeralContainer", container, False)
+
+    def main():
+        allowed = exception_set()
+        violations = []
+        checked_objects = 0
+        checked_containers = 0
+        started = int(time.time())
+
+        for kind, path, spec_path in WORKLOADS:
+            payload = api_get(path)
+            for item in payload.get("items", []):
+                if kind == "Pod" and owner_kind(item):
+                    continue
+                metadata = item.get("metadata", {}) or {}
+                namespace = metadata.get("namespace", "default")
+                name = metadata.get("name", "<unknown>")
+                root_key = f"{namespace}/{kind}/{name}"
+                pod_spec = nested(item, spec_path)
+                checked_objects += 1
+                checked_containers += len(pod_spec.get("containers", []) or [])
+                checked_containers += len(pod_spec.get("initContainers", []) or [])
+                checked_containers += len(pod_spec.get("ephemeralContainers", []) or [])
+                check_pod_spec(violations, allowed, root_key, pod_spec)
+
+        summary = {
+            "status": "fail" if violations else "pass",
+            "cluster": CLUSTER,
+            "environment": ENVIRONMENT,
+            "startedAtEpoch": started,
+            "finishedAtEpoch": int(time.time()),
+            "checkedObjects": checked_objects,
+            "checkedContainers": checked_containers,
+            "violationCount": len(violations),
+            "violations": violations[:100],
+        }
+        print(json.dumps(summary, sort_keys=True))
+        if violations:
+            return 1
+        return 0
+
+    if __name__ == "__main__":
+        sys.exit(main())
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: runtime-hardening-inventory
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-hardening-inventory
+spec:
+  schedule: {{ $inventory.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ $inventory.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $inventory.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ $inventory.backoffLimit }}
+      activeDeadlineSeconds: {{ $inventory.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "techx-corp.labels" . | nindent 12 }}
+            app.kubernetes.io/component: runtime-hardening-inventory
+        spec:
+          serviceAccountName: {{ $name }}
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            {{- toYaml $inventory.podSecurityContext | nindent 12 }}
+          containers:
+            - name: scanner
+              image: "{{ $inventory.image.repository }}:{{ $inventory.image.tag }}"
+              imagePullPolicy: {{ $inventory.image.pullPolicy }}
+              command: ["python", "/opt/runtime-hardening/scan.py"]
+              env:
+                - name: CLUSTER_NAME
+                  value: {{ $inventory.clusterName | quote }}
+                - name: ENVIRONMENT
+                  value: {{ $inventory.environment | quote }}
+                - name: PYTHONDONTWRITEBYTECODE
+                  value: "1"
+              resources:
+                {{- toYaml $inventory.resources | nindent 16 }}
+              securityContext:
+                {{- toYaml $inventory.securityContext | nindent 16 }}
+              volumeMounts:
+                - name: scanner
+                  mountPath: /opt/runtime-hardening
+                  readOnly: true
+                - name: exceptions
+                  mountPath: /etc/runtime-hardening
+                  readOnly: true
+                - name: runtime-token
+                  mountPath: /var/run/secrets/runtime-hardening
+                  readOnly: true
+          volumes:
+            - name: scanner
+              configMap:
+                name: runtime-hardening-inventory
+                items:
+                  - key: scan.py
+                    path: scan.py
+            - name: exceptions
+              configMap:
+                name: runtime-hardening-inventory
+                items:
+                  - key: exceptions.json
+                    path: exceptions.json
+            - name: runtime-token
+              projected:
+                defaultMode: 0440
+                sources:
+                  - serviceAccountToken:
+                      path: token
+                      audience: kubernetes.default.svc
+                      expirationSeconds: 600
+                  - configMap:
+                      name: kube-root-ca.crt
+                      items:
+                        - key: ca.crt
+                          path: ca.crt
+{{- end }}
