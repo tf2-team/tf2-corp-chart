@@ -1,0 +1,10 @@
+# Sigstore policy-controller's webhook only evaluates namespaces carrying
+# this label (see policy-controller Helm chart default namespaceSelector
+# policy.sigstore.dev/include=true). Without this patch the webhook installs
+# but silently verifies nothing — this is what actually turns enforcement on.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: techx-corp-prod
+  labels:
+    policy.sigstore.dev/include: "true"

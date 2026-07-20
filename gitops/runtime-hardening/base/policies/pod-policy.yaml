@@ -200,18 +200,22 @@ spec:
       reason: Forbidden
     - expression: >-
         variables.containers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Container images must use a fixed tag or SHA-256 digest; latest and untagged images are forbidden.
+          variables.isAwsNode || variables.isKubeProxy || variables.isEbsNode || variables.isEbsNodeWindows || variables.isEbsController || variables.isCoreDns)
+      message: >-
+        MANDATE-10 (Secure Delivery Pipeline): container images must be pinned by SHA-256 digest
+        (image@sha256:...); fixed tags and latest are forbidden, except for approved EKS-managed
+        system components (aws-node, kube-proxy, ebs-csi, coredns).
       reason: Invalid
     - expression: >-
         variables.initContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Init container images must use a fixed tag or SHA-256 digest.
+          variables.isAwsNode)
+      message: >-
+        MANDATE-10: init container images must be pinned by SHA-256 digest, except for the
+        approved aws-node (aws-vpc-cni-init) system exception.
       reason: Invalid
     - expression: >-
-        variables.ephemeralContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Ephemeral container images must use a fixed tag or SHA-256 digest.
+        variables.ephemeralContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$'))
+      message: "MANDATE-10: ephemeral container images must be pinned by SHA-256 digest."
       reason: Invalid
     - expression: >-
         variables.containers.all(c, has(c.resources) && has(c.resources.requests) &&

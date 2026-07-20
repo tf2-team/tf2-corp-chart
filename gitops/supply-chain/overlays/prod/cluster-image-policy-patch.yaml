@@ -1,0 +1,42 @@
+# ARN matches account 493499579600 / us-east-1 (docs/CICD.md IMAGE_NAME table)
+# and the fixed alias tf2-cosign-signing-key created by tf2-corp-infra
+# bootstrap (aws_kms_alias.cosign). Verify with `terraform output
+# cosign_kms_key_arn` after bootstrap apply before relying on this policy.
+#
+# NOTE: this repeats base's full `authorities[0]` (not just key.kms).
+# Kustomize applies CRD patches as an RFC7386 JSON merge (no known merge key
+# for arbitrary CRD arrays), which replaces the whole `authorities` list —
+# a partial patch here would silently drop the attestations checks in base.
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: techx-corp-cosign-verify
+spec:
+  authorities:
+    - name: techx-cosign-kms
+      key:
+        kms: "awskms://arn:aws:kms:us-east-1:493499579600:alias/tf2-cosign-signing-key"
+      attestations:
+        - name: must-have-passing-provenance
+          predicateType: https://techx-corp.dev/attestations/provenance/v1
+          policy:
+            type: cue
+            data: |
+              predicateType: "https://techx-corp.dev/attestations/provenance/v1"
+              predicate: {
+                scans: {
+                  trivy_image: "pass"
+                  trivy_iac:   "pass"
+                  semgrep:     "pass"
+                  trufflehog:  "pass"
+                }
+                sbom: {
+                  attested: true
+                }
+              }
+        - name: must-have-sbom-attestation
+          predicateType: https://cyclonedx.org/bom
+          policy:
+            type: cue
+            data: |
+              predicateType: "https://cyclonedx.org/bom"

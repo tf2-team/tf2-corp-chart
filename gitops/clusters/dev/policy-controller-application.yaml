@@ -1,0 +1,39 @@
+# MANDATE 10 (Secure Delivery Pipeline): Sigstore policy-controller (dev).
+# See gitops/clusters/prod/policy-controller-application.yaml for rationale.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policy-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: techx-corp-dev
+  source:
+    repoURL: https://sigstore.github.io/helm-charts
+    chart: policy-controller
+    targetRevision: 0.10.6
+    helm:
+      releaseName: policy-controller
+      values: |
+        installCRDs: true
+        webhook:
+          serviceAccount:
+            create: true
+            name: policy-controller
+            annotations:
+              eks.amazonaws.com/role-arn: "REPLACE_WITH_terraform_output_policy_controller_role_arn"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cosign-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

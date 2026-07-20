@@ -71,19 +71,18 @@ spec:
       message: CronJob Pod templates must not use host network, host PID/IPC namespaces, or hostPath volumes.
       reason: Forbidden
     - expression: >-
-        variables.containers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Container images must use a fixed tag or SHA-256 digest; latest and untagged images are forbidden.
+        variables.containers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$'))
+      message: >-
+        MANDATE-10 (Secure Delivery Pipeline): container images must be pinned by SHA-256 digest
+        (image@sha256:...); fixed tags and latest are forbidden.
       reason: Invalid
     - expression: >-
-        variables.initContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Init container images must use a fixed tag or SHA-256 digest.
+        variables.initContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$'))
+      message: "MANDATE-10: init container images must be pinned by SHA-256 digest."
       reason: Invalid
     - expression: >-
-        variables.ephemeralContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
-          (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))
-      message: Ephemeral container images must use a fixed tag or SHA-256 digest.
+        variables.ephemeralContainers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$'))
+      message: "MANDATE-10: ephemeral container images must be pinned by SHA-256 digest."
       reason: Invalid
     - expression: >-
         variables.containers.all(c, has(c.resources) && has(c.resources.requests) &&

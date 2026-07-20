@@ -1,0 +1,49 @@
+# MANDATE 10 (Secure Delivery Pipeline): Sigstore policy-controller.
+# VAP (runtime-hardening) enforces "image ref must be a digest"; this
+# webhook additionally enforces "digest must be signed by our Cosign/KMS
+# key" — CEL/VAP alone cannot do this because it has no outbound network
+# access to talk to the registry/KMS. Installs from the upstream Sigstore
+# Helm chart (not vendored) so patch releases are pulled without a repo PR.
+#
+# webhook.serviceAccount.name is fixed (not auto-generated) so it matches
+# the IRSA trust subject created by tf2-corp-infra
+# modules/policy-controller-irsa (system:serviceaccount:cosign-system:policy-controller).
+# webhook.serviceAccount.annotations["eks.amazonaws.com/role-arn"] MUST be
+# set to the `policy_controller_role_arn` Terraform output before first sync.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policy-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: techx-corp
+  source:
+    repoURL: https://sigstore.github.io/helm-charts
+    chart: policy-controller
+    targetRevision: 0.10.6
+    helm:
+      releaseName: policy-controller
+      values: |
+        installCRDs: true
+        webhook:
+          serviceAccount:
+            create: true
+            name: policy-controller
+            annotations:
+              eks.amazonaws.com/role-arn: "REPLACE_WITH_terraform_output_policy_controller_role_arn"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cosign-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

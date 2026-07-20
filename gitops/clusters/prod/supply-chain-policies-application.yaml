@@ -1,0 +1,31 @@
+# Applies AFTER policy-controller (sync-wave 1): the ClusterImagePolicy CRD
+# must exist before this CR can be created, and the namespace label that
+# actually turns on enforcement (policy.sigstore.dev/include=true) must be
+# present on techx-corp-prod.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: supply-chain-policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: techx-corp
+  source:
+    repoURL: https://github.com/tf2-team/tf2-corp-chart.git
+    targetRevision: main
+    path: gitops/supply-chain/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cosign-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

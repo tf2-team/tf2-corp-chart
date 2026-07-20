@@ -1,0 +1,55 @@
+# MANDATE 10 (Secure Delivery Pipeline): admission-time Cosign signature
+# verification. VAP (gitops/runtime-hardening) already enforces digest-only
+# image references; this policy additionally REJECTS any digest-pinned image
+# that is not signed by the platform's Cosign/KMS key, closing the loop that
+# native K8s ValidatingAdmissionPolicy/CEL cannot close on its own (no
+# outbound network access to talk to the registry/Rekor/KMS).
+#
+# spec.authorities[].key.kms is a PLACEHOLDER — replaced per-environment by
+# overlays/{dev,prod}/cluster-image-policy-patch.yaml with the real value of
+# the `cosign_kms_key_arn` Terraform output from tf2-corp-infra bootstrap.
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: techx-corp-cosign-verify
+spec:
+  images:
+    # Matches both techx-dev-corp/* and techx-prod-corp/* (see
+    # tf2-corp-infra environments/{development,production}/terraform.tfvars
+    # ecr_project_name). Overlays may narrow this per environment.
+    - glob: "*.dkr.ecr.*.amazonaws.com/techx-*-corp/**"
+  authorities:
+    - name: techx-cosign-kms
+      key:
+        kms: "awskms://arn:aws:kms:REPLACE_ME_REGION:REPLACE_ME_ACCOUNT_ID:alias/tf2-cosign-signing-key"
+      # docs/CICD.md "Mandate 10 cross-repository contract": admission must
+      # require TWO independent facts, not just a bare signature — (1) this
+      # `key` block verifies the KMS signature on the digest itself, and
+      # (2) the attestations below verify a provenance attestation SIGNED BY
+      # THE SAME KEY whose predicate proves all scans passed and an SBOM was
+      # attested, before the image is allowed to run.
+      attestations:
+        - name: must-have-passing-provenance
+          predicateType: https://techx-corp.dev/attestations/provenance/v1
+          policy:
+            type: cue
+            data: |
+              predicateType: "https://techx-corp.dev/attestations/provenance/v1"
+              predicate: {
+                scans: {
+                  trivy_image: "pass"
+                  trivy_iac:   "pass"
+                  semgrep:     "pass"
+                  trufflehog:  "pass"
+                }
+                sbom: {
+                  attested: true
+                }
+              }
+        - name: must-have-sbom-attestation
+          predicateType: https://cyclonedx.org/bom
+          policy:
+            type: cue
+            data: |
+              predicateType: "https://cyclonedx.org/bom"
+  mode: enforce

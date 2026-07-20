@@ -1,0 +1,28 @@
+# See gitops/clusters/prod/supply-chain-policies-application.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: supply-chain-policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: techx-corp-dev
+  source:
+    repoURL: https://github.com/tmcmanhcuong/tf2-corp-chart.git
+    targetRevision: techx-dev-corp
+    path: gitops/supply-chain/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cosign-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

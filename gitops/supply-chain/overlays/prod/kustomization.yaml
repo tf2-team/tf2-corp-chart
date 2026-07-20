@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - namespace-label-patch.yaml
+patches:
+  - path: cluster-image-policy-patch.yaml
+    target:
+      kind: ClusterImagePolicy
+      name: techx-corp-cosign-verify

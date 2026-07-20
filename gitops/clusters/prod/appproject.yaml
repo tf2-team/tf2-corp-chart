@@ -17,6 +17,8 @@ spec:
     - https://github.com/tf2-team/tf2-corp-chart.git/*
     - git@github.com:tf2-team/tf2-corp-chart.git
     - git@github.com:tf2-team/tf2-corp-chart.git/*
+    # MANDATE 10: upstream Sigstore policy-controller Helm chart.
+    - https://sigstore.github.io/helm-charts
 
   destinations:
     - server: https://kubernetes.default.svc
@@ -24,6 +26,9 @@ spec:
     # metrics-server subchart installs RoleBinding metrics-server-auth-reader here.
     - server: https://kubernetes.default.svc
       namespace: kube-system
+    # MANDATE 10: Sigstore policy-controller (Cosign signature verification).
+    - server: https://kubernetes.default.svc
+      namespace: cosign-system
 
   # Includes metrics-server APIService + RBAC from observability subcharts.
   clusterResourceWhitelist:
@@ -39,6 +44,17 @@ spec:
       kind: ValidatingAdmissionPolicy
     - group: admissionregistration.k8s.io
       kind: ValidatingAdmissionPolicyBinding
+    # MANDATE 10: Sigstore policy-controller install (CRDs + webhook config) + policy CRs.
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: policy.sigstore.dev
+      kind: ClusterImagePolicy
+    - group: policy.sigstore.dev
+      kind: TrustRoot
 
   # Orphan ignore: kube defaults, Helm history Secrets, ESO-generated Secrets
   # (created by ESO, not by either Application), STS PVCs, ALB TargetGroupBindings.
