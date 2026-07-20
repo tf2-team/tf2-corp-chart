@@ -1,84 +1,128 @@
 # Báo Cáo Runtime Hardening Alerting
 
-Cluster: `techx-tf2-prod`  
-Namespace chính: `techx-corp-prod`  
-Trạng thái: đã apply và kiểm chứng trên production
+## Mục tiêu
 
-## Mục Tiêu
+Chứng minh hai lớp phát hiện runtime hardening hoạt động end-to-end: (1) alert khi ValidatingAdmissionPolicy từ chối manifest vi phạm và (2) inventory định kỳ phát hiện workload vi phạm đang tồn tại hoặc bị drift. Alert chỉ chứa context cần thiết để điều tra — policy, resource, namespace, verb và thời điểm — và luôn loại bỏ Secret, token, credential cùng full request body.
 
-Triển khai alert cho Mandate 05 để phát hiện khi có manifest hoặc workload vi
-phạm runtime hardening, đặc biệt là các hành vi như chạy privileged, dùng host
-access, thiếu hardening security context hoặc bị admission policy từ chối.
+## Cách triển khai
 
-## Cách Triển Khai
-
-Alerting được triển khai bằng hai phần:
-
-| Thành phần                | Cách apply                         | Vai trò                                                   |
-| ------------------------- | ---------------------------------- | --------------------------------------------------------- |
-| Runtime hardening policy  | GitOps/Helm trong `tf2-corp-chart` | Chặn manifest vi phạm bằng Kubernetes admission           |
-| Runtime inventory scanner | GitOps/Helm trong `tf2-corp-chart` | Quét định kỳ workload đang tồn tại để phát hiện drift     |
-| Audit classifier          | Terraform trong `tf2-corp-infra`   | Đọc EKS audit log, phân loại deny event runtime-hardening |
-| SNS email alert           | Terraform trong `tf2-corp-infra`   | Gửi cảnh báo tới email đã confirm                         |
-| CloudWatch alarm          | Terraform trong `tf2-corp-infra`   | Theo dõi lỗi của Lambda classifier                        |
-
-Luồng alert chính:
+| Thành phần | Cách apply | Vai trò |
+| --- | --- | --- |
+| Runtime hardening VAP | GitOps/Kustomize trong `tf2-corp-chart` | Từ chối manifest vi phạm tại Kubernetes admission. |
+| Runtime inventory scanner | GitOps/Helm trong `tf2-corp-chart` | Quét định kỳ Pod template và standalone Pod để phát hiện drift/bypass. |
+| Audit classifier | Terraform trong `tf2-corp-infra` | Đọc EKS audit deny event và tạo alert đã sanitize. |
+| SNS email alert | Terraform trong `tf2-corp-infra` | Gửi alert P2 tới email/on-call channel đã confirm. |
+| Grafana alerting | GitOps/Helm trong `tf2-corp-chart` | Cảnh báo inventory violation hoặc missed schedule qua contact point hiện có. |
 
 ```text
-Manifest vi phạm
--> ValidatingAdmissionPolicy deny
--> EKS audit log
--> CloudWatch Logs subscription
--> Lambda classifier
--> SNS
--> Email alert
+Luồng 1 — admission deny alert
+
+Unsafe CREATE / UPDATE / PATCH (server-side dry-run)
+        ↓
+ValidatingAdmissionPolicy deny; object không được persist
+        ↓
+EKS audit log
+        ↓
+CloudWatch Logs subscription filter
+        ↓
+Lambda classifier đã sanitize
+        ├── CloudWatch metric `RuntimeHardeningDenies`
+        └── SNS topic → confirmed email subscription
+
+Luồng 2 — existing-workload drift alert
+
+runtime-hardening-inventory CronJob (mỗi 5 phút)
+        ↓
+Scanner phát hiện violation → Job exit non-zero
+        ↓
+kube-state-metrics / Prometheus
+        ↓
+Grafana `RuntimeHardeningInventoryViolation` → Discord contact point
+
+CronJob không schedule đúng hạn
+        ↓
+kube_cronjob_status_last_schedule_time
+        ↓
+Grafana `RuntimeHardeningInventoryMissedSchedule` → Discord contact point
 ```
 
-Luồng kiểm tra drift:
+## Evidence theo luồng cảnh báo
 
-```text
-CronJob runtime-hardening-inventory
--> đọc workload trong cluster bằng quyền read-only
--> kiểm tra theo runtime-hardening rules và exception đã duyệt
--> ghi kết quả pass/fail ra log
-```
+### Luồng 1 — Admission deny đến SNS
 
-## Kết Quả Kiểm Chứng
+Các ảnh dưới đây chứng minh một manifest vi phạm bị chặn ngay tại admission, được ghi audit, phân loại/sanitize và gửi thành alert.
 
-| Hạng mục                  | Kết quả | Evidence                                                                           |
-| ------------------------- | ------- | ---------------------------------------------------------------------------------- |
-| SNS email alert           | Pass    | Email `[P2] Runtime hardening deny on techx-tf2-prod` đã nhận được                 |
-| Lambda audit classifier   | Pass    | Lambda log có `classified_runtime_security_event`                                  |
-| CloudWatch metric         | Pass    | Metric `TechX/RuntimeSecurity RuntimeHardeningDenies` có datapoint khi test deny   |
-| Audit log subscription    | Pass    | CloudWatch Logs subscription filter trỏ tới Lambda classifier                      |
-| SNS subscription          | Pass    | Email subscription đã confirm                                                      |
-| Alert trigger             | Pass    | Manifest privileged bị deny bởi `runtime-hardening-pod.techx.io` để tạo test event |
-| Runtime inventory scanner | Pass    | Job mới nhất `Complete`, log có `"status": "pass"` và `"violationCount": 0`        |
+### Bước 1. VAP deny cho CREATE, UPDATE và PATCH
 
-## Evidence Đính Kèm
+![VAP CREATE UPDATE PATCH deny](runtime-hardening-alerting-images/01-vap-create-update-patch-deny.png)
 
-### 1. Email alert đã nhận
+`CREATE` privileged bị VAP từ chối và không persist (`NotFound`); `UPDATE` Pod và `PATCH` Deployment sang `nginx:latest` cũng bị từ chối.
 
-![Email alert runtime hardening deny](runtime-hardening-alerting-images/01-email-alert.jpg)
+### Bước 2. EKS audit deny event
 
-### 2. Lambda classifier xử lý event
+![EKS audit deny event](runtime-hardening-alerting-images/02-eks-audit-vap-deny.png)
 
-![Lambda classifier log](runtime-hardening-alerting-images/02-lambda-classifier-log.jpg)
+EKS audit log giữ verb, namespace, resource, mã lỗi và VAP deny message của request test; không hiển thị request body hay credential.
 
-### 3. Metric ghi nhận deny event
+### Bước 3. Audit subscription nối vào Lambda
 
-![CloudWatch metric RuntimeHardeningDenies](runtime-hardening-alerting-images/03-cloudwatch-metric.jpg)
+![CloudWatch Logs subscription filter](runtime-hardening-alerting-images/03-audit-subscription-to-lambda.png)
 
-### 4. Audit log subscription nối vào Lambda
+Subscription filter của EKS audit log group chuyển event runtime-hardening đến Lambda classifier.
+### Bước 4. Lambda classifier xử lý event
 
-![CloudWatch Logs subscription filter](runtime-hardening-alerting-images/04-log-subscription-filter.jpg)
+![Lambda classifier log](runtime-hardening-alerting-images/04-lambda-classifier-vap-deny.png)
 
-### 5. SNS subscription đã confirm
+Classifier tạo `classified_runtime_security_event` với policy, verb, resource và payload đã được sanitize.
 
-![SNS subscription confirmed](runtime-hardening-alerting-images/05-sns-subscription-confirmed.jpg)
+### Bước 5. Metric ghi nhận deny event
 
-## Kết Luận
+![CloudWatch metric RuntimeHardeningDenies](runtime-hardening-alerting-images/05-cloudwatch-runtime-hardening-denies.png)
 
-Runtime hardening alerting đã được apply và kiểm chứng trên production. Hệ thống
-hiện có admission policy để chặn manifest vi phạm, inventory scanner để phát
-hiện drift, và email alert khi có request bị deny bởi runtime-hardening policy.
+Metric `TechX/RuntimeSecurity:RuntimeHardeningDenies` có datapoint tại thời điểm thực hiện VAP test.
+
+### Bước 6. SNS subscription đã confirm
+
+![SNS subscription confirmed](runtime-hardening-alerting-images/06-sns-subscription-confirmed.png)
+
+Topic `techx-prod-tf2-runtime-security-alerts` có email subscription ở trạng thái `Confirmed`.
+### Bước 7. SNS email alert đã nhận
+
+![SNS email VAP deny](runtime-hardening-alerting-images/07-sns-email-vap-deny.jpg)
+
+Email nhận alert P2 từ VAP deny thật với `reason: Invalid`, `signalType: vap-admission-deny` và policy vi phạm.
+
+### Luồng 2 — Inventory định kỳ và Grafana
+
+Các ảnh dưới đây chứng minh scanner chạy định kỳ, kết quả inventory sạch, và hai alert runtime-security được provision/routing về Discord.
+
+### Bước 8. Inventory CronJob đang chạy
+
+![Runtime hardening inventory CronJob](runtime-hardening-alerting-images/08-inventory-cronjob.png)
+
+CronJob `runtime-hardening-inventory` chạy trong `techx-corp-prod` mỗi 5 phút, không bị suspend và có lần chạy gần nhất.
+
+### Bước 9. Inventory clean scan
+
+![Runtime hardening inventory clean scan](runtime-hardening-alerting-images/09-inventory-clean-scan.png)
+
+Job hoàn tất với `status: pass`; đã quét 51 workload objects / 74 containers và `violationCount: 0`.
+### Bước 10. Grafana runtime-security rules
+
+![Grafana runtime security rules](runtime-hardening-alerting-images/10-grafana-runtime-security-rules.png)
+
+Grafana đã provision `RuntimeHardeningInventoryViolation` và `RuntimeHardeningInventoryMissedSchedule`.
+
+### Bước 11. Grafana routing/contact point
+
+![Grafana runtime security routing](runtime-hardening-alerting-images/11b-grafana-runtime-security-routing.png)
+
+![Grafana Discord contact point](runtime-hardening-alerting-images/11a-grafana-discord-contact-point.png)
+
+Notification policy `alert_type = runtime_security` route tới contact point `discord-alerts`; contact point này đã được provision và đang có delivery attempt.
+
+### Bước 12. Grafana notification delivery test
+
+![Discord notification delivery diagnostic](runtime-hardening-alerting-images/09-discord-delivery-diagnostic.png)
+
+Discord đã nhận notification từ Grafana.
