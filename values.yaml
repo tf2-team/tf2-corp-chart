@@ -24,6 +24,108 @@ externalSecrets:
   # Default matches production release namespace; override in values-dev.yaml for dev.
   namespace: techx-corp-prod
 
+# Mandate 05 runtime-security inventory.
+# This is a scheduled drift detector for already-existing workload specs. It is
+# disabled by default and enabled only in production after VAP enforce is live.
+runtimeHardeningInventory:
+  enabled: false
+  clusterName: techx-tf2-prod
+  environment: production
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  activeDeadlineSeconds: 120
+  backoffLimit: 0
+  serviceAccountName: runtime-hardening-inventory
+  image:
+    repository: public.ecr.aws/docker/library/python
+    tag: "3.13.5-alpine3.22"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  # Exact system exception profiles approved in SEC-07 evidence. These are
+  # field-level exceptions, not namespace exclusions.
+  exceptionProfiles:
+    - rootKey: kube-system/DaemonSet/aws-node
+      containers:
+        - aws-node
+        - aws-eks-nodeagent
+        - aws-vpc-cni-init
+        - "<pod-spec>"
+      rules:
+        - ADDED_CAPS
+        - DROP_ALL
+        - NON_ROOT
+        - PRIVILEGED
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/DaemonSet/kube-proxy
+      containers:
+        - kube-proxy
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - PRIVILEGED
+        - HOST_NETWORK
+    - rootKey: kube-system/DaemonSet/ebs-csi-node
+      containers:
+        - ebs-plugin
+        - node-driver-registrar
+        - liveness-probe
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - UID_0
+        - PRIVILEGED
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/DaemonSet/ebs-csi-node-windows
+      containers:
+        - ebs-plugin
+        - node-driver-registrar
+        - liveness-probe
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/Deployment/ebs-csi-controller
+      containers:
+        - ebs-plugin
+        - csi-provisioner
+        - csi-attacher
+        - csi-snapshotter
+        - csi-resizer
+        - liveness-probe
+      rules:
+        - DROP_ALL
+    - rootKey: kube-system/Deployment/coredns
+      containers:
+        - coredns
+      rules:
+        - ADDED_CAPS
+        - NON_ROOT
+
 default:
   storageClassName: gp2
   rollout:

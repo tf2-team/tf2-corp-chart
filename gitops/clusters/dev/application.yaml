@@ -26,6 +26,30 @@ spec:
         - values.yaml
         - values-public-alb.yaml
         - values-dev.yaml
+        # Selective immutable digests from platform secure-delivery promote.
+        - service-digest/values-accounting.yaml
+        - service-digest/values-ad.yaml
+        - service-digest/values-cart.yaml
+        - service-digest/values-checkout.yaml
+        - service-digest/values-currency.yaml
+        - service-digest/values-email.yaml
+        - service-digest/values-flagd-ui.yaml
+        - service-digest/values-fraud-detection.yaml
+        - service-digest/values-frontend.yaml
+        - service-digest/values-frontend-proxy.yaml
+        - service-digest/values-image-provider.yaml
+        - service-digest/values-kafka.yaml
+        - service-digest/values-llm.yaml
+        - service-digest/values-load-generator.yaml
+        - service-digest/values-mem0.yaml
+        - service-digest/values-opensearch.yaml
+        - service-digest/values-payment.yaml
+        - service-digest/values-product-catalog.yaml
+        - service-digest/values-product-reviews.yaml
+        - service-digest/values-quote.yaml
+        - service-digest/values-recommendation.yaml
+        - service-digest/values-shipping.yaml
+        - service-digest/values-shopping-copilot.yaml
       # releaseName = Helm Release.Name (app.kubernetes.io/instance on subcharts).
       # Argo tracking label uses metadata.name above, not releaseName.
       releaseName: techx-corp-dev
@@ -51,4 +75,4 @@ spec:
   # Ignore noisy fields if needed after first diff (add only with evidence).
   # ignoreDifferences: []
 
-# Change trail: @hungxqt - 2026-07-16 - Align header: dev app chart already uses prune true.
+# Change trail: @hungxqt - 2026-07-20 - Load service-digest valueFiles for selective immutable image pins.

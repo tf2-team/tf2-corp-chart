@@ -1,11 +1,15 @@
 {{- if .Values.mem0.enabled }}
 {{- $mem0 := .Values.mem0 }}
 {{- $ctx := merge (dict "name" "mem0") . }}
-{{- /* Image contract: REGISTRY/PROJECT/mem0:VERSION — inherit default.image.* unless overridden. */}}
+{{- /* Image contract: REGISTRY/PROJECT/mem0:VERSION — inherit default.image.* unless overridden.
+       Optional mem0.image.digest (service-digest overlay) pins immutable digest. Tag remains
+       required for model-delivery S3 path composition even when digest is set. */}}
 {{- $imageRepo := $mem0.image.repository | default (printf "%s/mem0" .Values.default.image.repository) }}
 {{- $imageTag := $mem0.image.tag | default .Values.default.image.tag }}
+{{- $imageDigest := $mem0.image.digest | default "" }}
 {{- $_ := required "default.image.repository (or mem0.image.repository) is required when Mem0 is enabled" $imageRepo }}
 {{- $_ := required "default.image.tag (or mem0.image.tag) is required when Mem0 is enabled" $imageTag }}
+{{- $imageRef := ternary (printf "%s@%s" $imageRepo $imageDigest) (printf "%s:%s" $imageRepo $imageTag) (ne $imageDigest "") }}
 {{- $_ := required "mem0.rds.host is required when Mem0 is enabled" $mem0.rds.host }}
 {{- $_ := required "mem0.serviceAccount.roleArn is required when Mem0 is enabled" $mem0.serviceAccount.roleArn }}
 {{- $_ := required "mem0.runtimeSecretName is required when Mem0 is enabled" $mem0.runtimeSecretName }}
@@ -63,7 +67,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+          image: {{ $imageRef | quote }}
           # Image WORKDIR is /app/server; scripts live under scripts/, not server/scripts/.
           command: ["sh", "-ec", "python scripts/bootstrap_rds_iam.py && alembic upgrade head"]
           env:
@@ -210,7 +214,7 @@ spec:
       {{- end }}
       containers:
         - name: mem0
-          image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+          image: {{ $imageRef | quote }}
           # Keep parity with the production image CMD (includes --no-access-log).
           command:
             - uvicorn
@@ -348,7 +352,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: cleanup
-              image: {{ printf "%s:%s" $imageRepo $imageTag | quote }}
+              image: {{ $imageRef | quote }}
               # Image WORKDIR is /app/server.
               command: ["python", "scripts/cleanup_expired_memories.py"]
               env:
@@ -389,4 +393,4 @@ spec:
             - name: tmp
               emptyDir: {}
 {{- end }}
-# Change trail: @hungxqt - 2026-07-19 - Wire MEM0_RDS_MASTER_HOST/PORT and APP_DB_NAME for migrate/bootstrap.
+# Change trail: @hungxqt - 2026-07-20 - Support mem0.image.digest pin from service-digest overlays.

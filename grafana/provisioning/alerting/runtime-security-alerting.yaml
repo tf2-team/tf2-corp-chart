@@ -1,0 +1,140 @@
+# Copyright TechX Corp Platform Team
+# SPDX-License-Identifier: Apache-2.0
+#
+# Runtime security alert rules for Mandate 05 drift inventory.
+---
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: runtime-security
+    folder: platform-security
+    interval: 1m
+    rules:
+      - uid: runtime-hardening-inventory-failed-001
+        title: RuntimeHardeningInventoryViolation
+        condition: threshold
+        data:
+          - refId: failed
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                increase(
+                  kube_job_status_failed{
+                    namespace="techx-corp-prod",
+                    job_name=~"runtime-hardening-inventory-.*"
+                  }[10m]
+                )
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: failed
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: failed
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        keepFiringFor: 10m
+        annotations:
+          summary: "Runtime hardening inventory phát hiện drift"
+          description: >-
+            CronJob runtime-hardening-inventory có Job failed trong 10 phút gần nhất.
+            Đây có thể là workload nguy hiểm đã tồn tại, scanner/RBAC lỗi, hoặc policy drift.
+            Kiểm tra log Job để xem JSON summary đã sanitize.
+          discord_description: >-
+            runtime-hardening-inventory failed in techx-corp-prod. Check the latest Job logs for sanitized violation details.
+          impact: >-
+            A privileged/host-access/root/latest-image/resource-less workload may already exist, or the detector is failing.
+          action: >-
+            Run kubectl logs job/<latest-runtime-hardening-inventory-job> -n techx-corp-prod, preserve evidence, then follow the container escape response runbook.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/container-escape-response.md"
+          logs_hint: 'k8s.job.name=~"runtime-hardening-inventory-.*"'
+        labels:
+          severity: critical
+          team: cdo06
+          domain: security
+          environment: production
+          alert_type: runtime_security
+        isPaused: false
+
+      - uid: runtime-hardening-inventory-missed-002
+        title: RuntimeHardeningInventoryMissedSchedule
+        condition: threshold
+        data:
+          - refId: missed
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: webstore-metrics
+            model:
+              editorMode: code
+              expr: |
+                time() - kube_cronjob_status_last_schedule_time{
+                  namespace="techx-corp-prod",
+                  cronjob="runtime-hardening-inventory"
+                }
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: missed
+          - refId: threshold
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: threshold
+              expression: missed
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [900]
+                  operator:
+                    type: and
+                  query:
+                    params: [threshold]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: Alerting
+        execErrState: Error
+        for: 5m
+        keepFiringFor: 10m
+        annotations:
+          summary: "Runtime hardening inventory không chạy đúng lịch"
+          description: >-
+            CronJob runtime-hardening-inventory không có lần schedule thành công trong hơn 15 phút,
+            hoặc kube-state-metrics không xuất được metric last_schedule_time.
+          discord_description: >-
+            runtime-hardening-inventory missed its schedule in techx-corp-prod for more than 15 minutes.
+          impact: >-
+            Drift detection for already-existing dangerous workloads is blind until the scanner runs again.
+          action: >-
+            Check CronJob suspension, recent Jobs, service account RBAC, kube-state-metrics, and Argo CD sync health.
+          dashboard_url: "https://internal.hungtran.id.vn/grafana/d/k8s-pod-troubleshooting"
+          runbook_url: "https://github.com/tf2-team/tf2-corp-chart/blob/main/docs/operations/runtime-security-alerting.md"
+        labels:
+          severity: warning
+          team: cdo06
+          domain: security
+          environment: production
+          alert_type: runtime_security
+        isPaused: false

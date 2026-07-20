@@ -119,15 +119,8 @@ spec:
       {{- end }}
       containers:
         - name: {{ .name }}
-          {{- /* Default: REGISTRY/PROJECT/SERVICE:VERSION
-               Full override: imageOverride.repository (+ optional tag)
-               Service rename only: imageOverride.name keeps default.image.repository/tag
-               (e.g. load-generator-worker → …/load-generator:<global-tag>) */ -}}
-          {{- if ((.imageOverride).repository) }}
-          image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- else }}
-          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- end }}
+          {{/* Image: REGISTRY/PROJECT/SERVICE:VERSION, optional imageOverride, optional digest pin from service-digest. */}}
+          image: '{{ include "techx-corp.containerImage" . }}'
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
           command:
@@ -205,12 +198,14 @@ spec:
         {{- $sidecar := set . "Chart" $.Chart }}
         {{- $sidecar := set . "Release" $.Release }}
         {{- $sidecar := set . "defaultValues" $.defaultValues }}
+        {{- $sidecarDigest := "" }}
+        {{- if $.sidecarImageDigests }}
+        {{- $sidecarDigest = index $.sidecarImageDigests (.name | lower) | default (index $.sidecarImageDigests .name) | default "" }}
+        {{- end }}
+        {{- $sidecar = set $sidecar "imageOverride" (default dict .imageOverride) }}
+        {{- $sidecar = set $sidecar "digestOverride" $sidecarDigest }}
         - name: {{ .name   }}
-          {{- if ((.imageOverride).repository) }}
-          image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- else }}
-          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- end }}
+          image: '{{ include "techx-corp.containerImage" $sidecar }}'
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
           command:
@@ -600,4 +595,4 @@ spec:
     matchLabels:
       {{- include "techx-corp.selectorLabels" . | nindent 6 }}
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-19 - Support imageOverride.name for service-segment remap without full repository pin. */}}
+{{/* Change trail: @hungxqt - 2026-07-20 - Resolve main and sidecar images via containerImage helper (digest pins from service-digest). */}}
