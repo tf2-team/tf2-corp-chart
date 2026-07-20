@@ -298,11 +298,10 @@ spec:
                     path: exceptions.json
             - name: runtime-token
               projected:
-                defaultMode: 0440
+                defaultMode: 0444
                 sources:
                   - serviceAccountToken:
                       path: token
-                      audience: kubernetes.default.svc
                       expirationSeconds: 600
                   - configMap:
                       name: kube-root-ca.crt

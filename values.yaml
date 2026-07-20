@@ -73,6 +73,7 @@ runtimeHardeningInventory:
         - ADDED_CAPS
         - DROP_ALL
         - NON_ROOT
+        - PRIV_ESC
         - PRIVILEGED
         - HOST_NETWORK
         - HOST_PATH
@@ -83,8 +84,10 @@ runtimeHardeningInventory:
       rules:
         - DROP_ALL
         - NON_ROOT
+        - PRIV_ESC
         - PRIVILEGED
         - HOST_NETWORK
+        - HOST_PATH
     - rootKey: kube-system/DaemonSet/ebs-csi-node
       containers:
         - ebs-plugin
@@ -95,6 +98,7 @@ runtimeHardeningInventory:
         - DROP_ALL
         - NON_ROOT
         - UID_0
+        - PRIV_ESC
         - PRIVILEGED
         - HOST_NETWORK
         - HOST_PATH
@@ -107,6 +111,7 @@ runtimeHardeningInventory:
       rules:
         - DROP_ALL
         - NON_ROOT
+        - PRIV_ESC
         - HOST_NETWORK
         - HOST_PATH
     - rootKey: kube-system/Deployment/ebs-csi-controller
