@@ -212,6 +212,124 @@
         }
       }
     },
+    "runtimeHardeningInventory": {
+      "type": "object",
+      "description": "Mandate 05 scheduled runtime-hardening drift scanner",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "clusterName": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "successfulJobsHistoryLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedJobsHistoryLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeDeadlineSeconds": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "backoffLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pullPolicy": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "repository",
+            "tag"
+          ]
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources"
+        },
+        "securityContext": {
+          "$ref": "#/definitions/SecurityContext"
+        },
+        "podSecurityContext": {
+          "$ref": "#/definitions/PodSecurityContext"
+        },
+        "exceptionProfiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "rootKey": {
+                "type": "string"
+              },
+              "containers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "NON_ROOT",
+                    "UID_0",
+                    "DROP_ALL",
+                    "ADDED_CAPS",
+                    "PRIVILEGED",
+                    "PRIV_ESC",
+                    "HOST_NETWORK",
+                    "HOST_PID",
+                    "HOST_IPC",
+                    "HOST_PATH",
+                    "IMAGE_PIN",
+                    "RESOURCES"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "rootKey",
+              "containers",
+              "rules"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "schedule",
+        "image",
+        "resources",
+        "securityContext",
+        "podSecurityContext"
+      ]
+    },
     "metrics-server": {
       "type": "object",
       "description": "Kubernetes Metrics Server (required for HPA CPU/memory metrics)"
