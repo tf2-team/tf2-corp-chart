@@ -1,83 +1,88 @@
 # PER-01 — Resource Right-sizing for Workloads
 
-**Date:** 2026-07-14
-**Status:** Accepted
-**Deciders:** Team CDO-03
-**Priority:** P1
-**Pillar:** Performance Efficiency & Cost Optimization
+**Date:** 2026-07-22  
+**Status:** Accepted  
+**Priority:** P1  
+**Pillar:** Performance Efficiency & Cost Optimization  
+**Author / Signer:** Nguyễn Đức Chinh  
+**Team:** CDO-03  
 
 ---
 
 ## Context
 
-The TechX Corp microservices platform runs ~20 workloads under continuous load testing (via Locust load generator). The initial configuration in `values.yaml` contained arbitrary resource requests and limits that did not reflect actual application behavior or requirements. 
+The TechX Corp microservices platform runs 30 workloads under continuous load testing (via Locust load generator). The initial configuration in `values.yaml` contained arbitrary resource requests and limits that did not reflect actual application behavior or requirements.
 
 This led to major inefficiencies:
-- **Over-provisioning (Waste):** Many lightweight services (e.g. `shipping` in Rust, `quote` in PHP, `product-catalog` in Go) had request floors of 50m-100m CPU and 100Mi-256Mi memory, wasting valuable compute slots and preventing efficient node bin-packing.
-- **Under-provisioning (OOM Risk):** Heavy services like `payment` (Node.js), `product-reviews` (Python), `opensearch` (JVM), and sub-charts like `prometheus-server` and `grafana` were running dangerously close to or exceeding their memory requests/limits under load, leading to potential OOMKills or container restart loops.
-- **HPA Throttling:** Services using HPA (e.g. `frontend`) had request targets configured in a way that did not align with actual per-pod load characteristics, rendering the auto-scaling logic ineffective.
+- **Over-provisioning (Waste):** Lightweight services (e.g., `shipping` in Rust, `quote` in PHP, `product-catalog` in Go) had request floors of 50m-100m CPU and 100Mi-256Mi memory, wasting compute capacity and preventing Karpenter from performing node consolidation.
+- **Under-provisioning (OOM Risk):** AI workloads (`product-reviews`, `shopping-copilot`) had memory limits set at 2Gi, while their actual memory footprints under model loading were ~1.78GiB and ~1.72GiB respectively, risking OOMKills under peak traffic.
+- **Probe Throttling:** Setting CPU limits too tightly on JVM (`ad`), Node.js (`payment`), or `metrics-server` caused liveness probe timeouts during cold start, leading to container restart loops.
+- **ValidatingAdmissionPolicy Compliance:** Cluster security policy `runtime-hardening-pod-template.techx.io` (Mandate 5) requires all containers to explicitly define both CPU and Memory requests and limits.
 
 To resolve these issues, we collected metrics under active load testing:
-1. **P95/P99 CPU & Memory metrics** from a 30-hours load test.
-2. **`kubectl top pods` per-pod output** during active traffic to cross-verify.
+1. **P99 CPU & Memory metrics** from a **30-minute load test window under 50 active users**.
+2. **Prometheus metrics & Grafana dashboard (`webstore-performance.json`)** to cross-verify container resource usage and allocation stats.
 
 ---
 
 ## Decision
 
-We decided to right-size the CPU and Memory resource configurations (`requests` and `limits`) across all microservices and sub-charts using the following methodology:
+We right-sized CPU and Memory resource configurations across all 30 microservices and infrastructure components in `values.yaml` based on empirical P99 metrics and Kubernetes Quality of Service (QoS) classification rules:
 
 ### Sizing Methodology
-1. **Memory Requests:** Configured at **P99 Memory Usage + 15-25% headroom** buffer. This guarantees the pod will not be scheduled on a node that lacks sufficient physical memory, avoiding runtime page thrashing or OOMKills.
-2. **Memory Limits:** Configured at **Memory Requests × 1.5 - 2.0x** for stateless services. For stateful/Guaranteed QoS services (`postgresql`, `valkey-cart`, `opensearch`, `kafka`), limits were set **exactly equal to requests** to maintain QoS guarantees.
-3. **CPU Requests:** Set to reflect actual steady-state P99 CPU cores, with a minimum floor of 5m-10m for lightweight applications to allow scheduler efficiency. For JVM and Node.js applications, higher CPU requests were retained to handle startup spikes and garbage collection (GC) cycles.
-4. **HPA Services (`frontend`, `cart`, etc.):** CPU requests were tuned so that the target CPU utilization threshold (70%) represents a realistic scaling trigger based on per-pod performance.
+1. **Guaranteed QoS (Request = Limit):** Applied to critical transaction path services (`checkout`, `cart`, `payment`, `frontend-proxy`, `product-catalog`, `currency`, `quote`, `shipping`) and core platform infrastructure (`prometheus-server`, `opensearch`, `otel-collector`, `prometheus-adapter`, `metrics-server`). Setting `requests = limits` prevents noisy-neighbor CPU starvation and guarantees eviction protection.
+2. **Burstable QoS (Request < Limit):** Applied to non-transactional, bursty, or AI/ML workloads (`frontend`, `product-reviews`, `shopping-copilot`, `recommendation`, `llm`, `ad`, `accounting`, `fraud-detection`, `email`, `flagd`, `jaeger`, `grafana`, `kube-state-metrics`, `image-provider`, `load-generator`, `load-generator-worker`, `flagd-ui`). CPU limits are set with generous headroom (3x–10x over requests) to satisfy `ValidatingAdmissionPolicy` while preventing cold-start probe timeouts.
+3. **Memory Requests & Limits:** Memory requests are set with a 15–30% safety buffer over P99 memory usage to prevent scheduling on memory-constrained nodes. Heavy AI services (`product-reviews`, `shopping-copilot`) have memory requests set to 1920Mi and limits to 2560Mi to accommodate model binaries safely. `flagd` is configured with `limits.memory: 128Mi` (requests `64Mi`) to align with `GOMEMLIMIT: 100MiB` and prevent OOMKills under heavy gRPC feature-flag query volume.
 
 ---
 
 ## Technical Details
 
-The following changes were applied to `values.yaml`:
+The following resource configurations were applied to `values.yaml`:
 
-### 1. Application Microservices (Stateless / Spot-tolerant)
-- **`accounting` (C#):** Reduced requests to `20m` CPU / `200Mi` memory (actual ~155Mi memory).
-- **`ad` (JVM):** Set to `15m` CPU / `288Mi` memory (actual JVM footprint ~229Mi).
-- **`cart` (.NET):** Configured to `20m` CPU / `80Mi` memory (actual ~65Mi).
-- **`checkout` (Go):** Reduced to `10m` CPU / `24Mi` memory (Go footprint is minimal).
-- **`currency` (C++):** Reduced to `10m` CPU / `8Mi` memory (actual ~3.5Mi).
-- **`email` (Node.js):** Set to `10m` CPU / `64Mi` memory (actual ~51Mi).
-- **`fraud-detection` (Python):** Raised memory request to `300Mi` (actual ~235Mi) to support Python dependencies.
-- **`frontend` (Next.js SSR):** Tuned per-pod request to `50m` CPU / `128Mi` memory (actual per-pod ~30-55m, ~107Mi).
-- **`frontend-proxy` (Envoy):** Set per-pod request to `35m` CPU / `32Mi` memory (actual per-pod ~29m, ~21Mi).
-- **`payment` (Node.js):** Raised memory request to `128Mi` (actual ~104Mi) to prevent OOM.
-- **`product-catalog` (Go):** Reduced request to `20m` CPU / `24Mi` memory (actual ~16Mi).
-- **`product-reviews` (Python):** Configured to `30m` CPU / `96Mi` memory (actual ~74Mi).
-- **`quote` (PHP):** Reduced to `5m` CPU / `24Mi` memory (actual ~18Mi).
-- **`recommendation` (Python):** Reduced to `20m` CPU / `56Mi` memory (limit kept at `500Mi` for cache feature flag).
-- **`shipping` (Rust):** Reduced to `5m` CPU / `8Mi` memory (Rust footprint ~3.5Mi).
+### 1. Application Microservices (Purchase Path & Business Logic)
+- **`checkout` (Go):** `requests: 10m / 32Mi`, `limits: 10m / 32Mi` (P99: 5.1m CPU, 27.47Mi Memory - Guaranteed QoS).
+- **`cart` (.NET):** `requests: 15m / 96Mi`, `limits: 15m / 96Mi` (P99: 8.3m CPU, 75.96Mi Memory - Guaranteed QoS).
+- **`payment` (Node.js):** `requests: 10m / 160Mi`, `limits: 100m / 160Mi` (P99: 5.3m CPU, 122.78Mi Memory - limits.cpu raised to 100m for Node.js V8 boot probe safety).
+- **`frontend-proxy` (Envoy):** `requests: 30m / 48Mi`, `limits: 30m / 48Mi` (P99: 17.5m CPU, 30.20Mi Memory - Guaranteed QoS).
+- **`product-catalog` (Go):** `requests: 20m / 32Mi`, `limits: 20m / 32Mi` (P99: 9.2m CPU, 19.51Mi Memory - Guaranteed QoS).
+- **`currency` (C++):** `requests: 10m / 16Mi`, `limits: 10m / 16Mi` (P99: 2.8m CPU, 12.98Mi Memory - Guaranteed QoS).
+- **`quote` (PHP):** `requests: 10m / 32Mi`, `limits: 10m / 32Mi` (P99: 1.0m CPU, 25.57Mi Memory - Guaranteed QoS).
+- **`shipping` (Rust):** `requests: 10m / 16Mi`, `limits: 10m / 16Mi` (P99: 0.8m CPU, 6.94Mi Memory - Guaranteed QoS).
+- **`flagd` (OpenFeature daemon):** `requests: 10m / 64Mi`, `limits: 100m / 128Mi` (P99: 9.2m CPU, 46.92Mi Memory - Memory limit set to 128Mi for GOMEMLIMIT 100MiB safety and limits.cpu raised to 100m for gRPC probe safety under load).
+- **`frontend` (Next.js SSR):** `requests: 64m / 160Mi`, `limits: 200m / 256Mi` (P99: 37.2m CPU, 117.21Mi Memory).
+- **`product-reviews` (Python AI):** `requests: 32m / 1920Mi`, `limits: 200m / 2560Mi` (P99: 12.3m CPU, 1824.49Mi Memory - Model loading protection).
+- **`shopping-copilot` (Python AI):** `requests: 20m / 1920Mi`, `limits: 200m / 2560Mi` (P99: 0.7m CPU, 1759.50Mi Memory - Model loading protection).
+- **`ad` (JVM):** `requests: 10m / 288Mi`, `limits: 200m / 384Mi` (P99: 2.8m CPU, 260.47Mi Memory - limits.cpu raised to 200m for JVM/OTel probe safety).
+- **`accounting` (C#):** `requests: 20m / 256Mi`, `limits: 100m / 384Mi` (P99: 14.3m CPU, 218.08Mi Memory).
+- **`fraud-detection` (Kotlin/JVM):** `requests: 10m / 352Mi`, `limits: 100m / 448Mi` (P99: 5.2m CPU, 309.26Mi Memory).
+- **`recommendation` (Python):** `requests: 20m / 80Mi`, `limits: 100m / 144Mi` (P99: 9.2m CPU, 60.39Mi Memory).
+- **`email` (Ruby):** `requests: 10m / 80Mi`, `limits: 50m / 128Mi` (P99: 3.7m CPU, 65.02Mi Memory).
+- **`llm` (Python):** `requests: 10m / 80Mi`, `limits: 100m / 128Mi` (P99: 7.6m CPU, 74.68Mi Memory).
+- **`image-provider` (Nginx):** `requests: 5m / 16Mi`, `limits: 20m / 32Mi` (P99: 0.5m CPU, 11.13Mi Memory).
+- **`flagd-ui` (Elixir sidecar):** `requests: 5m / 144Mi`, `limits: 20m / 192Mi` (P99: 0.3m CPU, 139.55Mi Memory).
+- **`load-generator` (Locust master):** `requests: 20m / 96Mi`, `limits: 100m / 160Mi` (P99: 16.6m CPU, 80.27Mi Memory).
+- **`load-generator-worker` (Locust worker):** `requests: 25m / 112Mi`, `limits: 100m / 192Mi` (P99: 7.9m CPU, 85.98Mi Memory).
 
-### 2. Databases & Platform Components (Stateful / Guaranteed QoS)
-- **`postgresql`:** Set request/limit to `80m` CPU / `64Mi` memory (actual ~44Mi memory).
-- **`valkey-cart`:** Set request/limit to `10m` CPU / `8Mi` memory. Maxmemory in config is set to 32MB.
-- **`opensearch` (JVM):** Configured to `500m` CPU / `900Mi` memory (actual ~700Mi). Retains high CPU request to avoid JVM cold-start timeout loops.
-- **`kafka`:** Configured to `200m` CPU / `650Mi` memory (actual ~553Mi).
-- **`otel-collector` (DaemonSet):** Set per-pod request to `50m` CPU / `150Mi` memory (actual max ~120Mi) to ensure reliable agent telemetry.
-
-### 3. Monitoring & Sub-charts
-- **`jaeger`:** Configured to `25m` CPU / `384Mi` memory (actual ~305Mi).
-- **`prometheus`:** Raised memory request to `700Mi` (actual ~650Mi) and limit to `900Mi` to prevent crash loop.
-- **`grafana`:** Main container raised to `700Mi` request / `900Mi` limit (actual ~654Mi with Opensearch plugin). Sidecars adjusted to `80Mi` request each.
-- **`metrics-server`:** Tightened to `10m` CPU / `40Mi` memory.
-- **`prometheus-adapter`:** Set request to `10m` CPU / `56Mi` memory.
+### 2. Infrastructure & Observability Platform Components
+- **`prometheus-server` (Go):** `requests: 200m / 1792Mi`, `limits: 200m / 1792Mi` (P99: 193.8m CPU, 1668.75Mi Memory - Guaranteed QoS).
+- **`opensearch` (JVM):** `requests: 100m / 960Mi`, `limits: 100m / 960Mi` (P99: 87.9m CPU, 917.30Mi Memory - Guaranteed QoS).
+- **`otel-collector` (DaemonSet):** `requests: 20m / 128Mi`, `limits: 20m / 128Mi` (P99: 13.3m CPU, 117.86Mi Memory - Guaranteed QoS).
+- **`metrics-server` (Go):** `requests: 10m / 32Mi`, `limits: 50m / 32Mi` (P99: 5.3m CPU, 27.29Mi Memory - limits.cpu raised to 50m for /livez probe safety).
+- **`prometheus-adapter` (Go):** `requests: 10m / 48Mi`, `limits: 10m / 48Mi` (P99: 5.4m CPU, 38.18Mi Memory - Guaranteed QoS).
+- **`jaeger` (Go):** `requests: 20m / 384Mi`, `limits: 100m / 1Gi` (P99: 7.9m CPU, 307.78Mi Memory).
+- **`grafana` (Go/JS):** `requests: 20m / 448Mi`, `limits: 100m / 768Mi` (P99: 15.3m CPU, 381.94Mi Memory).
+- **`kube-state-metrics` (Go):** `requests: 5m / 32Mi`, `limits: 50m / 64Mi` (P99: 2.4m CPU, 29.01Mi Memory).
 
 ---
 
 ## Consequences
 
 ### Positive
-- **Increased Resource Efficiency:** Significantly lowered CPU and memory requests for over-provisioned apps, allowing more pods to fit on Karpenter Spot nodes, reducing AWS infra costs.
-- **Improved Reliability:** Raised memory limits and requests for heavy workloads (`prometheus`, `grafana`, `payment`, `fraud-detection`, `ad`) eliminating unexpected OOMKills.
-- **Accurate HPA Scaling:** The HPA triggers are now based on realistic per-pod capacities.
+- **Zero CrashLoopBackOff & 100% Pod Health:** Eliminated all cold-start probe failures (`ad`, `payment`, `metrics-server`, `flagd`) while preventing OOMKills on heavy AI/analytics workloads (`product-reviews`, `shopping-copilot`, `opensearch`, `prometheus-server`, `flagd`).
+- **Cost Optimization & Bin-Packing:** Reduced CPU requests on idle workloads (from 100m to 5m-20m), enabling Karpenter to pack pods efficiently and scale down unnecessary EC2 nodes under low traffic.
+- **Strict Policy Compliance:** Fully satisfies `ValidatingAdmissionPolicy` (`runtime-hardening-pod-template.techx.io`), ensuring seamless CI/CD merging into `main`.
+- **Noisy Neighbor Protection:** Critical purchase path services are isolated with Guaranteed QoS (`request = limit`).
 
 ### Negative / Trade-offs
-- **Throttling Risk:** Lower limits on CPU for lightweight services means burst latency could slightly increase if multiple services spike simultaneously. However, this is mitigated by limits set to 4-10x requests.
+- **Cold-Start Burst Overhead:** Heavy JVM (`ad`), Node.js (`payment`), and Go (`flagd`) pods require slightly higher CPU limits (`100m-200m`) during startup, but their steady-state CPU footprint remains minimal (`10m`).
