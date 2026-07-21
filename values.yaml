@@ -507,11 +507,12 @@ components:
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 20m
         memory: 256Mi
       limits:
+        cpu: 100m
         memory: 384Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -567,11 +568,12 @@ components:
       - name: OTEL_LOGS_EXPORTER
         value: otlp
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 10m
         memory: 288Mi
       limits:
+        cpu: 100m
         memory: 384Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -811,11 +813,12 @@ components:
       - name: FLAGD_PORT
         value: "8013"
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 50m for admission policy compliance
       requests:
         cpu: 10m
         memory: 80Mi
       limits:
+        cpu: 50m
         memory: 128Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -839,11 +842,12 @@ components:
       - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
         value: "true"
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 10m
         memory: 352Mi
       limits:
+        cpu: 100m
         memory: 448Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -921,11 +925,12 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
         cpu: 64m
         memory: 160Mi
       limits:
+        cpu: 200m
         memory: 256Mi
     # BFF/SSR: RPS primary (often I/O-wait on backends); CPU safety valve.
     # maxReplicas 20: load-test pin at 14 with CPU ~100%/80% → desired ~18; +headroom.
@@ -1123,11 +1128,12 @@ components:
       - name: OTEL_COLLECTOR_HOST
         value: $(OTEL_COLLECTOR_NAME)
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 20m for admission policy compliance
       requests:
         cpu: 5m
         memory: 16Mi
       limits:
+        cpu: 20m
         memory: 32Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -1199,11 +1205,12 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 20m
         memory: 96Mi
       limits:
+        cpu: 100m
         memory: 160Mi
     # Master web UI — restart if process becomes unresponsive (not a substitute for worker join).
     readinessProbe:
@@ -1319,11 +1326,12 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 25m
         memory: 112Mi
       limits:
+        cpu: 100m
         memory: 192Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -1552,11 +1560,12 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
         cpu: 32m
         memory: 1920Mi
       limits:
+        cpu: 200m
         memory: 2560Mi
     # Product-page AI reviews (P1); RPS primary; CPU safety valve.
     # Lower RPS/pod than recommendation — LLM + Postgres path is heavier.
@@ -1658,11 +1667,12 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
         cpu: 20m
         memory: 1920Mi
       limits:
+        cpu: 200m
         memory: 2560Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -1767,11 +1777,12 @@ components:
       - name: GRPC_MAX_WORKERS
         value: "20"
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 20m
         memory: 80Mi
       limits:
+        cpu: 100m
         memory: 144Mi
     # Product-page traffic (P1); RPS primary; CPU safety valve.
     autoscaling:
@@ -1917,11 +1928,12 @@ components:
           - name: PHX_SERVER
             value: "true"
         resources:
-          # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+          # Burstable QoS: cpu limit set to 20m for admission policy compliance
           requests:
             cpu: 5m
             memory: 144Mi
           limits:
+            cpu: 20m
             memory: 192Mi
         securityContext:
           runAsUser: 10001
@@ -2071,11 +2083,12 @@ components:
       - name: FLAGD_PORT
         value: "8013"
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 10m
         memory: 80Mi
       limits:
+        cpu: 100m
         memory: 128Mi
 
   postgresql:
@@ -2683,11 +2696,12 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 20m
         memory: 384Mi
       limits:
+        cpu: 100m
         memory: 1Gi
   userconfig:
     service:
@@ -2764,11 +2778,12 @@ prometheus:
     metricLabelsAllowlist:
       - nodes=[workload-class,karpenter.sh/nodepool,karpenter.sh/capacity-type,topology.kubernetes.io/zone]
     resources:
-      # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+      # Burstable QoS: cpu limit set to 50m for admission policy compliance
       requests:
         cpu: 5m
         memory: 32Mi
       limits:
+        cpu: 50m
         memory: 64Mi
   prometheus-node-exporter:
     enabled: false
@@ -2974,11 +2989,12 @@ grafana:
         cpu: 100m
         memory: 128Mi
   resources:
-    # Burstable QoS: omit CPU limit to allow bursting, keep Memory limit
+    # Burstable QoS: cpu limit set to 100m for admission policy compliance
     requests:
       cpu: 20m
       memory: 448Mi
     limits:
+      cpu: 100m
       memory: 768Mi
   persistence:
     enabled: true
