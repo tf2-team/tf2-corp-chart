@@ -19,7 +19,7 @@ runtimeHardeningInventory:
 
 # Mandate 17 activation is intentionally split into later, reversible PRs.
 networkPolicy:
-  enabled: false
+  enabled: true
   enforceEgress: false
   # Internal storefront ALB live subnets (verified 2026-07-21 via ELBv2/EC2).
   albIngressCidrs:
