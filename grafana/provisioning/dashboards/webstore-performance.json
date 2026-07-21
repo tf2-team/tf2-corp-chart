@@ -533,7 +533,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)",
+          "expr": "max(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -545,7 +545,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "quantile_over_time(0.95, sum(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)[$__range:1m])",
+          "expr": "quantile_over_time(0.95, max(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)[$__range:1m])",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -557,7 +557,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "quantile_over_time(0.99, sum(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)[$__range:1m])",
+          "expr": "quantile_over_time(0.99, max(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)[$__range:1m])",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -569,7 +569,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)",
+          "expr": "max(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -581,7 +581,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "quantile_over_time(0.95, sum(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)[$__range:1m])",
+          "expr": "quantile_over_time(0.95, max(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)[$__range:1m])",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -593,7 +593,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "quantile_over_time(0.99, sum(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)[$__range:1m])",
+          "expr": "quantile_over_time(0.99, max(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)[$__range:1m])",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -644,12 +644,184 @@
       "type": "table"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "cores"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "max(rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", container!=\"\"}[2m])) by (container)",
+          "legendFormat": "{{container}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Usage Over Time (Max per Service)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
+          "editorMode": "code",
+          "expr": "max(container_memory_working_set_bytes{namespace=\"techx-corp-prod\", container!=\"\"}) by (container)",
+          "legendFormat": "{{container}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Usage Over Time (Max per Service)",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 30
       },
       "id": 10,
       "panels": [],
@@ -676,7 +848,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 23
+        "y": 31
       },
       "id": 11,
       "options": {
@@ -728,7 +900,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 23
+        "y": 31
       },
       "id": 12,
       "options": {
@@ -760,7 +932,6 @@
       "title": "Total Running Pods",
       "type": "stat"
     },
-
     {
       "datasource": {
         "type": "prometheus",
@@ -804,12 +975,15 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 23
+        "y": 31
       },
       "id": 15,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -848,17 +1022,27 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
       "id": 16,
       "panels": [],
       "title": "Tail Latency Budget (Mandate #16)",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
@@ -868,28 +1052,55 @@
             "showPoints": "never",
             "spanNulls": false,
             "axisSoftMax": 330,
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 300 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 32 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
       "id": 17,
       "options": {
-        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_name=~\"GET /api/products/.*\"}[5m])))",
           "legendFormat": "Browse p95",
@@ -901,10 +1112,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
@@ -914,28 +1130,55 @@
             "showPoints": "never",
             "spanNulls": false,
             "axisSoftMax": 770,
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 700 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 700
+              }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 32 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
       "id": 18,
       "options": {
-        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_name=~\"GET /api/products/.*\"}[5m])))",
           "legendFormat": "Browse p99",
@@ -947,10 +1190,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
@@ -960,28 +1208,55 @@
             "showPoints": "never",
             "spanNulls": false,
             "axisSoftMax": 330,
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 300 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 39 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 47
+      },
       "id": 19,
       "options": {
-        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_name=\"POST /api/cart\"}[5m])))",
           "legendFormat": "Cart p95",
@@ -993,10 +1268,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
@@ -1006,28 +1286,55 @@
             "showPoints": "never",
             "spanNulls": false,
             "axisSoftMax": 770,
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 700 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 700
+              }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 39 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 47
+      },
       "id": 20,
       "options": {
-        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_name=\"POST /api/cart\"}[5m])))",
           "legendFormat": "Cart p99",
@@ -1039,10 +1346,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
@@ -1052,28 +1364,55 @@
             "showPoints": "never",
             "spanNulls": false,
             "axisSoftMax": 550,
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 500 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 46 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 54
+      },
       "id": 21,
       "options": {
-        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
           "editorMode": "code",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_name=\"POST /api/checkout\"}[5m])))",
           "legendFormat": "Checkout p95",
@@ -1085,10 +1424,15 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 10,
@@ -1098,28 +1442,55 @@
             "showPoints": "never",
             "spanNulls": false,
             "axisSoftMax": 1100,
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1000 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
             ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 46 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 54
+      },
       "id": 22,
       "options": {
-        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "webstore-metrics"
+          },
           "editorMode": "code",
           "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\", span_name=\"POST /api/checkout\"}[5m])))",
           "legendFormat": "Checkout p99",
