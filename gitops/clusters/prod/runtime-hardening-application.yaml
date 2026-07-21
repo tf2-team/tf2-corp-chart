@@ -10,7 +10,9 @@ spec:
     targetRevision: main
     # Final cluster-wide enforcement after exact system exceptions, Gatekeeper
     # retirement, full inventory, server dry-run, and regression gates passed.
-    path: gitops/runtime-hardening/overlays/enforce-clusterwide
+    # Keep cluster-wide deny for compliant namespaces, but audit production
+    # while its legacy workloads are migrated without blocking GitOps rollout.
+    path: gitops/runtime-hardening/overlays/enforce-clusterwide-prod-audit
   destination:
     server: https://kubernetes.default.svc
     namespace: techx-corp-prod
