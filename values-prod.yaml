@@ -17,21 +17,29 @@ externalSecrets:
 runtimeHardeningInventory:
   enabled: true
 
-# Mandate 17 — Phase 1: ingress-only enforcement (enforceEgress: false).
-# Egress isolation requires egressProxy.enabled: true and a 24h dev soak first.
-# Rollout: dev soak (ingress-only) → verify OTel traces clean → promote egress.
+# Mandate 17 — Phase 2: full ingress + egress enforcement.
+# egressProxy (Envoy allowlist) is required when enforceEgress=true.
+# Callers allowed through proxy: checkout, grafana, product-reviews, shopping-copilot.
+# All other pods: egress allowed only to explicitly listed in-cluster peers + VPC CIDR.
 networkPolicy:
   enabled: true
-  enforceEgress: false
+  enforceEgress: true
   # Internal storefront ALB live subnets (verified 2026-07-21 via ELBv2/EC2).
   albIngressCidrs:
     - 10.0.10.0/24
     - 10.0.11.0/24
 
 egressProxy:
-  enabled: false
+  enabled: true
 
 grafana:
+  # SEC-05 Phase 2: Grafana external calls (Discord alert webhook, Athena CUR)
+  # must go through the egress proxy when enforceEgress is active.
+  env:
+    HTTPS_PROXY: http://egress-proxy:10000
+    https_proxy: http://egress-proxy:10000
+    NO_PROXY: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
+    no_proxy: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
   grafana.ini:
     server:
       # Alert links are generated outside an HTTP request, so the base
