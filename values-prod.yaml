@@ -32,15 +32,7 @@ networkPolicy:
 egressProxy:
   enabled: true
 
-grafana:
-  # SEC-05 Phase 2: Grafana external calls (Discord alert webhook, Athena CUR)
-  # must go through the egress proxy when enforceEgress is active.
-  env:
-    HTTPS_PROXY: http://egress-proxy:10000
-    https_proxy: http://egress-proxy:10000
-    NO_PROXY: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
-    no_proxy: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
-  grafana.ini:
+grafana.ini:
     server:
       # Alert links are generated outside an HTTP request, so the base
       # values.yaml macro can fall back to localhost. Pin prod to the private
@@ -434,6 +426,14 @@ prometheus:
       workload-class: critical
 
 grafana:
+  # SEC-05 Phase 2: route Grafana external HTTPS calls (Discord alert webhook,
+  # Athena/Glue CUR datasource) through the allowlisted egress proxy.
+  # Required by schema when networkPolicy.enforceEgress=true.
+  env:
+    HTTPS_PROXY: http://egress-proxy:10000
+    https_proxy: http://egress-proxy:10000
+    NO_PROXY: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
+    no_proxy: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
   serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-grafana-athena
