@@ -49,7 +49,7 @@ default:
   image:
     repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp
     # Replace with currently running tag before cutover (e.g. sha-a1b2c3d or v1.2.3).
-    tag: "sha-ba6dd5b"
+    tag: "sha-39aaa22"
   # Production replicas must occupy distinct hosts and prefer both configured
   # AZs. Zone spread is soft so an AZ outage cannot block recovery; hostname
   # spread remains hard to avoid placing replicas on one node.
