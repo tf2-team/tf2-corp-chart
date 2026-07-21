@@ -568,12 +568,12 @@ components:
       - name: OTEL_LOGS_EXPORTER
         value: otlp
     resources:
-      # Burstable QoS: cpu limit set to 100m for admission policy compliance
+      # Raised cpu limit to 200m to prevent Java JVM/OTel agent startup probe timeouts
       requests:
         cpu: 10m
         memory: 288Mi
       limits:
-        cpu: 100m
+        cpu: 200m
         memory: 384Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -1395,12 +1395,12 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # Guaranteed QoS (request = limit) for critical path stability
+      # Raised cpu limit to 100m to prevent Node.js V8 module loader probe timeouts
       requests:
         cpu: 10m
         memory: 160Mi
       limits:
-        cpu: 10m
+        cpu: 100m
         memory: 160Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -3027,12 +3027,12 @@ metrics-server:
   args:
     - --kubelet-insecure-tls
   resources:
-    # Guaranteed QoS (request = limit) for critical APIService HPA core
+    # Raised cpu limit to 50m to prevent /livez probe timeouts under scraping load
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 10m
+      cpu: 50m
       memory: 32Mi
 
 # Prometheus Adapter — custom/external metrics API for request-rate (RPS) HPA.
