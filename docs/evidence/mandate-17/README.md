@@ -4,27 +4,28 @@
 
 - Platform merge: `ba6dd5b` (PR #54, contains `78b671f`)
 - Chart identity/AZ merge: `5025ada` (PR #178, contains `f508baa`)
-- Infra containment baseline: `50ff12b`
+- Infra CNI merge: `d6ddda3` (PR #102)
+- Chart containment/production revision: `022aa8a`
 - Implementation date: 2026-07-21
 - Platform branch: `mandate-17/optional-dependency-resilience`
 - Chart branch: `mandate-17/identity-az-resilience`
 - Infra Plan 2 branch: `mandate-17/vpc-cni-network-policy`
 - Chart Plan 2 branch: `mandate-17/network-containment`
 
-Replace baseline values with merged commit SHAs and exact Argo target revision
-before running live tests.
+The read-only production preflight and open resilience gates are recorded in
+[resilience.md](resilience.md).
 
 ## Local verification completed
 
 | Check | Command | Result |
 |---|---|---|
-| Optional dependency unit test | `node --experimental-strip-types --test utils/resilience/OptionalDependency.test.mjs` from `src/frontend` | 4/4 pass |
+| Optional dependency tests | `npm run test:resilience` from `src/frontend` | 10/10 helper, gateway and API-route tests pass |
 | Frontend type/build | `npx tsc --noEmit` and `npm run build` | Pass; Next production build compiled |
 | Secure delivery scripts | `check_pinned_base_images.py`, `check_release_catalog.py`, `test_secure_delivery_scripts.py` | Pass |
 | Helm/schema | `helm lint . -f values-prod.yaml` | Pass |
 | Directive 3 | `scripts/verify-directive-03.ps1` | Pass |
 | Mandate 5 regression | `scripts/verify-runtime-hardening.ps1` | Local render/schema contracts pass |
-| Identity inventory | `scripts/mandate17-inventory.ps1` | 21 rendered first-party workloads pass |
+| Identity inventory | `scripts/mandate17-inventory.ps1 -KubeContext techx-tf2-prod` | 21 rendered and live identity/token/RBAC checks pass |
 | Containment render | `tests/mandate17/verify-rendered-manifests.ps1` | Disabled, ingress-only, full enforcement, proxy and attacker contracts pass |
 
 The repository's existing `npm run lint` command is not a valid Next.js 16
@@ -35,9 +36,9 @@ Mandate 17 change does not modify CI or lint configuration.
 ## Pending after merge and rollout
 
 - [ ] Platform CI, Semgrep, Trivy, image signing, SBOM, and attestation pass.
-- [ ] Immutable frontend image tag/digest recorded here.
-- [ ] Chart promotes that immutable image and Argo CD is `Synced/Healthy`.
-- [ ] Live inventory passes with `-KubeContext` and dangerous `auth can-i` checks return `no`.
+- [x] Immutable frontend image `sha-ba6dd5b` and ECR digest recorded in `resilience.md`.
+- [x] Chart promotes that immutable image and Argo CD is `Synced/Healthy` at `022aa8a`.
+- [x] Live inventory passes and dangerous `auth can-i` checks return `no` for 21 workloads.
 - [ ] IRSA smoke tests pass for checkout, product-reviews, and shopping-copilot.
 - [ ] Ad dependency fault returns HTTP 200 empty data with
       `X-TechX-Degraded-Dependencies: ad` and p95 below 750 ms.
