@@ -11,17 +11,24 @@ operator, active load, and fault-window SLO evidence.
 
 | Item | Verified value |
 |---|---|
-| Platform `origin/main` | `61da855` |
+| Platform `origin/main` | `f3c2aa6` |
 | Platform resilience merge | `ba6dd5b` (PR #54) |
-| Chart `origin/main` and Argo target | `022aa8a` |
-| Infra `origin/main` | `4d24373` |
+| Platform route-test completion | `f3c2aa6` (PR #59, contains `61db75f`) |
+| Chart `origin/main` and Argo target | `48ff38f` |
+| Infra `origin/main` | `9f76760` |
 | VPC CNI NetworkPolicy merge | `d6ddda3` (PR #102) |
 | Frontend image | `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend:sha-ba6dd5b` |
 | Frontend ECR digest | `sha256:4cd1cd02fdca08e48ec3888c5e24a77aaef0346695920e5a88c7985eaa4b929f` |
 
-All four Argo CD applications were `Synced/Healthy` at revision `022aa8a`.
+All four Argo CD applications were `Synced/Healthy` at revision `48ff38f`.
 The live frontend Deployment used the image and digest listed above, and
 `OPTIONAL_DEPENDENCY_TIMEOUT_MS` was `500`.
+
+At the 2026-07-21 preflight, the Platform `f3c2aa6` build-and-push workflow was
+still pending and ECR did not yet contain `sha-f3c2aa6`. Production therefore
+correctly remained on the previously verified `sha-ba6dd5b` artifact; no image
+promotion should reference `sha-f3c2aa6` until its release workflow and ECR
+verification complete.
 
 ## Local resilience verification
 
@@ -118,6 +125,21 @@ The current co-location is runtime placement drift; Kubernetes does not
 automatically rebalance already-running Pods when capacity returns. A reviewed,
 one-Pod-at-a-time CoreDNS/workload rebalance and a surviving-zone capacity
 check are required before testing loss of `us-east-1b`.
+
+The repository provides `scripts/mandate17-coredns-readiness.ps1` for this
+gate. Its default mode is read-only. Live mode requires both
+`-CapacityApproved` and `-Execute`, deletes no more than one ready replica, and
+stops without retry if the replacement does not land across two nodes and two
+zones. This preparation does not claim that the live rebalance has run.
+
+The follow-up read-only preflight found one Ready `workload-class=critical`
+node in each AZ and no Pending Pods. The `us-east-1a` critical node had 51% CPU
+requests, 65% memory requests, 39% observed CPU use, and 54% observed memory
+use. The CoreDNS readiness gate still reported `ready=False`, `2/2` available,
+one distinct node, and one distinct zone. `-WhatIf` selected only
+`coredns-5656b4cd55-468xq`; normalized Pod UID/resourceVersion snapshots were
+unchanged before and after the dry-run. These observations support a capacity
+review but do not constitute capacity approval.
 
 Node CPU was low, but several nodes showed high current memory use (up to 94%).
 Actual usage alone is not capacity approval. Requested resources, allocatable

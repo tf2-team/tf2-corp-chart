@@ -3,9 +3,10 @@
 ## Implementation baseline
 
 - Platform merge: `ba6dd5b` (PR #54, contains `78b671f`)
+- Platform test completion merge: `f3c2aa6` (PR #59, contains `61db75f`)
 - Chart identity/AZ merge: `5025ada` (PR #178, contains `f508baa`)
 - Infra CNI merge: `d6ddda3` (PR #102)
-- Chart containment/production revision: `022aa8a`
+- Chart containment/production revision: `48ff38f` (PR #187)
 - Implementation date: 2026-07-21
 - Platform branch: `mandate-17/optional-dependency-resilience`
 - Chart branch: `mandate-17/identity-az-resilience`
@@ -37,7 +38,7 @@ Mandate 17 change does not modify CI or lint configuration.
 
 - [ ] Platform CI, Semgrep, Trivy, image signing, SBOM, and attestation pass.
 - [x] Immutable frontend image `sha-ba6dd5b` and ECR digest recorded in `resilience.md`.
-- [x] Chart promotes that immutable image and Argo CD is `Synced/Healthy` at `022aa8a`.
+- [x] Chart promotes that immutable image and Argo CD is `Synced/Healthy` at `48ff38f`.
 - [x] Live inventory passes and dangerous `auth can-i` checks return `no` for 21 workloads.
 - [ ] IRSA smoke tests pass for checkout, product-reviews, and shopping-copilot.
 - [ ] Ad dependency fault returns HTTP 200 empty data with
@@ -57,9 +58,17 @@ Run only during an approved window with a named rollback operator:
 ```powershell
 $ctx = "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod"
 ./scripts/mandate17-inventory.ps1 -KubeContext $ctx
+./scripts/mandate17-coredns-readiness.ps1 -KubeContext $ctx
+# Review the generated placement evidence and surviving-zone capacity first.
+./scripts/mandate17-coredns-readiness.ps1 -KubeContext $ctx -CapacityApproved -Execute
 ./scripts/mandate17-dependency-chaos.ps1 -KubeContext $ctx -Dependency ad -ProbeUri "<storefront>/api/data"
 ./scripts/mandate17-az-chaos.ps1 -KubeContext $ctx -Zone us-east-1a -CapacityApproved -Execute
 ```
+
+The CoreDNS script deletes at most one ready replica and waits for full
+Deployment recovery. It does not automatically retry when the replacement is
+still placed on the wrong node or zone. Do not proceed to AZ chaos unless its
+final output reports `ready=True`, two distinct nodes, and two distinct zones.
 
 Do not run dependency and AZ faults at the same time. Capture Locust,
 Prometheus/Grafana, Pod placement, Argo health, flagd checks, and rollback output
