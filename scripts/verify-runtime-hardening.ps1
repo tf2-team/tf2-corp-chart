@@ -90,7 +90,8 @@ try {
         -f $negativeValues 2>&1
     $negativeExitCode = $LASTEXITCODE
     $negativeText = $negativeOutput -join "`n"
-    if ($negativeExitCode -eq 0 -or $negativeText -notmatch "additional properties 'typo' not allowed") {
+    $rejectedExpectedTypo = $negativeText -match "(?i)additional propert(?:y|ies).*typo.*not allowed"
+    if ($negativeExitCode -eq 0 -or -not $rejectedExpectedTypo) {
         throw "Negative schema test did not reject the expected typo:`n$negativeText"
     }
     Write-Output "PASS negative Helm schema test"
