@@ -237,6 +237,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
+              opentelemetry.io/name: shopping-copilot
+      ports:
+        - protocol: TCP
+          port: 3552
+    - to:
+        - podSelector:
+            matchLabels:
               opentelemetry.io/name: recommendation
       ports:
         - protocol: TCP
@@ -384,7 +391,7 @@ spec:
             matchExpressions:
               - key: opentelemetry.io/name
                 operator: In
-                values: [frontend, checkout]
+                values: [frontend, checkout, shopping-copilot]
       ports:
         - protocol: TCP
           port: 8080
@@ -753,7 +760,7 @@ spec:
             matchExpressions:
               - key: opentelemetry.io/name
                 operator: In
-                values: [frontend, checkout, recommendation, product-reviews]
+                values: [frontend, checkout, recommendation, product-reviews, shopping-copilot]
       ports:
         - protocol: TCP
           port: 8080
@@ -804,8 +811,10 @@ spec:
   ingress:
     - from:
         - podSelector:
-            matchLabels:
-              opentelemetry.io/name: frontend
+            matchExpressions:
+              - key: opentelemetry.io/name
+                operator: In
+                values: [frontend, shopping-copilot]
       ports:
         - protocol: TCP
           port: 3551
@@ -859,6 +868,77 @@ spec:
 {{- end }}
 
 {{/* ── 17. ACCOUNTING ───────────────────────────────────────────────── */}}
+{{/* Shopping Copilot */}}
+{{- if (index .Values.components "shopping-copilot").enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: shopping-copilot
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      opentelemetry.io/name: shopping-copilot
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: frontend
+      ports:
+        - protocol: TCP
+          port: 3552
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: product-catalog
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: product-reviews
+      ports:
+        - protocol: TCP
+          port: 3551
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: cart
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: valkey-cart
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: otel-collector
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+    # Guardrail artifact S3 download and Bedrock Runtime HTTPS requests.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
+
 {{- if .Values.components.accounting.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -1010,8 +1090,10 @@ spec:
   ingress:
     - from:
         - podSelector:
-            matchLabels:
-              opentelemetry.io/name: cart
+            matchExpressions:
+              - key: opentelemetry.io/name
+                operator: In
+                values: [cart, shopping-copilot]
       ports:
         - protocol: TCP
           port: 6379

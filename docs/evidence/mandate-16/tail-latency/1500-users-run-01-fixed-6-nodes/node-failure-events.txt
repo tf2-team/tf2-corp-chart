@@ -1,0 +1,5 @@
+NAMESPACE   LAST SEEN   TYPE     REASON             OBJECT                             MESSAGE
+default     40m         Normal   Unconsolidatable   node/ip-10-0-39-210.ec2.internal   SpotToSpotConsolidation requires 15 cheaper instance type options than the current candidate to consolidate, got 3
+default     11m         Normal   Shutdown           node/ip-10-0-39-210.ec2.internal   Shutdown manager detected shutdown event
+default     11m         Normal   NodeNotReady       node/ip-10-0-39-210.ec2.internal   Node ip-10-0-39-210.ec2.internal status is now: NodeNotReady
+default     4m41s       Normal   DeletingNode       node/ip-10-0-39-210.ec2.internal   Deleting node ip-10-0-39-210.ec2.internal because it does not exist in the cloud provider

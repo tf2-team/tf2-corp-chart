@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vap-invalid-host-access, namespace: default}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: vap-invalid-host-access}
+  template:
+    metadata:
+      labels: {app: vap-invalid-host-access}
+    spec:
+      hostNetwork: true
+      hostPID: true
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: registry.k8s.io/pause:3.10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}

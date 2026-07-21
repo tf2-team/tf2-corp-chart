@@ -37,6 +37,11 @@
             },
             "tag": {
               "type": "string"
+            },
+            "digest": {
+              "type": "string",
+              "description": "Immutable mem0 image digest pin from service-digest promote.",
+              "pattern": "^sha256:[0-9a-f]{64}$"
             }
           }
         },
@@ -162,6 +167,10 @@
         },
         "name": {
           "type": "string"
+        },
+        "automountServiceAccountToken": {
+          "type": "boolean",
+          "const": false
         }
       },
       "required": [
@@ -211,6 +220,124 @@
           "type": "string"
         }
       }
+    },
+    "runtimeHardeningInventory": {
+      "type": "object",
+      "description": "Mandate 05 scheduled runtime-hardening drift scanner",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "clusterName": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "successfulJobsHistoryLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedJobsHistoryLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activeDeadlineSeconds": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "backoffLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pullPolicy": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "repository",
+            "tag"
+          ]
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources"
+        },
+        "securityContext": {
+          "$ref": "#/definitions/SecurityContext"
+        },
+        "podSecurityContext": {
+          "$ref": "#/definitions/PodSecurityContext"
+        },
+        "exceptionProfiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "rootKey": {
+                "type": "string"
+              },
+              "containers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "NON_ROOT",
+                    "UID_0",
+                    "DROP_ALL",
+                    "ADDED_CAPS",
+                    "PRIVILEGED",
+                    "PRIV_ESC",
+                    "HOST_NETWORK",
+                    "HOST_PID",
+                    "HOST_IPC",
+                    "HOST_PATH",
+                    "IMAGE_PIN",
+                    "RESOURCES"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "rootKey",
+              "containers",
+              "rules"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "schedule",
+        "image",
+        "resources",
+        "securityContext",
+        "podSecurityContext"
+      ]
     },
     "metrics-server": {
       "type": "object",
@@ -278,6 +405,9 @@
         "product-reviews": {
           "$ref": "#/definitions/Component"
         },
+        "shopping-copilot": {
+          "$ref": "#/definitions/Component"
+        },
         "quote": {
           "$ref": "#/definitions/Component"
         },
@@ -313,7 +443,7 @@
           "type": "boolean"
         },
         "serviceAccount": {
-          "description": "SEC-03: per-component ServiceAccount for least-privilege identity. When omitted, the component falls back to the global serviceAccount.",
+          "description": "SEC-03: per-component ServiceAccount for least-privilege identity. When omitted, the chart creates an identity named after the component.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -325,6 +455,10 @@
             },
             "name": {
               "type": "string"
+            },
+            "automountServiceAccountToken": {
+              "type": "boolean",
+              "const": false
             }
           },
           "required": [
@@ -349,6 +483,10 @@
         },
         "replicas": {
           "type": "integer"
+        },
+        "optionalDependencyTimeoutMs": {
+          "type": "integer",
+          "minimum": 1
         },
         "stateful": {
           "type": "boolean"
@@ -411,14 +549,31 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
-            "awsRegion": { "type": "string" },
-            "fetcherImage": { "type": "string" },
-            "extractorImage": { "type": "string" },
-            "s3Uri": { "type": "string", "pattern": "^s3://" },
-            "mountPath": { "type": "string" },
-            "cacheSizeLimit": { "type": "string" },
-            "resources": { "$ref": "#/definitions/ContainerResources" }
+            "enabled": {
+              "type": "boolean"
+            },
+            "awsRegion": {
+              "type": "string"
+            },
+            "fetcherImage": {
+              "type": "string"
+            },
+            "extractorImage": {
+              "type": "string"
+            },
+            "s3Uri": {
+              "type": "string",
+              "pattern": "^s3://"
+            },
+            "mountPath": {
+              "type": "string"
+            },
+            "cacheSizeLimit": {
+              "type": "string"
+            },
+            "resources": {
+              "$ref": "#/definitions/ContainerResources"
+            }
           }
         },
         "livenessProbe": {
@@ -508,20 +663,34 @@
         "additionalVolumes": {
           "type": "array"
         },
-        "stateful": {
-          "type": "boolean"
-        },
-        "terminationGracePeriodSeconds": {
-          "type": "integer"
-        },
-        "volumeClaimTemplates": {
-          "type": "array",
-          "items": {
-            "type": "object"
+        "pdb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "minAvailable": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "maxUnavailable": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
           }
         },
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"
+        },
+        "sidecarImageDigests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "description": "Map of sidecar container name to image digest. Used for flagd-ui without replacing sidecarContainers."
         }
       },
       "required": [
@@ -747,7 +916,7 @@
         },
         "name": {
           "type": "string",
-          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames …/<component> to …/<name>."
+          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames \u2026/<component> to \u2026/<name>."
         },
         "tag": {
           "type": "string"
@@ -758,6 +927,11 @@
         "pullSecrets": {
           "type": "array",
           "items": {}
+        },
+        "digest": {
+          "type": "string",
+          "description": "Immutable image digest pin (sha256:\u2026). When set, templates render image@digest instead of :tag. Written under service-digest/ by platform CI.",
+          "pattern": "^sha256:[0-9a-f]{64}$"
         }
       },
       "title": "Image"
@@ -1016,7 +1190,10 @@
               }
             },
             "port": {
-              "type": ["integer", "string"]
+              "type": [
+                "integer",
+                "string"
+              ]
             }
           }
         },
@@ -1028,7 +1205,10 @@
           "additionalProperties": false,
           "properties": {
             "port": {
-              "type": ["integer", "string"]
+              "type": [
+                "integer",
+                "string"
+              ]
             },
             "service": {
               "type": "string"
@@ -1046,7 +1226,10 @@
               "type": "string"
             },
             "port": {
-              "type": ["integer", "string"]
+              "type": [
+                "integer",
+                "string"
+              ]
             }
           }
         },
@@ -1092,17 +1275,26 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["RollingUpdate", "Recreate"]
+              "enum": [
+                "RollingUpdate",
+                "Recreate"
+              ]
             },
             "rollingUpdate": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
                 "maxUnavailable": {
-                  "type": ["integer", "string"]
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
                 },
                 "maxSurge": {
-                  "type": ["integer", "string"]
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
                 }
               }
             }
@@ -1190,8 +1382,12 @@
         },
         "targetRequestsPerSecond": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Target average requests/second per pod (HPA External metric AverageValue). Requires prometheus-adapter."
         },
@@ -1236,13 +1432,19 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+              "enum": [
+                "Localhost",
+                "RuntimeDefault",
+                "Unconfined"
+              ]
             },
             "localhostProfile": {
               "type": "string"
             }
           },
-          "required": ["type"]
+          "required": [
+            "type"
+          ]
         }
       }
     },
@@ -1292,13 +1494,19 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+              "enum": [
+                "Localhost",
+                "RuntimeDefault",
+                "Unconfined"
+              ]
             },
             "localhostProfile": {
               "type": "string"
             }
           },
-          "required": ["type"]
+          "required": [
+            "type"
+          ]
         }
       }
     }

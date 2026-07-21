@@ -98,3 +98,41 @@ be declared explicitly on the identity that needs AWS access.
 {{- end -}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Resolve a container image reference with optional immutable digest pin.
+
+Expected context keys:
+  .name              component / container name (service segment)
+  .Chart             chart metadata (for AppVersion fallback)
+  .defaultValues     .Values.default (image.repository / image.tag)
+  .imageOverride     optional map: repository, name, tag, digest, pullPolicy
+  .digestOverride    optional string digest when parent supplies sidecarImageDigests
+
+When digest is set the tag is omitted (registry pulls by digest). When unset,
+behavior matches the historical REGISTRY/PROJECT/SERVICE:VERSION contract.
+*/}}
+{{- define "techx-corp.containerImage" -}}
+{{- $override := default dict .imageOverride -}}
+{{- $digest := default "" $override.digest -}}
+{{- if and (not $digest) .digestOverride -}}
+{{- $digest = .digestOverride -}}
+{{- end -}}
+{{- $svcName := default .name $override.name -}}
+{{- $tag := default (default .Chart.AppVersion .defaultValues.image.tag) $override.tag -}}
+{{- if $override.repository -}}
+{{- if $digest -}}
+{{- printf "%s@%s" $override.repository $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $override.repository $tag -}}
+{{- end -}}
+{{- else -}}
+{{- $repo := printf "%s/%s" .defaultValues.image.repository $svcName -}}
+{{- if $digest -}}
+{{- printf "%s@%s" $repo $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repo $tag -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+{{/* Change trail: @hungxqt - 2026-07-20 - Add containerImage helper with optional digest pin for service-digest overlays. */}}

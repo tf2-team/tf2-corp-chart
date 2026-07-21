@@ -1,0 +1,859 @@
+
+=== MINUTE 1/20 - 2026-07-21T02:42:15+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 100%/70%, 46890m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 196%/70%, 14864m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 51%/70%, 13352m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 119%/65%, 85621m/80 (avg)    3         20        9          7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 72%/80%, 91504m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 46%/70%, 115517m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 23%/70%, 13295m/20 (avg)     2         6         2          6d3h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d10h
+recommendation          Deployment/recommendation          cpu: 41%/70%, 19185m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d10h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             7m39s
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             7m39s
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             8m9s
+checkout-779b6768bf-llq8c                        0/1     Pending     0             7m25s
+checkout-779b6768bf-nplkg                        0/1     Pending     0             7m55s
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             8m10s
+checkout-779b6768bf-swgxr                        0/1     Pending     0             7m40s
+checkout-779b6768bf-zspng                        0/1     Pending     0             7m25s
+frontend-7cb46658f5-458nv                        0/1     Pending     0             6m55s
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             7m10s
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             8m10s
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             7m40s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             8m10s
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             7m25s
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   501m         25%      1580Mi          50%         
+ip-10-0-27-114.ec2.internal   651m         33%      3543Mi          50%         
+ip-10-0-28-96.ec2.internal    322m         16%      2961Mi          94%         
+ip-10-0-36-4.ec2.internal     399m         20%      4060Mi          57%         
+ip-10-0-39-210.ec2.internal   684m         35%      3155Mi          100%        
+ip-10-0-45-85.ec2.internal    280m         14%      2660Mi          95%         
+
+=== MINUTE 2/20 - 2026-07-21T02:43:39+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 138%/70%, 47840m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 173%/70%, 14712m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 46%/70%, 13881m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 120%/65%, 89394m/80 (avg)    3         20        9          7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 75%/80%, 82681m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 71%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 46%/70%, 120758m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 25%/70%, 13090m/20 (avg)     2         6         2          6d3h
+quote                   Deployment/quote                   cpu: 10%/70%                      2         4         2          6d10h
+recommendation          Deployment/recommendation          cpu: 45%/70%, 19044m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 7%/70%                       2         4         2          6d10h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             9m1s
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             9m1s
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             9m31s
+checkout-779b6768bf-llq8c                        0/1     Pending     0             8m47s
+checkout-779b6768bf-nplkg                        0/1     Pending     0             9m17s
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             9m32s
+checkout-779b6768bf-swgxr                        0/1     Pending     0             9m2s
+checkout-779b6768bf-zspng                        0/1     Pending     0             8m47s
+frontend-7cb46658f5-458nv                        0/1     Pending     0             8m17s
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             8m32s
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             9m32s
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             9m2s
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             16s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             9m32s
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             8m47s
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   737m         38%      1574Mi          50%         
+ip-10-0-27-114.ec2.internal   782m         40%      4245Mi          60%         
+ip-10-0-28-96.ec2.internal    327m         16%      2966Mi          94%         
+ip-10-0-36-4.ec2.internal     411m         21%      4082Mi          57%         
+ip-10-0-39-210.ec2.internal   470m         24%      3167Mi          101%        
+ip-10-0-45-85.ec2.internal    279m         14%      2661Mi          96%         
+
+=== MINUTE 3/20 - 2026-07-21T02:45:00+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 102%/70%, 46693m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 170%/70%, 14649m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 55%/70%, 13319m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 128%/65%, 78986m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 74%/80%, 83152m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 73%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 121127m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 14657m/20 (avg)     2         6         2          6d3h
+quote                   Deployment/quote                   cpu: 13%/70%                      2         4         2          6d10h
+recommendation          Deployment/recommendation          cpu: 43%/70%, 22967m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 9%/70%                       2         4         2          6d10h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             10m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             10m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             10m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             10m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             10m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             10m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             10m
+checkout-779b6768bf-zspng                        0/1     Pending     0             10m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             9m39s
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             9m54s
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             10m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             10m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             98s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             10m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             10m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   690m         35%      1581Mi          50%         
+ip-10-0-27-114.ec2.internal   854m         44%      3798Mi          53%         
+ip-10-0-28-96.ec2.internal    369m         19%      2971Mi          94%         
+ip-10-0-36-4.ec2.internal     375m         19%      4159Mi          58%         
+ip-10-0-39-210.ec2.internal   528m         27%      3162Mi          100%        
+ip-10-0-45-85.ec2.internal    267m         13%      2661Mi          96%         
+
+=== MINUTE 4/20 - 2026-07-21T02:46:22+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 128%/70%, 47401m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 190%/70%, 15240m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 51%/70%, 13343m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 126%/65%, 77509m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 77%/80%, 90491m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 119155m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 28%/70%, 14341m/20 (avg)     2         6         2          6d3h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 43%/70%, 21846m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 7%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             11m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             11m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             12m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             11m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             12m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             12m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             11m
+checkout-779b6768bf-zspng                        0/1     Pending     0             11m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             11m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             11m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             12m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             11m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             2m59s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             12m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             11m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   575m         29%      1577Mi          50%         
+ip-10-0-27-114.ec2.internal   1247m        64%      4070Mi          57%         
+ip-10-0-28-96.ec2.internal    353m         18%      2965Mi          94%         
+ip-10-0-36-4.ec2.internal     373m         19%      4176Mi          59%         
+ip-10-0-39-210.ec2.internal   455m         23%      3148Mi          100%        
+ip-10-0-45-85.ec2.internal    282m         14%      2660Mi          95%         
+
+=== MINUTE 5/20 - 2026-07-21T02:47:41+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 133%/70%, 47420m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 173%/70%, 15520m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 51%/70%, 13810m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 119%/65%, 80074m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 75%/80%, 93026m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 72%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 122231m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 26%/70%, 14220m/20 (avg)     2         6         2          6d3h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 46%/70%, 22734m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             13m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             13m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             13m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             12m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             13m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             13m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             13m
+checkout-779b6768bf-zspng                        0/1     Pending     0             12m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             12m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             12m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             13m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             13m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             4m19s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             13m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             12m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   548m         28%      1577Mi          50%         
+ip-10-0-27-114.ec2.internal   725m         37%      3660Mi          51%         
+ip-10-0-28-96.ec2.internal    519m         26%      2938Mi          93%         
+ip-10-0-36-4.ec2.internal     447m         23%      4152Mi          58%         
+ip-10-0-39-210.ec2.internal   533m         27%      3162Mi          100%        
+ip-10-0-45-85.ec2.internal    301m         15%      2653Mi          95%         
+
+=== MINUTE 6/20 - 2026-07-21T02:49:01+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 111%/70%, 46688m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 190%/70%, 14826m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 53%/70%, 13895m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 133%/65%, 79238m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 72%/80%, 92338m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 69%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 47%/70%, 122580m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 14517m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 14%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 44%/70%, 20880m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 7%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             14m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             14m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             14m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             14m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             14m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             14m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             14m
+checkout-779b6768bf-zspng                        0/1     Pending     0             14m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             13m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             13m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             14m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             14m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             5m40s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             14m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             14m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   602m         31%      1590Mi          50%         
+ip-10-0-27-114.ec2.internal   852m         44%      3596Mi          50%         
+ip-10-0-28-96.ec2.internal    323m         16%      2951Mi          94%         
+ip-10-0-36-4.ec2.internal     373m         19%      4169Mi          58%         
+ip-10-0-39-210.ec2.internal   673m         34%      3140Mi          100%        
+ip-10-0-45-85.ec2.internal    284m         14%      2662Mi          96%         
+
+=== MINUTE 7/20 - 2026-07-21T02:50:24+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 111%/70%, 47985m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 190%/70%, 14929m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 48%/70%, 13648m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 133%/65%, 80328m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 74%/80%, 91309m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 121853m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 27%/70%, 14795m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 11%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 52%/70%, 21983m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 7%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             15m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             15m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             16m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             15m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             16m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             16m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             15m
+checkout-779b6768bf-zspng                        0/1     Pending     0             15m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             15m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             15m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             16m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             15m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             7m4s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             16m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             15m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   475m         24%      1576Mi          50%         
+ip-10-0-27-114.ec2.internal   840m         43%      4348Mi          61%         
+ip-10-0-28-96.ec2.internal    503m         26%      2946Mi          94%         
+ip-10-0-36-4.ec2.internal     375m         19%      4193Mi          59%         
+ip-10-0-39-210.ec2.internal   499m         25%      3132Mi          100%        
+ip-10-0-45-85.ec2.internal    259m         13%      2659Mi          95%         
+
+=== MINUTE 8/20 - 2026-07-21T02:51:46+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 112%/70%, 45316m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 176%/70%, 13952m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 46%/70%, 12829m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 115%/65%, 77178m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 70%/80%, 90119m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 66%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 49%/70%, 118061m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 13231m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 14%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 50%/70%, 20317m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             17m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             17m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             17m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             16m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             17m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             17m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             17m
+checkout-779b6768bf-zspng                        0/1     Pending     0             16m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             16m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             16m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             17m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             17m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             8m24s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             17m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             16m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   508m         26%      1585Mi          50%         
+ip-10-0-27-114.ec2.internal   717m         37%      3452Mi          48%         
+ip-10-0-28-96.ec2.internal    577m         29%      2959Mi          94%         
+ip-10-0-36-4.ec2.internal     392m         20%      4204Mi          59%         
+ip-10-0-39-210.ec2.internal   447m         23%      3145Mi          100%        
+ip-10-0-45-85.ec2.internal    291m         15%      2659Mi          95%         
+
+=== MINUTE 9/20 - 2026-07-21T02:53:09+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 110%/70%, 46489m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 166%/70%, 14968m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 46%/70%, 13248m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 126%/65%, 79140m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 72%/80%, 91562m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 68%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 46%/70%, 119331m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 13888m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 11%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 44%/70%, 21706m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             18m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             18m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             19m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             18m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             18m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             19m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             18m
+checkout-779b6768bf-zspng                        0/1     Pending     0             18m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             17m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             18m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             19m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             18m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             9m47s
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             19m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             18m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   555m         28%      1579Mi          50%         
+ip-10-0-27-114.ec2.internal   724m         37%      3525Mi          49%         
+ip-10-0-28-96.ec2.internal    357m         18%      2944Mi          94%         
+ip-10-0-36-4.ec2.internal     393m         20%      4136Mi          58%         
+ip-10-0-39-210.ec2.internal   628m         32%      3145Mi          100%        
+ip-10-0-45-85.ec2.internal    309m         16%      2653Mi          95%         
+
+=== MINUTE 10/20 - 2026-07-21T02:54:31+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 113%/70%, 45709m/150 (avg)   2         12        6          7d16h
+checkout                Deployment/checkout                cpu: 183%/70%, 14258m/50 (avg)    2         16        8          7d16h
+currency                Deployment/currency                cpu: 55%/70%, 12867m/250 (avg)    2         72        2          7d16h
+frontend                Deployment/frontend                cpu: 131%/65%, 76439m/80 (avg)    3         20        10         7d16h
+frontend-proxy          Deployment/frontend-proxy          cpu: 75%/80%, 91408m/300 (avg)    2         10        4          7d16h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 47%/70%, 117505m/150 (avg)   2         12        3          7d16h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 13510m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 14%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 49%/70%, 20083m/25 (avg)     2         6         2          7d16h
+shipping                Deployment/shipping                cpu: 9%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             19m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             19m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             20m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             19m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             20m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             20m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             19m
+checkout-779b6768bf-zspng                        0/1     Pending     0             19m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             19m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             19m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             20m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             19m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             11m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             20m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             19m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   611m         31%      1595Mi          50%         
+ip-10-0-27-114.ec2.internal   817m         42%      3559Mi          50%         
+ip-10-0-28-96.ec2.internal    404m         20%      2951Mi          94%         
+ip-10-0-36-4.ec2.internal     373m         19%      4046Mi          57%         
+ip-10-0-39-210.ec2.internal   643m         33%      3140Mi          100%        
+ip-10-0-45-85.ec2.internal    270m         13%      2660Mi          95%         
+
+=== MINUTE 11/20 - 2026-07-21T02:55:50+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 133%/70%, 47091m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 180%/70%, 14519m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 51%/70%, 13481m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 125%/65%, 78909m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 74%/80%, 92324m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 72%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 49%/70%, 120716m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 28%/70%, 14533m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 51%/70%, 21181m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             21m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             21m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             21m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             20m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             21m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             21m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             21m
+checkout-779b6768bf-zspng                        0/1     Pending     0             20m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             20m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             20m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             21m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             21m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             12m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             21m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             20m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   486m         25%      1576Mi          50%         
+ip-10-0-27-114.ec2.internal   919m         47%      3548Mi          50%         
+ip-10-0-28-96.ec2.internal    333m         17%      2933Mi          93%         
+ip-10-0-36-4.ec2.internal     372m         19%      4035Mi          57%         
+ip-10-0-39-210.ec2.internal   601m         31%      3152Mi          100%        
+ip-10-0-45-85.ec2.internal    284m         14%      2661Mi          96%         
+
+=== MINUTE 12/20 - 2026-07-21T02:57:12+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 105%/70%, 46572m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 190%/70%, 14453m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 56%/70%, 13467m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 128%/65%, 78875m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 73%/80%, 91948m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 120549m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 27%/70%, 13686m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 43%/70%, 21290m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 10%/70%                      2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             22m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             22m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             23m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             22m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             22m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             23m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             22m
+checkout-779b6768bf-zspng                        0/1     Pending     0             22m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             21m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             22m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             23m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             22m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             13m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             23m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             22m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   478m         24%      1586Mi          50%         
+ip-10-0-27-114.ec2.internal   852m         44%      3575Mi          50%         
+ip-10-0-28-96.ec2.internal    338m         17%      2938Mi          93%         
+ip-10-0-36-4.ec2.internal     376m         19%      3985Mi          56%         
+ip-10-0-39-210.ec2.internal   652m         33%      3157Mi          100%        
+ip-10-0-45-85.ec2.internal    260m         13%      2645Mi          95%         
+
+=== MINUTE 13/20 - 2026-07-21T02:58:33+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 105%/70%, 46182m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 146%/70%, 14952m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 43%/70%, 12990m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 108%/65%, 80249m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 69%/80%, 90483m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 119694m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 30%/70%, 13672m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 44%/70%, 22572m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 7%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             23m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             23m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             24m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             23m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             24m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             24m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             23m
+checkout-779b6768bf-zspng                        0/1     Pending     0             23m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             23m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             23m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             24m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             23m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             15m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             24m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             23m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   501m         25%      1599Mi          51%         
+ip-10-0-27-114.ec2.internal   683m         35%      3573Mi          50%         
+ip-10-0-28-96.ec2.internal    334m         17%      2941Mi          93%         
+ip-10-0-36-4.ec2.internal     355m         18%      3944Mi          55%         
+ip-10-0-39-210.ec2.internal   666m         34%      3155Mi          100%        
+ip-10-0-45-85.ec2.internal    300m         15%      2658Mi          95%         
+
+=== MINUTE 14/20 - 2026-07-21T02:59:53+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 107%/70%, 43881m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 176%/70%, 14132m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 48%/70%, 12595m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 127%/65%, 78283m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 72%/80%, 90341m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 74%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 51%/70%, 118643m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 22%/70%, 13814m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 51%/70%, 22366m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 9%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             25m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             25m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             25m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             25m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             25m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             25m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             25m
+checkout-779b6768bf-zspng                        0/1     Pending     0             25m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             24m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             24m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             25m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             25m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             16m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             25m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             25m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   597m         30%      1584Mi          50%         
+ip-10-0-27-114.ec2.internal   689m         35%      3565Mi          50%         
+ip-10-0-28-96.ec2.internal    306m         15%      2929Mi          93%         
+ip-10-0-36-4.ec2.internal     385m         19%      3944Mi          55%         
+ip-10-0-39-210.ec2.internal   610m         31%      3162Mi          100%        
+ip-10-0-45-85.ec2.internal    280m         14%      2662Mi          96%         
+
+=== MINUTE 15/20 - 2026-07-21T03:01:16+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 114%/70%, 47983m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 180%/70%, 15365m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 50%/70%, 13543m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 130%/65%, 78491m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 77%/80%, 91386m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 49%/70%, 121863m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 21%/70%, 13929m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 14%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 48%/70%, 21209m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 7%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             26m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             26m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             27m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             26m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             26m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             27m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             26m
+checkout-779b6768bf-zspng                        0/1     Pending     0             26m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             25m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             26m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             27m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             26m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             17m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             27m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             26m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   534m         27%      1577Mi          50%         
+ip-10-0-27-114.ec2.internal   880m         45%      3571Mi          50%         
+ip-10-0-28-96.ec2.internal    627m         32%      2947Mi          94%         
+ip-10-0-36-4.ec2.internal     408m         21%      3941Mi          55%         
+ip-10-0-39-210.ec2.internal   419m         21%      3164Mi          101%        
+ip-10-0-45-85.ec2.internal    292m         15%      2663Mi          96%         
+
+=== MINUTE 16/20 - 2026-07-21T03:02:36+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 96%/70%, 47090m/150 (avg)    2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 156%/70%, 15107m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 46%/70%, 13214m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 124%/65%, 79212m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 71%/80%, 90277m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 67%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 47%/70%, 120553m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 32%/70%, 14929m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 12%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 51%/70%, 21457m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             27m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             27m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             28m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             27m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             28m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             28m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             28m
+checkout-779b6768bf-zspng                        0/1     Pending     0             27m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             27m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             27m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             28m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             28m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             19m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             28m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             27m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   591m         30%      1584Mi          50%         
+ip-10-0-27-114.ec2.internal   839m         43%      3614Mi          51%         
+ip-10-0-28-96.ec2.internal    400m         20%      2945Mi          94%         
+ip-10-0-36-4.ec2.internal     386m         20%      3966Mi          56%         
+ip-10-0-39-210.ec2.internal   517m         26%      3156Mi          100%        
+ip-10-0-45-85.ec2.internal    300m         15%      2663Mi          96%         
+
+=== MINUTE 17/20 - 2026-07-21T03:03:56+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 110%/70%, 46910m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 166%/70%, 14067m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 48%/70%, 13105m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 129%/65%, 80713m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 73%/80%, 90795m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 71%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 48%/70%, 121054m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 23%/70%, 13933m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 13%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 51%/70%, 22009m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             29m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             29m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             29m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             29m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             29m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             29m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             29m
+checkout-779b6768bf-zspng                        0/1     Pending     0             29m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             28m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             28m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             29m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             29m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             20m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             29m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             29m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   533m         27%      1585Mi          50%         
+ip-10-0-27-114.ec2.internal   726m         37%      3632Mi          51%         
+ip-10-0-28-96.ec2.internal    482m         24%      2949Mi          94%         
+ip-10-0-36-4.ec2.internal     396m         20%      3964Mi          56%         
+ip-10-0-39-210.ec2.internal   539m         27%      3152Mi          100%        
+ip-10-0-45-85.ec2.internal    287m         14%      2664Mi          96%         
+
+=== MINUTE 18/20 - 2026-07-21T03:05:20+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 134%/70%, 47519m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 180%/70%, 15050m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 53%/70%, 13028m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 130%/65%, 78311m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 75%/80%, 91266m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 69%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 47%/70%, 118809m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 14490m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 13%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 47%/70%, 21424m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 6%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             30m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             30m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             31m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             30m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             30m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             31m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             30m
+checkout-779b6768bf-zspng                        0/1     Pending     0             30m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             29m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             30m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             31m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             30m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             21m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             31m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             30m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   543m         28%      1587Mi          50%         
+ip-10-0-27-114.ec2.internal   840m         43%      3600Mi          50%         
+ip-10-0-28-96.ec2.internal    533m         27%      2948Mi          94%         
+ip-10-0-36-4.ec2.internal     377m         19%      4054Mi          57%         
+ip-10-0-39-210.ec2.internal   479m         24%      3161Mi          100%        
+ip-10-0-45-85.ec2.internal    267m         13%      2662Mi          96%         
+
+=== MINUTE 19/20 - 2026-07-21T03:06:40+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 120%/70%, 43976m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 166%/70%, 14179m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 45%/70%, 12567m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 128%/65%, 80145m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 69%/80%, 91053m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 46%/70%, 115542m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 24%/70%, 14148m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 13%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 45%/70%, 21867m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             32m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             32m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             32m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             31m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             32m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             32m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             32m
+checkout-779b6768bf-zspng                        0/1     Pending     0             31m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             31m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             31m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             32m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             32m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             23m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             32m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             31m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   488m         25%      1578Mi          50%         
+ip-10-0-27-114.ec2.internal   867m         44%      3573Mi          50%         
+ip-10-0-28-96.ec2.internal    549m         28%      2941Mi          93%         
+ip-10-0-36-4.ec2.internal     398m         20%      4156Mi          58%         
+ip-10-0-39-210.ec2.internal   506m         26%      3114Mi          99%         
+ip-10-0-45-85.ec2.internal    284m         14%      2664Mi          96%         
+
+=== MINUTE 20/20 - 2026-07-21T03:07:59+07:00 ===
+Nodes: 6
+
+--- HPA ---
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 112%/70%, 47940m/150 (avg)   2         12        6          7d17h
+checkout                Deployment/checkout                cpu: 180%/70%, 14922m/50 (avg)    2         16        8          7d17h
+currency                Deployment/currency                cpu: 51%/70%, 13900m/250 (avg)    2         72        2          7d17h
+frontend                Deployment/frontend                cpu: 124%/65%, 79274m/80 (avg)    3         20        10         7d17h
+frontend-proxy          Deployment/frontend-proxy          cpu: 72%/80%, 93032m/300 (avg)    2         10        4          7d17h
+load-generator-worker   Deployment/load-generator-worker   cpu: 70%/70%                      3         3         3          6d19h
+product-catalog         Deployment/product-catalog         cpu: 44%/70%, 121327m/150 (avg)   2         12        3          7d17h
+product-reviews         Deployment/product-reviews         cpu: 27%/70%, 14695m/20 (avg)     2         6         2          6d4h
+quote                   Deployment/quote                   cpu: 13%/70%                      2         4         2          6d11h
+recommendation          Deployment/recommendation          cpu: 42%/70%, 20995m/25 (avg)     2         6         2          7d17h
+shipping                Deployment/shipping                cpu: 8%/70%                       2         4         2          6d11h
+
+--- Non-healthy pods ---
+cart-74cdbd6b84-7nwkz                            0/1     Pending     0             33m
+cart-74cdbd6b84-8lv7z                            0/1     Pending     0             33m
+cart-74cdbd6b84-klf5p                            0/1     Pending     0             33m
+checkout-779b6768bf-llq8c                        0/1     Pending     0             33m
+checkout-779b6768bf-nplkg                        0/1     Pending     0             33m
+checkout-779b6768bf-pc5sq                        0/1     Pending     0             33m
+checkout-779b6768bf-swgxr                        0/1     Pending     0             33m
+checkout-779b6768bf-zspng                        0/1     Pending     0             33m
+frontend-7cb46658f5-458nv                        0/1     Pending     0             32m
+frontend-7cb46658f5-6d6r7                        0/1     Pending     0             32m
+frontend-7cb46658f5-6qhf5                        0/1     Pending     0             33m
+frontend-7cb46658f5-9wmdx                        0/1     Pending     0             33m
+frontend-7cb46658f5-dvvwq                        0/1     Pending     0             24m
+frontend-7cb46658f5-p2ltm                        0/1     Pending     0             33m
+frontend-7cb46658f5-qn8v8                        0/1     Pending     0             33m
+
+--- Node usage ---
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   493m         25%      1590Mi          50%         
+ip-10-0-27-114.ec2.internal   825m         42%      3675Mi          51%         
+ip-10-0-28-96.ec2.internal    413m         21%      2946Mi          94%         
+ip-10-0-36-4.ec2.internal     401m         20%      4174Mi          59%         
+ip-10-0-39-210.ec2.internal   618m         32%      3116Mi          99%         
+ip-10-0-45-85.ec2.internal    275m         14%      2647Mi          95%         

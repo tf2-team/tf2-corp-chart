@@ -61,7 +61,12 @@ spec:
       imagePullSecrets:
         {{- ((.imageOverride).pullSecrets) | default .defaultValues.image.pullSecrets | toYaml | nindent 8}}
       {{- end }}
+      {{- if .componentServiceAccount }}
       serviceAccountName: {{ include "techx-corp.serviceAccountName" .}}
+      {{- else }}
+      serviceAccountName: {{ .name }}
+      {{- end }}
+      automountServiceAccountToken: false
       {{- /* Component schedulingRules keys fully replace defaults when present (including empty maps/lists). */}}
       {{- $schedDefaults := default dict .defaultValues.schedulingRules }}
       {{- $schedOverrides := default dict .schedulingRules }}
@@ -119,15 +124,8 @@ spec:
       {{- end }}
       containers:
         - name: {{ .name }}
-          {{- /* Default: REGISTRY/PROJECT/SERVICE:VERSION
-               Full override: imageOverride.repository (+ optional tag)
-               Service rename only: imageOverride.name keeps default.image.repository/tag
-               (e.g. load-generator-worker → …/load-generator:<global-tag>) */ -}}
-          {{- if ((.imageOverride).repository) }}
-          image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- else }}
-          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- end }}
+          {{/* Image: REGISTRY/PROJECT/SERVICE:VERSION, optional imageOverride, optional digest pin from service-digest. */}}
+          image: '{{ include "techx-corp.containerImage" . }}'
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
           command:
@@ -139,6 +137,10 @@ spec:
           {{- end }}
           env:
             {{- include "techx-corp.pod.env" . | nindent 12 }}
+            {{- if .optionalDependencyTimeoutMs }}
+            - name: OPTIONAL_DEPENDENCY_TIMEOUT_MS
+              value: {{ .optionalDependencyTimeoutMs | quote }}
+            {{- end }}
             {{- if and .modelDelivery .modelDelivery.enabled }}
             - name: HF_HOME
               value: {{ .modelDelivery.mountPath | quote }}
@@ -205,12 +207,14 @@ spec:
         {{- $sidecar := set . "Chart" $.Chart }}
         {{- $sidecar := set . "Release" $.Release }}
         {{- $sidecar := set . "defaultValues" $.defaultValues }}
+        {{- $sidecarDigest := "" }}
+        {{- if $.sidecarImageDigests }}
+        {{- $sidecarDigest = index $.sidecarImageDigests (.name | lower) | default (index $.sidecarImageDigests .name) | default "" }}
+        {{- end }}
+        {{- $sidecar = set $sidecar "imageOverride" (default dict .imageOverride) }}
+        {{- $sidecar = set $sidecar "digestOverride" $sidecarDigest }}
         - name: {{ .name   }}
-          {{- if ((.imageOverride).repository) }}
-          image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- else }}
-          image: '{{ .defaultValues.image.repository }}/{{ ((.imageOverride).name) | default .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
-          {{- end }}
+          image: '{{ include "techx-corp.containerImage" $sidecar }}'
           imagePullPolicy: {{ ((.imageOverride).pullPolicy) | default .defaultValues.image.pullPolicy }}
           {{- if .command }}
           command:
@@ -587,9 +591,17 @@ metadata:
   labels:
     {{- include "techx-corp.labels" . | nindent 4 }}
 spec:
+  {{- if .pdb }}
+    {{- if hasKey .pdb "minAvailable" }}
+  minAvailable: {{ .pdb.minAvailable }}
+    {{- else if hasKey .pdb "maxUnavailable" }}
+  maxUnavailable: {{ .pdb.maxUnavailable }}
+    {{- end }}
+  {{- else }}
   minAvailable: 1
+  {{- end }}
   selector:
     matchLabels:
       {{- include "techx-corp.selectorLabels" . | nindent 6 }}
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-19 - Support imageOverride.name for service-segment remap without full repository pin. */}}
+{{/* Change trail: @hungxqt - 2026-07-20 - Resolve main and sidecar images via containerImage helper (digest pins from service-digest). */}}

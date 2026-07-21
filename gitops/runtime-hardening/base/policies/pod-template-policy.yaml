@@ -33,28 +33,146 @@ spec:
       expression: "has(object.spec.template.spec.initContainers) ? object.spec.template.spec.initContainers : []"
     - name: ephemeralContainers
       expression: "has(object.spec.template.spec.ephemeralContainers) ? object.spec.template.spec.ephemeralContainers : []"
+    - name: labels
+      expression: "has(object.spec.template.metadata.labels) ? object.spec.template.metadata.labels : {}"
+    - name: serviceAccountName
+      expression: "has(object.spec.template.spec.serviceAccountName) ? object.spec.template.spec.serviceAccountName : 'default'"
+    - name: isAwsNode
+      expression: >-
+        object.metadata.namespace == 'kube-system' && object.kind == 'DaemonSet' && object.metadata.name == 'aws-node' &&
+        variables.serviceAccountName == 'aws-node' &&
+        'app.kubernetes.io/instance' in variables.labels && variables.labels['app.kubernetes.io/instance'] == 'aws-vpc-cni' &&
+        'app.kubernetes.io/name' in variables.labels && variables.labels['app.kubernetes.io/name'] == 'aws-node' &&
+        'k8s-app' in variables.labels && variables.labels['k8s-app'] == 'aws-node' &&
+        size(variables.containers) == 2 && variables.containers.all(c, c.name in ['aws-node', 'aws-eks-nodeagent']) &&
+        size(variables.initContainers) == 1 && variables.initContainers[0].name == 'aws-vpc-cni-init'
+    - name: isKubeProxy
+      expression: >-
+        object.metadata.namespace == 'kube-system' && object.kind == 'DaemonSet' && object.metadata.name == 'kube-proxy' &&
+        variables.serviceAccountName == 'kube-proxy' && 'k8s-app' in variables.labels && variables.labels['k8s-app'] == 'kube-proxy' &&
+        size(variables.containers) == 1 && variables.containers[0].name == 'kube-proxy' && size(variables.initContainers) == 0
+    - name: isEbsNode
+      expression: >-
+        object.metadata.namespace == 'kube-system' && object.kind == 'DaemonSet' && object.metadata.name == 'ebs-csi-node' &&
+        variables.serviceAccountName == 'ebs-csi-node-sa' && 'app' in variables.labels && variables.labels['app'] == 'ebs-csi-node' &&
+        'app.kubernetes.io/component' in variables.labels && variables.labels['app.kubernetes.io/component'] == 'csi-driver' &&
+        'app.kubernetes.io/managed-by' in variables.labels && variables.labels['app.kubernetes.io/managed-by'] == 'EKS' &&
+        'app.kubernetes.io/name' in variables.labels && variables.labels['app.kubernetes.io/name'] == 'aws-ebs-csi-driver' &&
+        size(variables.containers) == 3 && variables.containers.all(c, c.name in ['ebs-plugin', 'node-driver-registrar', 'liveness-probe']) &&
+        size(variables.initContainers) == 0
+    - name: isEbsNodeWindows
+      expression: >-
+        object.metadata.namespace == 'kube-system' && object.kind == 'DaemonSet' && object.metadata.name == 'ebs-csi-node-windows' &&
+        variables.serviceAccountName == 'ebs-csi-node-sa' && 'app' in variables.labels && variables.labels['app'] == 'ebs-csi-node' &&
+        'app.kubernetes.io/component' in variables.labels && variables.labels['app.kubernetes.io/component'] == 'csi-driver' &&
+        'app.kubernetes.io/managed-by' in variables.labels && variables.labels['app.kubernetes.io/managed-by'] == 'EKS' &&
+        'app.kubernetes.io/name' in variables.labels && variables.labels['app.kubernetes.io/name'] == 'aws-ebs-csi-driver' &&
+        size(variables.containers) == 3 && variables.containers.all(c, c.name in ['ebs-plugin', 'node-driver-registrar', 'liveness-probe']) &&
+        size(variables.initContainers) == 0
+    - name: isEbsController
+      expression: >-
+        object.metadata.namespace == 'kube-system' && variables.serviceAccountName == 'ebs-csi-controller-sa' &&
+        ((object.kind == 'Deployment' && object.metadata.name == 'ebs-csi-controller') ||
+         (object.kind == 'ReplicaSet' && has(object.metadata.ownerReferences) &&
+          object.metadata.ownerReferences.exists(o, o.kind == 'Deployment' && o.name == 'ebs-csi-controller' && has(o.controller) && o.controller))) &&
+        'app' in variables.labels && variables.labels['app'] == 'ebs-csi-controller' &&
+        'app.kubernetes.io/component' in variables.labels && variables.labels['app.kubernetes.io/component'] == 'csi-driver' &&
+        'app.kubernetes.io/managed-by' in variables.labels && variables.labels['app.kubernetes.io/managed-by'] == 'EKS' &&
+        'app.kubernetes.io/name' in variables.labels && variables.labels['app.kubernetes.io/name'] == 'aws-ebs-csi-driver' &&
+        size(variables.containers) == 6 &&
+        variables.containers.all(c, c.name in ['ebs-plugin', 'csi-provisioner', 'csi-attacher', 'csi-snapshotter', 'csi-resizer', 'liveness-probe']) &&
+        size(variables.initContainers) == 0
+    - name: isCoreDns
+      expression: >-
+        object.metadata.namespace == 'kube-system' && variables.serviceAccountName == 'coredns' &&
+        ((object.kind == 'Deployment' && object.metadata.name == 'coredns') ||
+         (object.kind == 'ReplicaSet' && has(object.metadata.ownerReferences) &&
+          object.metadata.ownerReferences.exists(o, o.kind == 'Deployment' && o.name == 'coredns' && has(o.controller) && o.controller))) &&
+        'eks.amazonaws.com/component' in variables.labels && variables.labels['eks.amazonaws.com/component'] == 'coredns' &&
+        'k8s-app' in variables.labels && variables.labels['k8s-app'] == 'kube-dns' &&
+        size(variables.containers) == 1 && variables.containers[0].name == 'coredns' && size(variables.initContainers) == 0
+    - name: awsNodeImages
+      expression: >-
+        {'aws-node': '602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon-k8s-cni:v1.22.3-eksbuild.1',
+         'aws-eks-nodeagent': '602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-network-policy-agent:v1.3.7-eksbuild.1'}
+    - name: ebsNodeImages
+      expression: >-
+        {'ebs-plugin': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/aws-ebs-csi-driver:v1.62.0',
+         'node-driver-registrar': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/csi-node-driver-registrar:v2.17.0-eksbuild.2',
+         'liveness-probe': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/livenessprobe:v2.19.0-eksbuild.2'}
+    - name: ebsControllerImages
+      expression: >-
+        {'ebs-plugin': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/aws-ebs-csi-driver:v1.62.0',
+         'csi-provisioner': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/csi-provisioner:v6.3.0-eksbuild.1',
+         'csi-attacher': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/csi-attacher:v4.12.0-eksbuild.2',
+         'csi-snapshotter': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/csi-snapshotter:v8.6.0-eksbuild.2',
+         'csi-resizer': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/csi-resizer:v2.2.0-eksbuild.2',
+         'liveness-probe': '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/livenessprobe:v2.19.0-eksbuild.2'}
   validations:
     - expression: >-
         variables.containers.all(c,
-          ((has(c.securityContext) && has(c.securityContext.runAsNonRoot)) ? c.securityContext.runAsNonRoot :
-            (has(variables.podSpec.securityContext) && has(variables.podSpec.securityContext.runAsNonRoot) && variables.podSpec.securityContext.runAsNonRoot)) &&
-          ((has(c.securityContext) && has(c.securityContext.runAsUser)) ? c.securityContext.runAsUser != 0 :
-            (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
-          has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
-          c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
-          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0))
-      message: Containers must run as non-root, must not use UID 0, must drop ALL capabilities, and must not add capabilities.
+          (((has(c.securityContext) && has(c.securityContext.runAsNonRoot)) ? c.securityContext.runAsNonRoot :
+              (has(variables.podSpec.securityContext) && has(variables.podSpec.securityContext.runAsNonRoot) && variables.podSpec.securityContext.runAsNonRoot)) &&
+            ((has(c.securityContext) && has(c.securityContext.runAsUser)) ? c.securityContext.runAsUser != 0 :
+              (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
+            has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+            c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
+            (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+            (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+            has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation) ||
+          (variables.isAwsNode && c.name in variables.awsNodeImages && c.image == variables.awsNodeImages[c.name] && has(c.securityContext) &&
+            ((c.name == 'aws-node' && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.add) &&
+                size(c.securityContext.capabilities.add) == 2 && c.securityContext.capabilities.add.all(cap, cap in ['NET_ADMIN', 'NET_RAW'])) ||
+             (c.name == 'aws-eks-nodeagent' && has(c.securityContext.privileged) && c.securityContext.privileged &&
+                has(c.securityContext.capabilities) && has(c.securityContext.capabilities.add) &&
+                size(c.securityContext.capabilities.add) == 1 && c.securityContext.capabilities.add[0] == 'NET_ADMIN'))) ||
+          (variables.isKubeProxy && c.name == 'kube-proxy' &&
+            c.image == '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/kube-proxy:v1.36.0-eksbuild.9' &&
+            has(c.securityContext) && has(c.securityContext.privileged) && c.securityContext.privileged &&
+            (!has(c.securityContext.capabilities) || !has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0)) ||
+          (variables.isEbsNode && c.name in variables.ebsNodeImages && c.image == variables.ebsNodeImages[c.name] &&
+            has(variables.podSpec.securityContext) && has(variables.podSpec.securityContext.runAsNonRoot) && !variables.podSpec.securityContext.runAsNonRoot &&
+            has(variables.podSpec.securityContext.runAsUser) && variables.podSpec.securityContext.runAsUser == 0 && has(c.securityContext) &&
+            ((c.name == 'ebs-plugin' && has(c.securityContext.privileged) && c.securityContext.privileged &&
+                has(c.securityContext.readOnlyRootFilesystem) && c.securityContext.readOnlyRootFilesystem) ||
+             (c.name in ['node-driver-registrar', 'liveness-probe'] && has(c.securityContext.allowPrivilegeEscalation) &&
+                !c.securityContext.allowPrivilegeEscalation && has(c.securityContext.readOnlyRootFilesystem) && c.securityContext.readOnlyRootFilesystem)) &&
+            (!has(c.securityContext.capabilities) || !has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0)) ||
+          (variables.isEbsNodeWindows && c.name in variables.ebsNodeImages && c.image == variables.ebsNodeImages[c.name] &&
+            ((c.name == 'ebs-plugin' && has(c.securityContext) && has(c.securityContext.windowsOptions) &&
+                has(c.securityContext.windowsOptions.runAsUserName) && c.securityContext.windowsOptions.runAsUserName == 'ContainerAdministrator') ||
+             (c.name in ['node-driver-registrar', 'liveness-probe'] && !has(c.securityContext)))) ||
+          (variables.isEbsController && c.name in variables.ebsControllerImages && c.image == variables.ebsControllerImages[c.name] &&
+            has(variables.podSpec.securityContext) && has(variables.podSpec.securityContext.runAsNonRoot) && variables.podSpec.securityContext.runAsNonRoot &&
+            has(variables.podSpec.securityContext.runAsUser) && variables.podSpec.securityContext.runAsUser == 1000 && has(c.securityContext) &&
+            has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation &&
+            has(c.securityContext.readOnlyRootFilesystem) && c.securityContext.readOnlyRootFilesystem &&
+            (!has(c.securityContext.capabilities) || !has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0)) ||
+          (variables.isCoreDns && c.name == 'coredns' &&
+            c.image == '602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/coredns:v1.14.3-eksbuild.3' && has(c.securityContext) &&
+            has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation &&
+            has(c.securityContext.readOnlyRootFilesystem) && c.securityContext.readOnlyRootFilesystem &&
+            has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+            c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') && has(c.securityContext.capabilities.add) &&
+            size(c.securityContext.capabilities.add) == 1 && c.securityContext.capabilities.add[0] == 'NET_BIND_SERVICE'))
+      message: Containers must run as non-root, must not use UID 0, must not be privileged or allow privilege escalation, must drop ALL capabilities, and must not add capabilities.
       reason: Invalid
     - expression: >-
         variables.initContainers.all(c,
-          ((has(c.securityContext) && has(c.securityContext.runAsNonRoot)) ? c.securityContext.runAsNonRoot :
-            (has(variables.podSpec.securityContext) && has(variables.podSpec.securityContext.runAsNonRoot) && variables.podSpec.securityContext.runAsNonRoot)) &&
-          ((has(c.securityContext) && has(c.securityContext.runAsUser)) ? c.securityContext.runAsUser != 0 :
-            (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
-          has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
-          c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
-          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0))
-      message: Init containers must run as non-root, must not use UID 0, must drop ALL capabilities, and must not add capabilities.
+          (((has(c.securityContext) && has(c.securityContext.runAsNonRoot)) ? c.securityContext.runAsNonRoot :
+              (has(variables.podSpec.securityContext) && has(variables.podSpec.securityContext.runAsNonRoot) && variables.podSpec.securityContext.runAsNonRoot)) &&
+            ((has(c.securityContext) && has(c.securityContext.runAsUser)) ? c.securityContext.runAsUser != 0 :
+              (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
+            has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+            c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
+            (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+            (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+            has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation) ||
+          (variables.isAwsNode && c.name == 'aws-vpc-cni-init' &&
+            c.image == '602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon-k8s-cni-init:v1.22.3-eksbuild.1' &&
+            has(c.securityContext) && has(c.securityContext.privileged) && c.securityContext.privileged &&
+            (!has(c.securityContext.capabilities) || !has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0)))
+      message: Init containers must run as non-root, must not use UID 0, must not be privileged or allow privilege escalation, must drop ALL capabilities, and must not add capabilities.
       reason: Invalid
     - expression: >-
         variables.ephemeralContainers.all(c,
@@ -64,9 +182,19 @@ spec:
             (!has(variables.podSpec.securityContext) || !has(variables.podSpec.securityContext.runAsUser) || variables.podSpec.securityContext.runAsUser != 0)) &&
           has(c.securityContext) && has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
           c.securityContext.capabilities.drop.exists(cap, cap == 'ALL') &&
-          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0))
-      message: Ephemeral containers must run as non-root, must not use UID 0, must drop ALL capabilities, and must not add capabilities.
+          (!has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+          (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+          has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation)
+      message: Ephemeral containers must run as non-root, must not use UID 0, must not be privileged or allow privilege escalation, must drop ALL capabilities, and must not add capabilities.
       reason: Invalid
+    - expression: >-
+        (((!has(variables.podSpec.hostNetwork) || !variables.podSpec.hostNetwork) &&
+          (!has(variables.podSpec.hostPID) || !variables.podSpec.hostPID) &&
+          (!has(variables.podSpec.hostIPC) || !variables.podSpec.hostIPC) &&
+          (!has(variables.podSpec.volumes) || variables.podSpec.volumes.all(v, !has(v.hostPath)))) ||
+         variables.isAwsNode || variables.isKubeProxy || variables.isEbsNode || variables.isEbsNodeWindows)
+      message: Pod templates must not use host network, host PID/IPC namespaces, or hostPath volumes unless they match an approved system exception.
+      reason: Forbidden
     - expression: >-
         variables.containers.all(c, c.image.matches('^.+@sha256:[0-9A-Fa-f]{64}$') ||
           (c.image.matches('^[^@]+:[^/:@]+$') && !c.image.lowerAscii().endsWith(':latest')))

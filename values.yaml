@@ -24,6 +24,113 @@ externalSecrets:
   # Default matches production release namespace; override in values-dev.yaml for dev.
   namespace: techx-corp-prod
 
+# Mandate 05 runtime-security inventory.
+# This is a scheduled drift detector for already-existing workload specs. It is
+# disabled by default and enabled only in production after VAP enforce is live.
+runtimeHardeningInventory:
+  enabled: false
+  clusterName: techx-tf2-prod
+  environment: production
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  activeDeadlineSeconds: 120
+  backoffLimit: 0
+  serviceAccountName: runtime-hardening-inventory
+  image:
+    repository: public.ecr.aws/docker/library/python
+    tag: "3.13.5-alpine3.22"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  # Exact system exception profiles approved in SEC-07 evidence. These are
+  # field-level exceptions, not namespace exclusions.
+  exceptionProfiles:
+    - rootKey: kube-system/DaemonSet/aws-node
+      containers:
+        - aws-node
+        - aws-eks-nodeagent
+        - aws-vpc-cni-init
+        - "<pod-spec>"
+      rules:
+        - ADDED_CAPS
+        - DROP_ALL
+        - NON_ROOT
+        - PRIV_ESC
+        - PRIVILEGED
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/DaemonSet/kube-proxy
+      containers:
+        - kube-proxy
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - PRIV_ESC
+        - PRIVILEGED
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/DaemonSet/ebs-csi-node
+      containers:
+        - ebs-plugin
+        - node-driver-registrar
+        - liveness-probe
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - UID_0
+        - PRIV_ESC
+        - PRIVILEGED
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/DaemonSet/ebs-csi-node-windows
+      containers:
+        - ebs-plugin
+        - node-driver-registrar
+        - liveness-probe
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - PRIV_ESC
+        - HOST_NETWORK
+        - HOST_PATH
+    - rootKey: kube-system/Deployment/ebs-csi-controller
+      containers:
+        - ebs-plugin
+        - csi-provisioner
+        - csi-attacher
+        - csi-snapshotter
+        - csi-resizer
+        - liveness-probe
+      rules:
+        - DROP_ALL
+    - rootKey: kube-system/Deployment/coredns
+      containers:
+        - coredns
+      rules:
+        - ADDED_CAPS
+        - NON_ROOT
+
 default:
   storageClassName: gp2
   rollout:
@@ -97,7 +204,8 @@ default:
         whenUnsatisfiable: ScheduleAnyway
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: ScheduleAnyway
+        whenUnsatisfiable: DoNotSchedule
+        minDomains: 2
   # Default podSecurityContext for all components
   podSecurityContext:
     seccompProfile:
@@ -133,6 +241,7 @@ default:
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
+  automountServiceAccountToken: false
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
@@ -757,6 +866,7 @@ components:
 
   frontend:
     enabled: true
+    optionalDependencyTimeoutMs: 500
     useDefault:
       env: true
     # Stateless app → Karpenter (inherits default hard spot-tolerant contract)
@@ -797,6 +907,8 @@ components:
         value: product-catalog:8080
       - name: PRODUCT_REVIEWS_ADDR
         value: product-reviews:3551
+      - name: SHOPPING_COPILOT_ADDR
+        value: shopping-copilot:3552
       - name: RECOMMENDATION_ADDR
         value: recommendation:8080
       - name: SHIPPING_ADDR
@@ -1376,7 +1488,7 @@ components:
       # busybox: extract verified archive into the model emptyDir.
       extractorImage: busybox:1.37.0
       s3Uri: s3://techx-dev-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/model.tar.gz
-      mountPath: /models/huggingface
+      mountPath: /models
       cacheSizeLimit: 2Gi
       resources:
         requests:
@@ -1482,6 +1594,92 @@ components:
             "-c",
             "until nc -z -v -w30 postgresql 5432; do echo waiting for postgresql; sleep 2; done;",
           ]
+
+  # Enable in an environment overlay after its provider and IRSA configuration
+  # have been applied.
+  shopping-copilot:
+    enabled: false
+    serviceAccount:
+      create: true
+      name: shopping-copilot
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-dev-tf2-shopping-copilot-model-read
+    modelDelivery:
+      enabled: true
+      awsRegion: us-east-1
+      fetcherImage: public.ecr.aws/aws-cli/aws-cli:2.27.49
+      extractorImage: busybox:1.37.0
+      s3Uri: s3://techx-dev-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/model.tar.gz
+      mountPath: /models
+      cacheSizeLimit: 2Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    useDefault:
+      env: true
+    startupProbe:
+      grpc:
+        port: 3552
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 24
+    readinessProbe:
+      grpc:
+        port: 3552
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    livenessProbe:
+      tcpSocket:
+        port: 3552
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 5
+    service:
+      port: 3552
+    env:
+      - name: SHOPPING_COPILOT_PORT
+        value: "3552"
+      - name: LLM_PROVIDER
+        value: bedrock
+      - name: AWS_REGION
+        value: us-east-1
+      - name: BEDROCK_MODEL_ID
+        value: global.amazon.nova-2-lite-v1:0
+      - name: BEDROCK_MAX_TOKENS
+        value: "1024"
+      - name: PRODUCT_CATALOG_ADDR
+        value: product-catalog:8080
+      - name: PRODUCT_REVIEWS_ADDR
+        value: product-reviews:3551
+      - name: CART_ADDR
+        value: cart:8080
+      - name: VALKEY_ADDR
+        value: valkey-cart:6379
+      - name: GRPC_MAX_WORKERS
+        value: "16"
+      - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+        value: python
+      - name: OTEL_PYTHON_LOG_CORRELATION
+        value: "true"
+      - name: OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+        value: "false"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://$(OTEL_COLLECTOR_NAME):4317
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    mountedEmptyDirs:
+      - name: tmp-dir
+        mountPath: /tmp
 
   quote:
     enabled: true

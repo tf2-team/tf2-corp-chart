@@ -1,6 +1,0 @@
-Gatekeeper {{ .Chart.AppVersion | default "3.23.0" }} is managed by Argo CD in
-namespace {{ .Release.Namespace }}.
-
-Wait for the controller before applying the separate policy Application:
-  kubectl -n {{ .Release.Namespace }} rollout status deployment/gatekeeper-controller-manager
-  kubectl -n {{ .Release.Namespace }} rollout status deployment/gatekeeper-audit

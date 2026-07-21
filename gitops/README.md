@@ -14,16 +14,14 @@ Cluster-specific Argo CD `AppProject` + `Application` manifests for the platform
 | `root-prod` / `root-dev` | `gitops/clusters/{prod,dev}` (directory) | n/a (app-of-apps) | `argocd` |
 | `techx-corp` / `techx-corp-dev` | `.` (root chart) | `techx-corp` / `techx-corp-dev` | `techx-corp-prod` / `techx-corp-dev` |
 | `techx-corp-secrets` / `techx-corp-secrets-dev` | `secrets-chart` | `techx-corp-secrets` | same as app NS |
-| `runtime-hardening` (prod only) | `gitops/runtime-hardening/overlays/audit` then `enforce` | n/a | cluster-scoped |
-| `gatekeeper` (prod only) | `gatekeeper-chart` | `gatekeeper` | `gatekeeper-system` |
-| `gatekeeper-policy` (prod only) | `gitops/gatekeeper` | n/a (kustomize/dir) | `gatekeeper-system` |
+| `runtime-hardening` (prod only) | `gitops/runtime-hardening/overlays/audit`, `enforce`, then `enforce-clusterwide` | n/a | cluster-scoped |
 
 `secrets-chart` is a **separate** Application from the main app chart so ExternalSecret
 mapping changes auto-sync without waiting for a manual `helm upgrade`.
 
 Root Applications reconcile **Application** and **AppProject** CRs only. They do **not**
 deploy workload charts. Child Applications own store, secrets, admission policy,
-and the temporary Gatekeeper migration baseline.
+and native Kubernetes runtime-hardening admission.
 
 ## Prerequisites
 

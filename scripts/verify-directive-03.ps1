@@ -66,7 +66,8 @@ function Assert-MinimumReplicaFloor {
     }
 }
 
-# Money-path / storefront stateless floor: two Ready replicas + PDB + hard spread.
+# Money-path / storefront stateless floor: two Ready replicas + PDB. Zone
+# spread is soft so workloads can recover in one AZ; hostname remains hard.
 $criticalServices = @(
     "ad", "cart", "checkout", "currency", "email", "frontend",
     "frontend-proxy", "image-provider", "payment", "product-catalog",
@@ -91,11 +92,11 @@ foreach ($name in $criticalServices) {
     if ($pdb.Count -ne 1) {
         throw "${name}: expected exactly one PodDisruptionBudget"
     }
-    Assert-Match $pdb[0] "(?m)^  minAvailable: 1$" "${name}: PDB minAvailable must be 1"
+    Assert-Match $pdb[0] "(?m)^  (minAvailable: [12]|maxUnavailable: 1)$" "${name}: PDB configuration is invalid"
     Assert-Match $deployment[0] "(?ms)^  strategy:\s+rollingUpdate:\s+maxSurge: 1\s+maxUnavailable: 0\s+type: RollingUpdate" "${name}: unsafe rolling update strategy"
     Assert-Match $deployment[0] "(?m)^      terminationGracePeriodSeconds: 30$" "${name}: termination grace must be 30 seconds"
     Assert-Match $deployment[0] "(?ms)^          readinessProbe:.*?          lifecycle:\s+preStop:\s+sleep:\s+seconds: 10" "${name}: readiness and native preStop drain hook are required"
-    Assert-Match $deployment[0] "(?ms)^      topologySpreadConstraints:.*?topologyKey: topology.kubernetes.io/zone\s+whenUnsatisfiable: DoNotSchedule\s+minDomains: 2.*?topologyKey: kubernetes.io/hostname\s+whenUnsatisfiable: DoNotSchedule\s+minDomains: 2" "${name}: hard two-AZ/two-host spread is required"
+    Assert-Match $deployment[0] "(?ms)^      topologySpreadConstraints:.*?topologyKey: topology.kubernetes.io/zone\s+whenUnsatisfiable: ScheduleAnyway.*?topologyKey: kubernetes.io/hostname\s+whenUnsatisfiable: DoNotSchedule\s+minDomains: 2" "${name}: zone spread must be soft and hostname spread must remain hard"
 
     Write-Host "PASS $name"
 }
@@ -122,8 +123,12 @@ Write-Host "PASS flagd (singleton on critical)"
 
 foreach ($name in @("kafka", "postgresql", "opensearch")) {
     [array]$statefulSet = @(Get-Manifest -Kind "StatefulSet" -Name $name)
+    if ($statefulSet.Count -eq 0 -and $name -in @("kafka", "postgresql")) {
+        Write-Host "PASS $name (managed production dependency)"
+        continue
+    }
     if ($statefulSet.Count -ne 1) {
-        throw "${name}: expected exactly one StatefulSet"
+        throw "${name}: expected one reviewed StatefulSet or an approved managed production dependency"
     }
     Assert-Match $statefulSet[0] "(?m)^  replicas: 1$" "${name}: chart safety boundary expects the reviewed singleton architecture"
     if ((Get-Manifest -Kind "PodDisruptionBudget" -Name $name).Count -ne 0) {

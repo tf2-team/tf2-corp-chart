@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: vap-invalid-hostpath, namespace: default}
+spec:
+  schedule: "0 0 1 1 *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+          containers:
+            - name: app
+              image: registry.k8s.io/pause:3.10
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests: {cpu: 10m, memory: 16Mi}
+                limits: {cpu: 100m, memory: 64Mi}
+              volumeMounts:
+                - name: host-root
+                  mountPath: /host
+          volumes:
+            - name: host-root
+              hostPath:
+                path: /

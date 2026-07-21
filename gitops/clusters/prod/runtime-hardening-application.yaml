@@ -8,9 +8,9 @@ spec:
   source:
     repoURL: https://github.com/tf2-team/tf2-corp-chart.git
     targetRevision: main
-    # Phase 3 enforces runtime hardening after audit inventory, CEL review, and
-    # production regression gates completed without violations.
-    path: gitops/runtime-hardening/overlays/enforce
+    # Final cluster-wide enforcement after exact system exceptions, Gatekeeper
+    # retirement, full inventory, server dry-run, and regression gates passed.
+    path: gitops/runtime-hardening/overlays/enforce-clusterwide
   destination:
     server: https://kubernetes.default.svc
     namespace: techx-corp-prod
