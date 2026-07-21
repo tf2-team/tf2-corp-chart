@@ -11,7 +11,11 @@ $baseArgs = @(
 )
 
 function Render([bool]$Enabled, [bool]$Enforce, [bool]$Proxy) {
-    $args = $baseArgs + @(
+    $args = $baseArgs
+    if ($Proxy) {
+        $args += @("--values", (Join-Path $PSScriptRoot "network-policy-values.yaml"))
+    }
+    $args += @(
         "--set", "networkPolicy.enabled=$($Enabled.ToString().ToLowerInvariant())",
         "--set", "networkPolicy.enforceEgress=$($Enforce.ToString().ToLowerInvariant())",
         "--set", "egressProxy.enabled=$($Proxy.ToString().ToLowerInvariant())"
@@ -29,7 +33,11 @@ function NetworkPolicyDocuments([string]$Rendered) {
 }
 
 function Assert-InvalidValues([bool]$Enabled, [bool]$Enforce, [bool]$Proxy) {
-    $args = $baseArgs + @(
+    $args = $baseArgs
+    if ($Proxy) {
+        $args += @("--values", (Join-Path $PSScriptRoot "network-policy-values.yaml"))
+    }
+    $args += @(
         "--set", "networkPolicy.enabled=$($Enabled.ToString().ToLowerInvariant())",
         "--set", "networkPolicy.enforceEgress=$($Enforce.ToString().ToLowerInvariant())",
         "--set", "egressProxy.enabled=$($Proxy.ToString().ToLowerInvariant())"
@@ -45,7 +53,16 @@ if ($disabled.Count -ne 0) { throw "disabled state rendered NetworkPolicy resour
 
 Assert-InvalidValues $false $true $true
 Assert-InvalidValues $true $true $false
+$missingGrafanaProxyArgs = $baseArgs + @(
+    "--set", "networkPolicy.enabled=true",
+    "--set", "networkPolicy.enforceEgress=true",
+    "--set", "egressProxy.enabled=true"
+)
+& $Helm @missingGrafanaProxyArgs 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) { throw "full enforcement accepted Grafana without proxy environment" }
+
 $missingDigestArgs = $baseArgs + @(
+    "--values", (Join-Path $PSScriptRoot "network-policy-values.yaml"),
     "--set", "networkPolicy.enabled=true",
     "--set", "networkPolicy.enforceEgress=true",
     "--set", "egressProxy.enabled=true",
@@ -102,6 +119,39 @@ foreach ($requiredPolicy in @(
 }
 if ($fullRendered -notmatch 'app.kubernetes.io/component: otel-collector') {
     throw "OTel collector pods are missing the selector label used by NetworkPolicy"
+}
+
+$grafanaDoc = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/charts/grafana/templates/deployment.yaml' -and
+    $_ -match '(?m)^kind: Deployment$'
+}
+if ($grafanaDoc.Count -ne 1) { throw "full state must render one Grafana Deployment" }
+foreach ($required in @(
+    'name: "HTTPS_PROXY"', 'name: "https_proxy"', 'name: "NO_PROXY"', 'name: "no_proxy"',
+    'value: "http://egress-proxy:10000"', 'opentelemetry.io/name: grafana'
+)) {
+    if ($grafanaDoc -notmatch [regex]::Escape($required)) { throw "Grafana proxy environment missing: $required" }
+}
+$grafanaPolicy = $full | Where-Object { $_ -match '(?m)^  name: grafana$' }
+if ($grafanaPolicy.Count -ne 1 -or $grafanaPolicy -notmatch 'app.kubernetes.io/name: egress-proxy') {
+    throw "Grafana policy must allow egress to the proxy"
+}
+
+$proxyConfig = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/templates/egress-proxy.yaml' -and
+    $_ -match '(?m)^kind: ConfigMap$'
+}
+foreach ($requiredDomain in @(
+    'athena.ap-southeast-1.amazonaws.com:443',
+    'glue.ap-southeast-1.amazonaws.com:443',
+    'sts.ap-southeast-1.amazonaws.com:443',
+    's3.ap-southeast-1.amazonaws.com:443',
+    '*.s3.ap-southeast-1.amazonaws.com:443',
+    'discord.com:443'
+)) {
+    if ($proxyConfig -notmatch [regex]::Escape($requiredDomain)) {
+        throw "Grafana proxy allowlist domain missing: $requiredDomain"
+    }
 }
 
 $proxyDoc = ($fullRendered -split '(?m)^---\s*$') | Where-Object {

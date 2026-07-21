@@ -474,6 +474,55 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "required": ["networkPolicy"],
+        "properties": {
+          "networkPolicy": {
+            "required": ["enforceEgress"],
+            "properties": {
+              "enforceEgress": { "const": true }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["egressProxy", "grafana"],
+        "properties": {
+          "egressProxy": {
+            "required": ["callers", "allowedDomains"],
+            "properties": {
+              "callers": { "contains": { "const": "grafana" } },
+              "allowedDomains": {
+                "allOf": [
+                  { "contains": { "const": "athena.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "glue.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "sts.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "s3.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "*.s3.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "discord.com:443" } }
+                ]
+              }
+            }
+          },
+          "grafana": {
+            "required": ["env"],
+            "properties": {
+              "env": {
+                "type": "object",
+                "required": ["HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"],
+                "properties": {
+                  "HTTPS_PROXY": { "const": "http://egress-proxy:10000" },
+                  "https_proxy": { "const": "http://egress-proxy:10000" },
+                  "NO_PROXY": { "type": "string", "minLength": 1 },
+                  "no_proxy": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "definitions": {

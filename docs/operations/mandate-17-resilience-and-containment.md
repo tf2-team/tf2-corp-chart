@@ -43,10 +43,12 @@ missing.
 
 - Do not start C1 while CoreDNS replicas are co-located in one AZ/node; DNS is
   a money-path dependency for the AZ-loss test.
-- Before C2, prove the Grafana Athena/Discord outbound path through an approved
-  proxy configuration or document a reviewed operational exception. The
-  current subchart does not receive proxy environment variables, so C2 would
-  otherwise break those external integrations.
+- Before C2, add the four proxy variables from
+  `tests/mandate17/network-policy-values.yaml` under `grafana.env` in the
+  activation values. Schema validation rejects full enforcement without them.
+  The proxy allowlist covers the CUR datasource's Athena/Glue/STS/S3 endpoints
+  in `ap-southeast-1` and the Discord contact point at `discord.com:443`.
+  Prove both paths in the activation window; do not widen the proxy allowlist.
 - Capture the positive traffic matrix and node headroom before activating the
   two proxy replicas. Do not compensate by widening an application rule.
 
@@ -86,8 +88,10 @@ any SLO, IRSA, telemetry, flagd, or Argo regression.
 ### 4. Full containment activation
 
 Set `egressProxy.enabled=true` and `networkPolicy.enforceEgress=true` in one
-reviewed revision. Wait for a healthy PolicyEndpoint for every selected
-workload. Run positive flows first, then the attacker test:
+reviewed revision. Copy the tested `grafana.env` proxy block into the
+production activation overlay in the same revision. Wait for a healthy
+PolicyEndpoint for every selected workload. Run positive flows first, then the
+attacker test:
 
 ```powershell
 $ctx = "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod"
@@ -104,6 +108,12 @@ must fail. The script requires a PolicyEndpoint for every NetworkPolicy and
 coverage for every running pod, then waits until the attacker pod itself is in
 PolicyEndpoint coverage before executing probes. It always removes its
 Deployment and ServiceAccount.
+
+For the Grafana positive gate, run one CUR dashboard query that reaches Athena
+and S3, then send a dedicated test alert through the existing Discord contact
+point. Record the Grafana query/alert timestamps and proxy access counters for
+the same window. The in-cluster AIOps webhook remains covered by `NO_PROXY` and
+must also continue to succeed.
 
 ## Rollback
 

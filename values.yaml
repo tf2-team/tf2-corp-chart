@@ -33,6 +33,7 @@ egressProxy:
   adminPort: 9901
   callers:
     - checkout
+    - grafana
     - product-reviews
     - shopping-copilot
   noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8"
@@ -44,6 +45,14 @@ egressProxy:
     - dynamodb.us-east-1.amazonaws.com:443
     - s3.us-east-1.amazonaws.com:443
     - "*.s3.us-east-1.amazonaws.com:443"
+    # Grafana CUR datasource uses Athena, Glue, STS and S3 in ap-southeast-1.
+    - athena.ap-southeast-1.amazonaws.com:443
+    - glue.ap-southeast-1.amazonaws.com:443
+    - sts.ap-southeast-1.amazonaws.com:443
+    - s3.ap-southeast-1.amazonaws.com:443
+    - "*.s3.ap-southeast-1.amazonaws.com:443"
+    # Grafana alert contact point. The webhook path/token stays encrypted inside CONNECT.
+    - discord.com:443
   resources:
     requests:
       cpu: 25m
@@ -2945,6 +2954,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  # Align with the egress-proxy caller selector used during Mandate 17 C2.
+  podLabels:
+    opentelemetry.io/name: grafana
   # The persistent storage uses fsGroup 472; the root/CHOWN init container is unnecessary.
   initChownData:
     enabled: false

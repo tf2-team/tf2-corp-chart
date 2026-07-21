@@ -3,3 +3,9 @@ networkPolicy:
   enforceEgress: true
 egressProxy:
   enabled: true
+grafana:
+  env:
+    HTTPS_PROXY: http://egress-proxy:10000
+    https_proxy: http://egress-proxy:10000
+    NO_PROXY: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
+    no_proxy: .svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8
