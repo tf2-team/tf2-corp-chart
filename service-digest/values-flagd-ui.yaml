@@ -2,3 +2,7 @@
 # Populated under service-digest/ after a successful platform rebuild of this service.
 # Until a digest is written, the chart uses default.image.tag (or component overrides).
 # Change trail: @hungxqt - 2026-07-20 - Bootstrap service-digest overlay for selective image promote.
+components:
+  flagd:
+    sidecarImageDigests:
+      flagd-ui: "sha256:3c6589c746b701faf33e8ce1e17d000c535fc8ce84d737531e6217ba90521e8b"
