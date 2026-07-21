@@ -222,10 +222,8 @@ components:
     schedulingRules: *directive03-hard-spread
 
   flagd:
-    # Singleton control plane on Critical MNG (system-* / workload-class=critical).
-    # Not on the Directive #3 two-replica money-path floor: load is tiny, BTC HTTP
-    # is authoritative for chaos keys, and multi-replica emptyDir splits local-* UI.
-    replicas: 1
+    # High Availability (HA) control plane on Critical MNG (system-* / workload-class=critical).
+    replicas: 2
     # Dual sources: local ConfigMap file + BTC central HTTP.
     # Merge order: later source wins on key clash — HTTP last so BTC always wins
     # for shared original keys (paymentFailure, cartFailure, …).
