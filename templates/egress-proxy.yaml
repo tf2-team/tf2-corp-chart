@@ -1,0 +1,218 @@
+{{- if .Values.egressProxy.enabled }}
+{{- $proxy := .Values.egressProxy }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: egress-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: egress-proxy
+    app.kubernetes.io/component: egress-proxy
+    app.kubernetes.io/part-of: techx-corp
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: egress-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: egress-proxy
+    app.kubernetes.io/component: egress-proxy
+    app.kubernetes.io/part-of: techx-corp
+data:
+  envoy.yaml: |
+    admin:
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: {{ $proxy.adminPort }}
+    static_resources:
+      listeners:
+        - name: https_connect_proxy
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: {{ $proxy.port }}
+          filter_chains:
+            - filters:
+                - name: envoy.filters.network.http_connection_manager
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                    stat_prefix: egress_connect
+                    request_timeout: 30s
+                    route_config:
+                      name: allowed_https_destinations
+                      virtual_hosts:
+                        - name: allowed
+                          domains:
+                          {{- range $proxy.allowedDomains }}
+                            - {{ . | quote }}
+                          {{- end }}
+                          routes:
+                            - match:
+                                connect_matcher: {}
+                              route:
+                                cluster: dynamic_forward_proxy
+                                timeout: 0s
+                                upgrade_configs:
+                                  - upgrade_type: CONNECT
+                                    connect_config: {}
+                    http_filters:
+                      - name: envoy.filters.http.dynamic_forward_proxy
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.FilterConfig
+                          dns_cache_config:
+                            name: mandate17_dns_cache
+                            dns_lookup_family: V4_ONLY
+                      - name: envoy.filters.http.router
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+      clusters:
+        - name: dynamic_forward_proxy
+          connect_timeout: 5s
+          lb_policy: CLUSTER_PROVIDED
+          cluster_type:
+            name: envoy.clusters.dynamic_forward_proxy
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
+              dns_cache_config:
+                name: mandate17_dns_cache
+                dns_lookup_family: V4_ONLY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: egress-proxy
+    app.kubernetes.io/component: egress-proxy
+    app.kubernetes.io/part-of: techx-corp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: egress-proxy
+  ports:
+    - name: proxy
+      port: {{ $proxy.port }}
+      targetPort: proxy
+      protocol: TCP
+    - name: metrics
+      port: {{ $proxy.adminPort }}
+      targetPort: metrics
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: egress-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: egress-proxy
+    app.kubernetes.io/component: egress-proxy
+    app.kubernetes.io/part-of: techx-corp
+spec:
+  replicas: {{ $proxy.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: egress-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: egress-proxy
+        app.kubernetes.io/component: egress-proxy
+        app.kubernetes.io/part-of: techx-corp
+        opentelemetry.io/name: egress-proxy
+    spec:
+      serviceAccountName: egress-proxy
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      containers:
+        - name: envoy
+          image: {{ printf "%s:%s" $proxy.image.repository $proxy.image.tag | quote }}
+          imagePullPolicy: {{ $proxy.image.pullPolicy }}
+          args:
+            - -c
+            - /etc/envoy/envoy.yaml
+            - --log-level
+            - warning
+          ports:
+            - name: proxy
+              containerPort: {{ $proxy.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ $proxy.adminPort }}
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: proxy
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            tcpSocket:
+              port: proxy
+            periodSeconds: 10
+            timeoutSeconds: 2
+          resources:
+            {{- toYaml $proxy.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /etc/envoy
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: egress-proxy
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: egress-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: egress-proxy
+    app.kubernetes.io/component: egress-proxy
+    app.kubernetes.io/part-of: techx-corp
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: egress-proxy
+{{- end }}

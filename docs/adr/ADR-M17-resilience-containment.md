@@ -33,13 +33,23 @@ increases lateral-movement impact after application compromise.
    surviving zone. Hostname topology spread remains `DoNotSchedule` to avoid
    co-locating replicas on one node.
 5. Flagd source, key, provider, ports, singleton placement, and incident
-   behavior are unchanged. NetworkPolicy remains disabled in this change and is
-   owned by the containment workstream.
+   behavior are unchanged.
+6. NetworkPolicy has three rollout states: disabled, ingress-only, and full
+   ingress/egress enforcement. AWS VPC CNI remains in `standard` mode during
+   Mandate 17.
+7. External HTTPS for approved callers uses a two-replica Envoy CONNECT proxy
+   with a hostname allowlist. Application pods cannot egress directly to the
+   internet; flagd retains its existing exact BTC provider path.
+8. The attacker fixture is a hardened Deployment with no Kubernetes token and
+   only DNS egress. It must not reach application services, Kubernetes API,
+   managed data planes, the proxy, or arbitrary internet.
 
 ## Safety and rollout
 
 - Merge and validate the platform fallback before promoting its immutable image.
 - Roll out identity/AZ changes before any NetworkPolicy activation.
+- Apply CNI support while application policy is disabled, then activate
+  ingress-only before full egress containment.
 - Require Argo CD `Synced/Healthy`, available error budget, and no open incident.
 - Run dependency and AZ chaos as separate windows under continuous load.
 - Chaos scripts capture initial state and restore replicas/nodes in `finally`.
@@ -54,6 +64,8 @@ increases lateral-movement impact after application compromise.
   below 750 ms for the affected endpoint.
 - AZ fault requires browse/cart/checkout SLO and successful node uncordon.
 - IRSA, observability, storefront exposure, and flagd must remain functional.
+- Static verification must prove ingress-only renders no egress isolation and
+  only the proxy owns an internet CIDR rule in full mode.
 
 ## Rollback
 
@@ -62,6 +74,8 @@ increases lateral-movement impact after application compromise.
   grant broad RBAC as a rollback shortcut.
 - The dependency script restores the original replica count.
 - The AZ script uncordons every node it cordoned, including on failure.
+- Network rollback is `true/true -> true/false -> false/false`; CNI rollback is
+  last and only after application policy is disabled.
 
 ## Consequences
 

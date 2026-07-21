@@ -141,6 +141,16 @@ spec:
             - name: OPTIONAL_DEPENDENCY_TIMEOUT_MS
               value: {{ .optionalDependencyTimeoutMs | quote }}
             {{- end }}
+            {{- if and .egressProxy .egressProxy.enabled (has .name .egressProxy.callers) }}
+            - name: HTTPS_PROXY
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: https_proxy
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: NO_PROXY
+              value: {{ .egressProxy.noProxy | quote }}
+            - name: no_proxy
+              value: {{ .egressProxy.noProxy | quote }}
+            {{- end }}
             {{- if and .modelDelivery .modelDelivery.enabled }}
             - name: HF_HOME
               value: {{ .modelDelivery.mountPath | quote }}
@@ -276,6 +286,16 @@ spec:
               value: {{ .modelDelivery.awsRegion | quote }}
             - name: AWS_EC2_METADATA_DISABLED
               value: "true"
+            {{- if and .egressProxy .egressProxy.enabled (has .name .egressProxy.callers) }}
+            - name: HTTPS_PROXY
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: https_proxy
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: NO_PROXY
+              value: {{ .egressProxy.noProxy | quote }}
+            - name: no_proxy
+              value: {{ .egressProxy.noProxy | quote }}
+            {{- end }}
             # AWS CLI caches web-identity credentials under $HOME/.aws. The
             # init container runs with readOnlyRootFilesystem; HOME must point
             # at the writable emptyDir mounted at /tmp (default HOME is /).

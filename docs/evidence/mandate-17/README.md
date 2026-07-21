@@ -2,11 +2,14 @@
 
 ## Implementation baseline
 
-- Platform baseline: `ac10d15`
-- Chart baseline: `cff9931`
+- Platform merge: `ba6dd5b` (PR #54, contains `78b671f`)
+- Chart identity/AZ merge: `5025ada` (PR #178, contains `f508baa`)
+- Infra containment baseline: `50ff12b`
 - Implementation date: 2026-07-21
 - Platform branch: `mandate-17/optional-dependency-resilience`
 - Chart branch: `mandate-17/identity-az-resilience`
+- Infra Plan 2 branch: `mandate-17/vpc-cni-network-policy`
+- Chart Plan 2 branch: `mandate-17/network-containment`
 
 Replace baseline values with merged commit SHAs and exact Argo target revision
 before running live tests.
@@ -22,6 +25,7 @@ before running live tests.
 | Directive 3 | `scripts/verify-directive-03.ps1` | Pass |
 | Mandate 5 regression | `scripts/verify-runtime-hardening.ps1` | Local render/schema contracts pass |
 | Identity inventory | `scripts/mandate17-inventory.ps1` | 21 rendered first-party workloads pass |
+| Containment render | `tests/mandate17/verify-rendered-manifests.ps1` | Disabled, ingress-only, full enforcement, proxy and attacker contracts pass |
 
 The repository's existing `npm run lint` command is not a valid Next.js 16
 command (`next lint` was removed), and the legacy `.eslintrc` is incompatible
@@ -39,6 +43,11 @@ Mandate 17 change does not modify CI or lint configuration.
       `X-TechX-Degraded-Dependencies: ad` and p95 below 750 ms.
 - [ ] AZ fault keeps browse/cart/checkout SLO and all cordoned nodes are restored.
 - [ ] Storefront exposure, operational endpoints, observability, and flagd checks pass.
+- [ ] Infra CNI NetworkPolicy change is applied in `standard` mode while Chart policy is disabled.
+- [ ] Ingress-only activation passes positive traffic and SLO checks.
+- [ ] Full activation has healthy PolicyEndpoints and proxy metrics.
+- [ ] Attacker test passes DNS and blocks lateral movement, Kubernetes API,
+      managed data planes, proxy access, and arbitrary internet.
 
 ## Approved live commands
 

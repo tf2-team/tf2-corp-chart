@@ -1,0 +1,69 @@
+name: Mandate 17 containment verification
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mandate17.yml"
+      - "templates/networkpolicy.yaml"
+      - "templates/egress-proxy.yaml"
+      - "templates/_objects.tpl"
+      - "templates/component.yaml"
+      - "scripts/mandate17-*.ps1"
+      - "tests/mandate17/**"
+      - "values.schema.json"
+      - "values*.yaml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mandate17.yml"
+      - "templates/networkpolicy.yaml"
+      - "templates/egress-proxy.yaml"
+      - "templates/_objects.tpl"
+      - "templates/component.yaml"
+      - "scripts/mandate17-*.ps1"
+      - "tests/mandate17/**"
+      - "values.schema.json"
+      - "values*.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install yq
+        run: |
+          sudo wget -q https://github.com/mikefarah/yq/releases/download/v4.47.2/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+      - name: Build Helm dependencies
+        run: |
+          helm repo add opentelemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add jaeger https://jaegertracing.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana-community.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+          helm dependency build .
+      - name: Helm lint
+        run: helm lint . -f values.yaml -f values-public-alb.yaml -f values-prod.yaml
+      - name: Verify three-state containment manifests
+        shell: pwsh
+        run: ./tests/mandate17/verify-rendered-manifests.ps1
+      - name: Verify identity and AZ regression
+        shell: pwsh
+        run: |
+          ./scripts/mandate17-inventory.ps1
+          ./scripts/verify-directive-03.ps1
+      - name: Validate Envoy proxy configuration
+        run: |
+          helm template techx-corp . \
+            --namespace techx-corp-prod \
+            -f values.yaml -f values-public-alb.yaml -f values-prod.yaml \
+            --set egressProxy.enabled=true \
+            --show-only templates/egress-proxy.yaml > /tmp/egress-proxy.yaml
+          yq 'select(.kind == "ConfigMap").data."envoy.yaml"' /tmp/egress-proxy.yaml > /tmp/envoy.yaml
+          image="$(yq -r '.egressProxy.image.repository + ":" + .egressProxy.image.tag' values.yaml)"
+          docker run --rm -v /tmp/envoy.yaml:/tmp/envoy.yaml:ro "${image}" \
+            --mode validate -c /tmp/envoy.yaml

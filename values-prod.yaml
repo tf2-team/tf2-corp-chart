@@ -17,6 +17,14 @@ externalSecrets:
 runtimeHardeningInventory:
   enabled: true
 
+# Mandate 17 activation is intentionally split into later, reversible PRs.
+networkPolicy:
+  enabled: false
+  enforceEgress: false
+
+egressProxy:
+  enabled: false
+
 grafana:
   grafana.ini:
     server:

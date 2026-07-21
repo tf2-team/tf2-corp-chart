@@ -10,7 +10,46 @@
 #   Phase 2 — enforce: set enabled: true in dev; soak 24h, check OTel traces for errors.
 #   Phase 3 — promote: apply to prod after dev soak is clean.
 networkPolicy:
-  enabled: false # flip to true after CNI audit (see docs above)
+  enabled: false
+  # Three-state rollout: false/false = disabled, true/false = ingress only,
+  # true/true = ingress and egress enforcement.
+  enforceEgress: false
+  vpcCidr: 10.0.0.0/16
+  albIngressCidrs:
+    - 10.0.0.0/16
+  # flagd keeps its existing BTC HTTP provider path and is not proxy-injected.
+  flagdSyncCidrs:
+    - 122.248.223.194/32
+
+egressProxy:
+  enabled: false
+  replicas: 2
+  image:
+    repository: envoyproxy/envoy
+    tag: distroless-v1.38.0
+    pullPolicy: IfNotPresent
+  port: 10000
+  adminPort: 9901
+  callers:
+    - checkout
+    - product-reviews
+    - shopping-copilot
+  noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8"
+  allowedDomains:
+    # Envoy matches the CONNECT target, which includes the destination port.
+    - api.groq.com:443
+    - bedrock-runtime.us-east-1.amazonaws.com:443
+    - sts.us-east-1.amazonaws.com:443
+    - dynamodb.us-east-1.amazonaws.com:443
+    - s3.us-east-1.amazonaws.com:443
+    - "*.s3.us-east-1.amazonaws.com:443"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 #
 # SEC-05: Sensitive credentials use secretKeyRef → ESO-synced Secrets.
