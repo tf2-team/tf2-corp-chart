@@ -1,8 +1,9 @@
 # Managed by tf2-corp-platform secure delivery pipeline.
-# Populated under service-digest/ after a successful platform rebuild of this service.
-# Until a digest is written, the chart uses default.image.tag (or component overrides).
-# Change trail: @hungxqt - 2026-07-20 - Bootstrap service-digest overlay for selective image promote.
+# Change trail: @hungxqt - 2026-07-20 - Selective service digest promote into service-digest/.
 components:
   load-generator:
     imageOverride:
-      digest: "sha256:584d71ac6c82fab1ca68f144d9f318861c08ee8eb28e3d4f1d03b662b999e3d6"
+      digest: "sha256:5c4d3e14284b397dfe21c46b8258266ab60fcc5a80cd2fcf39b7ea2e4d8f5662"
+  load-generator-worker:
+    imageOverride:
+      digest: "sha256:5c4d3e14284b397dfe21c46b8258266ab60fcc5a80cd2fcf39b7ea2e4d8f5662"
