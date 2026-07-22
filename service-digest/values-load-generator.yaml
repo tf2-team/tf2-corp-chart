@@ -3,7 +3,7 @@
 components:
   load-generator:
     imageOverride:
-      digest: "sha256:ee716572943cd3abf2d987ee1c5c702d325e8c9b3ebf9710d4b84d567d9a2825"
+      digest: "sha256:0abdb59ad8436478bfa0780ea64cf40b72740fe21cc0e6cde8d6ea57008ae293"
   load-generator-worker:
     imageOverride:
-      digest: "sha256:ee716572943cd3abf2d987ee1c5c702d325e8c9b3ebf9710d4b84d567d9a2825"
+      digest: "sha256:0abdb59ad8436478bfa0780ea64cf40b72740fe21cc0e6cde8d6ea57008ae293"
