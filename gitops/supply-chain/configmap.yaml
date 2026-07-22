@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-image-policies
+  namespace: cosign-system
+data: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-policy-controller
+  namespace: cosign-system
+data:
+  no-match-policy: "deny"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-sigstore-keys
+  namespace: cosign-system
+data: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-logging
+  namespace: cosign-system
+data:
+  zap-logger-config: |
+    {
+      "level": "info",
+      "development": false,
+      "outputPaths": ["stdout"],
+      "errorOutputPaths": ["stderr"],
+      "encoding": "json",
+      "encoderConfig": {
+        "timeKey": "ts",
+        "levelKey": "level",
+        "nameKey": "logger",
+        "callerKey": "caller",
+        "messageKey": "msg",
+        "stacktraceKey": "stacktrace",
+        "lineEnding": "",
+        "levelEncoder": "lowercase",
+        "timeEncoder": "iso8601",
+        "durationEncoder": "seconds",
+        "callerEncoder": "short"
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-observability
+  namespace: cosign-system
+data:
+  metrics.backend-destination: prometheus

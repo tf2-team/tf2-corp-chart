@@ -1,0 +1,16 @@
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: ecr-signature-policy
+spec:
+  images:
+    - glob: "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/**"
+  authorities:
+    - name: kms-key-authority
+      key:
+        kms: "awskms:///alias/tf2-cosign-signing-key"
+      attestations:
+        - name: sbom-attestation
+          predicateType: cyclonedx
+        - name: provenance-attestation
+          predicateType: "https://techx-corp.dev/attestations/provenance/v1"
