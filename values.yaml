@@ -1401,7 +1401,7 @@ components:
       enabled: true
       minReplicas: 1
       maxReplicas: 20
-      targetCPUUtilizationPercentage: 60
+      targetCPUUtilizationPercentage: 40
       behavior:
         scaleUp:
           stabilizationWindowSeconds: 0
