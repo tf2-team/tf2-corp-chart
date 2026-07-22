@@ -181,7 +181,7 @@ runtimeHardeningInventory:
         - NON_ROOT
 
 default:
-  storageClassName: gp2
+  storageClassName: gp3-encrypted
   rollout:
     strategy:
       type: RollingUpdate
@@ -2921,7 +2921,7 @@ prometheus:
         - postgresql.index.name
     persistentVolume:
       enabled: true
-      storageClass: gp2
+      storageClass: gp3-encrypted
       size: 8Gi
     service:
       servicePort: 9090
@@ -3077,7 +3077,7 @@ grafana:
       memory: 768Mi
   persistence:
     enabled: true
-    storageClassName: gp2
+    storageClassName: gp3-encrypted
     size: 1Gi
   securityContext:
     runAsNonRoot: true
@@ -3176,4 +3176,4 @@ prometheus-adapter:
       memory: 48Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-22 - Document OpenSearch image must retain security plugin for SEC-06.
+# Change trail: @hungxqt - 2026-07-22 - Default PVC storage class to encrypted gp3.
