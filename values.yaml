@@ -985,11 +985,11 @@ components:
     resources:
       # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 64m
+        memory: 160Mi
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 200m
+        memory: 256Mi
     # BFF/SSR: RPS primary (often I/O-wait on backends); CPU safety valve.
     # maxReplicas 20: load-test pin at 14 with CPU ~100%/80% → desired ~18; +headroom.
     autoscaling:
@@ -1120,11 +1120,11 @@ components:
     resources:
       # Guaranteed QoS (request = limit) for critical path stability
       requests:
-        cpu: 159m
-        memory: 100Mi
+        cpu: 30m
+        memory: 48Mi
       limits:
-        cpu: 500m
-        memory: 200Mi
+        cpu: 30m
+        memory: 48Mi
     # Edge / ALB target on Critical MNG (small floor). maxReplicas 10 needs MNG headroom.
     # RPS primary; CPU safety valve. If pods Pending: free Critical capacity in infra.
     # OTel service.name may differ for Envoy — set autoscaling.serviceName after metric inventory.
@@ -1133,7 +1133,7 @@ components:
       enabled: true
       minReplicas: 2
       maxReplicas: 10
-      targetCPUUtilizationPercentage: 55
+      targetCPUUtilizationPercentage: 70
       # Envoy edge: raised from 200 → 300 RPS/pod (delay Critical MNG scale-out).
       targetRequestsPerSecond: 300
       behavior: *hpa-behavior-default
