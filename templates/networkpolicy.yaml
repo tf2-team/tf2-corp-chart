@@ -137,6 +137,7 @@ spec:
             cidr: {{ $vpcCidr }}
       ports:
         - { protocol: TCP, port: 10250 }
+        - { protocol: TCP, port: 9096 } # Amazon MSK SASL/SCRAM
 {{- end }}
 
 {{- if (index .Values "metrics-server" "enabled") }}
@@ -586,7 +587,7 @@ spec:
             cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
-          port: 9092
+          port: 9096 # Amazon MSK SASL/SCRAM
     - to:
         - podSelector:
             matchLabels:
@@ -1275,7 +1276,7 @@ spec:
             cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
-          port: 9092
+          port: 9096 # Amazon MSK SASL/SCRAM
     - to:
         - podSelector:
             matchLabels:
@@ -1334,7 +1335,7 @@ spec:
             cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
-          port: 9092
+          port: 9096 # Amazon MSK SASL/SCRAM
     - to:
         - ipBlock:
             cidr: {{ $vpcCidr }}

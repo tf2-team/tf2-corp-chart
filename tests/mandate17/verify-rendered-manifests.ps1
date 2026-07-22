@@ -180,6 +180,25 @@ $staleOtelDestinationRules = [regex]::Matches(
 if ($staleOtelDestinationRules.Count -ne 0) {
     throw "OTel egress must not use a selector absent from the Service selector"
 }
+$managedKafkaPolicies = @('checkout', 'accounting', 'fraud-detection')
+foreach ($policyName in $managedKafkaPolicies) {
+    $policy = $full | Where-Object { $_ -match "(?m)^  name: $([regex]::Escape($policyName))$" }
+    if ($policy.Count -ne 1) { throw "full state must render one $policyName policy" }
+    $podKafkaRule = '(?ms)opentelemetry\.io/name: kafka\s+ports:\s+- protocol: TCP\s+port: 9092'
+    $managedKafkaRule = '(?ms)cidr: 10\.0\.0\.0/16\s+ports:\s+- protocol: TCP\s+port: 9096'
+    $staleManagedKafkaRule = '(?ms)cidr: 10\.0\.0\.0/16\s+ports:\s+- protocol: TCP\s+port: 9092'
+    if ($policy -notmatch $podKafkaRule -or $policy -notmatch $managedKafkaRule) {
+        throw "$policyName must keep pod Kafka 9092 and allow managed MSK 9096"
+    }
+    if ($policy -match $staleManagedKafkaRule) {
+        throw "$policyName must not use the in-cluster Kafka port for managed MSK"
+    }
+}
+$otelPolicy = $full | Where-Object { $_ -match '(?m)^  name: otel-collector-egress$' }
+$otelMskRule = '(?ms)cidr: 10\.0\.0\.0/16\s+ports:\s+- \{ protocol: TCP, port: 10250 \}\s+- \{ protocol: TCP, port: 9096 \}'
+if ($otelPolicy.Count -ne 1 -or $otelPolicy -notmatch $otelMskRule) {
+    throw "OTel collector must reach kubelets on 10250 and managed MSK on 9096"
+}
 
 $grafanaDoc = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '# Source: techx-corp/charts/grafana/templates/deployment.yaml' -and
