@@ -116,6 +116,19 @@ foreach ($required in @(
 $internetRules = [regex]::Matches($fullText, 'cidr: 0\.0\.0\.0/0')
 if ($internetRules.Count -ne 1) { throw "only the egress proxy may have one internet rule" }
 if ($fullText -match 'cidr: 10\.0\.0\.0/8') { throw "over-broad VPC CIDR detected" }
+
+$frontendProxyPolicy = $full | Where-Object { $_ -match '(?m)^  name: frontend-proxy$' }
+if ($frontendProxyPolicy.Count -ne 1) { throw "full state must render one frontend-proxy policy" }
+$grafanaTargetPortRule = '(?ms)opentelemetry\.io/name: grafana\s+ports:\s+- protocol: TCP\s+port: 3000'
+$grafanaServicePortRule = '(?ms)opentelemetry\.io/name: grafana\s+ports:\s+- protocol: TCP\s+port: 80(?:\s|$)'
+$argoTargetPortRule = '(?ms)app\.kubernetes\.io/name: argocd-server\s+ports:\s+- protocol: TCP\s+port: 8080'
+$argoServicePortRule = '(?ms)app\.kubernetes\.io/name: argocd-server\s+ports:\s+- protocol: TCP\s+port: 80(?:\s|$)'
+if ($frontendProxyPolicy -notmatch $grafanaTargetPortRule -or $frontendProxyPolicy -match $grafanaServicePortRule) {
+    throw "frontend-proxy must allow the Grafana pod target port 3000, not Service port 80"
+}
+if ($frontendProxyPolicy -notmatch $argoTargetPortRule -or $frontendProxyPolicy -match $argoServicePortRule) {
+    throw "frontend-proxy must allow the Argo CD pod target port 8080, not Service port 80"
+}
 foreach ($requiredPolicy in @(
     'otel-collector-egress', 'metrics-server', 'prometheus-adapter',
     'kube-state-metrics', 'runtime-hardening-inventory'
