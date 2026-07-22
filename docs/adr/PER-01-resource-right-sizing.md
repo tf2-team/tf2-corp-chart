@@ -62,7 +62,7 @@ The following resource configurations were applied to `values.yaml`:
 - **`image-provider` (Nginx):** `requests: 5m / 16Mi`, `limits: 20m / 32Mi` (P99: 0.5m CPU, 11.13Mi Memory).
 - **`flagd-ui` (Elixir sidecar):** `requests: 5m / 144Mi`, `limits: 20m / 192Mi` (P99: 0.3m CPU, 139.55Mi Memory).
 - **`load-generator` (Locust master):** `requests: 20m / 96Mi`, `limits: 100m / 160Mi` (P99: 16.6m CPU, 80.27Mi Memory).
-- **`load-generator-worker` (Locust worker):** `requests: 35m / 112Mi`, `limits: 500m / 192Mi`.
+- **`load-generator-worker` (Locust worker):** `requests: 50m / 128Mi`, `limits: 500m / 256Mi` (Fixed 10 replicas, HPA disabled for static load test baseline).
 
 ### 2. Infrastructure & Observability Platform Components
 - **`prometheus-server` (Go):** `requests: 200m / 1792Mi`, `limits: 200m / 1792Mi` (P99: 193.8m CPU, 1668.75Mi Memory - Guaranteed QoS).

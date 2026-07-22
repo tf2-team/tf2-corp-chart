@@ -1386,19 +1386,18 @@ components:
     resources:
       # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
-        cpu: 35m
-        memory: 112Mi
+        cpu: 50m
+        memory: 128Mi
       limits:
         cpu: 500m
-        memory: 192Mi
+        memory: 256Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
-    # CPU-only HPA for worker pool (memory omitted — Locust RSS is steady and
-    # memory targets caused unnecessary scale churn). Slow scale-down reduces
-    # Locust master disconnect thrash (fixed user count rebalances after scale-out).
+    # Fixed Worker Pool: Disable HPA to prevent scale-churn and socket disconnects during load tests.
+    replicas: 10
     autoscaling:
-      enabled: true
+      enabled: false
       minReplicas: 1
       maxReplicas: 20
       targetCPUUtilizationPercentage: 40
