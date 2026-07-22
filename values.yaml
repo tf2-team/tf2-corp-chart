@@ -770,13 +770,17 @@ components:
       - name: GOMEMLIMIT
         value: 100MiB
     resources:
-      # Guaranteed QoS (request = limit) for critical path stability
+      # Increased from 10m/10m (Guaranteed) to Burstable to fix HPA oscillation.
+      # Root cause: with request=limit=10m, actual usage 5-10m/pod = 50-100% CPU util.
+      # HPA fires at 70% → scale to 16 on any burst → drops to 20% → scale back down.
+      # At 100m request: actual 5-10m = 5-10% util → HPA stable at minReplicas=2.
+      # 500m limit allows burst headroom without throttling (was causing real perf degradation).
       requests:
-        cpu: 10m
-        memory: 32Mi
+        cpu: 100m
+        memory: 64Mi
       limits:
-        cpu: 10m
-        memory: 32Mi
+        cpu: 500m
+        memory: 128Mi
     # Dual metrics: expensive orchestration → lower RPS target; CPU safety valve.
     # maxReplicas 16: load-test pin at 6 with CPU ~148%/70% → desired ~13; +headroom.
     autoscaling:
@@ -786,7 +790,27 @@ components:
       targetCPUUtilizationPercentage: 70
       # Go orchestration: raised from 30 → 50 RPS/pod (less aggressive RPS scale-out).
       targetRequestsPerSecond: 50
-      behavior: *hpa-behavior-default
+      # Override shared hpa-behavior-default: longer scale-up stabilization (60s vs 30s)
+      # to avoid thrashing when a dependency recovers and causes a transient RPS burst.
+      # Slower scale-down (25%/60s + 300s window) prevents rapid node drain that triggers
+      # Karpenter consolidation and evicts load-generator-worker pods.
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 30
+            - type: Percent
+              value: 50
+              periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
     initContainers:
       - name: wait-for-kafka
         image: busybox:1.37.0
@@ -1401,6 +1425,13 @@ components:
         mountPath: /tmp
     # Fixed Worker Pool: Disable HPA to prevent scale-churn and socket disconnects during load tests.
     replicas: 10
+    # Workers use soft podAffinity to co-locate on one node (podAffinity + topologySpreadConstraints: []).
+    # When Karpenter consolidates that single node (WhenEmptyOrUnderutilized, consolidateAfter: 0s),
+    # all 10 workers are evicted simultaneously → mass disconnect from Locust master → user drops.
+    # PDB minAvailable: 9 limits Karpenter to evicting at most 1 worker at a time,
+    # preventing the simultaneous eviction that causes load-test user drops.
+    pdb:
+      minAvailable: 9
     autoscaling:
       enabled: false
       minReplicas: 1
