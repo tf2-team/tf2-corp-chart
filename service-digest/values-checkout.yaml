@@ -3,5 +3,5 @@
 components:
   checkout:
     imageOverride:
-      digest: "sha256:99087265a9304ac60ef64b0e72c1426be6fa57c234c58b4560cbfbf4597cb94b"
-# Change trail: @MinhKhoa2209 - 2026-07-22 - Pin verified production digest.
+      digest: "sha256:6ac3332fbb49696631dad8ca66488a11fbb82d2472f9abef21925fbcab55df8e"
+# Change trail: @datpn02 - 2026-07-22 - Update verified production ECR digest.

@@ -3,5 +3,5 @@
 components:
   shipping:
     imageOverride:
-      digest: "sha256:59d7c3603be3ed84bed86759009d7ad1f1d2c7e8e1ebc69baa8f13132572de31"
-# Change trail: @MinhKhoa2209 - 2026-07-22 - Pin verified production digest.
+      digest: "sha256:0fa570d4a38de2285df402e13a5f432ff2bdbd5bccd213803e9b822f9c776a68"
+# Change trail: @datpn02 - 2026-07-22 - Update verified production ECR digest.
