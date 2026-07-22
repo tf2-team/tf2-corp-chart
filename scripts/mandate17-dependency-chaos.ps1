@@ -27,10 +27,12 @@ if ($LASTEXITCODE -ne 0 -or -not $originalReplicas) { throw "Cannot read ${Depen
 kubectl --context $KubeContext -n $Namespace get deployment $Dependency -o yaml |
     Out-File -Encoding utf8 (Join-Path $EvidenceDirectory "deployment-before.yaml")
 
+$scaled = $false
 try {
     if (-not $PSCmdlet.ShouldProcess("$Namespace/deployment/$Dependency", "scale to zero for dependency chaos")) { return }
     kubectl --context $KubeContext -n $Namespace scale deployment $Dependency --replicas=0
     if ($LASTEXITCODE -ne 0) { throw "Failed to scale ${Dependency} to zero" }
+    $scaled = $true
 
     $samples = @()
     $deadline = (Get-Date).AddSeconds($HoldSeconds)
@@ -58,6 +60,8 @@ try {
     }
 }
 finally {
-    kubectl --context $KubeContext -n $Namespace scale deployment $Dependency --replicas=$originalReplicas
-    kubectl --context $KubeContext -n $Namespace rollout status deployment $Dependency --timeout=5m
+    if ($scaled) {
+        kubectl --context $KubeContext -n $Namespace scale deployment $Dependency --replicas=$originalReplicas
+        kubectl --context $KubeContext -n $Namespace rollout status deployment $Dependency --timeout=5m
+    }
 }

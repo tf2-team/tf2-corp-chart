@@ -1,0 +1,85 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterimagepolicies.policy.sigstore.dev
+spec:
+  group: policy.sigstore.dev
+  names:
+    kind: ClusterImagePolicy
+    listKind: ClusterImagePolicyList
+    plural: clusterimagepolicies
+    singular: clusterimagepolicy
+  scope: Cluster
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+    - name: v1beta1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-controller
+  namespace: cosign-system
+  labels:
+    app.kubernetes.io/name: policy-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: policy-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: policy-controller
+    spec:
+      serviceAccountName: policy-controller
+      containers:
+        - name: policy-controller
+          image: ghcr.io/sigstore/policy-controller/policy-controller:v0.15.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_LOGGING_NAME
+              value: config-logging
+            - name: CONFIG_OBSERVABILITY_NAME
+              value: config-observability
+            - name: HOME
+              value: /home/nonroot
+          resources:
+            requests:
+              cpu: 20m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: sigstore-cache
+              mountPath: /home/nonroot
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: sigstore-cache
+          emptyDir: {}
+        - name: tmp-dir
+          emptyDir: {}

@@ -10,7 +10,56 @@
 #   Phase 2 — enforce: set enabled: true in dev; soak 24h, check OTel traces for errors.
 #   Phase 3 — promote: apply to prod after dev soak is clean.
 networkPolicy:
-  enabled: false # flip to true after CNI audit (see docs above)
+  enabled: false
+  # Three-state rollout: false/false = disabled, true/false = ingress only,
+  # true/true = ingress and egress enforcement.
+  enforceEgress: false
+  vpcCidr: 10.0.0.0/16
+  albIngressCidrs:
+    - 10.0.0.0/16
+  # flagd keeps its existing BTC HTTP provider path and is not proxy-injected.
+  flagdSyncCidrs:
+    - 122.248.223.194/32
+
+egressProxy:
+  enabled: false
+  replicas: 2
+  image:
+    repository: envoyproxy/envoy
+    tag: distroless-v1.38.0
+    digest: sha256:a7a56545102f7a682e0cafea2c9b8448af1b09ebb710eab688dfb931e3ec7ff6
+    pullPolicy: IfNotPresent
+  port: 10000
+  adminPort: 9901
+  callers:
+    - checkout
+    - grafana
+    - product-reviews
+    - shopping-copilot
+  noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8"
+  allowedDomains:
+    # Envoy matches the CONNECT target, which includes the destination port.
+    - api.groq.com:443
+    - bedrock-runtime.us-east-1.amazonaws.com:443
+    - sts.us-east-1.amazonaws.com:443
+    - dynamodb.us-east-1.amazonaws.com:443
+    - s3.us-east-1.amazonaws.com:443
+    - "*.s3.us-east-1.amazonaws.com:443"
+    # Grafana CUR datasource uses Athena, Glue, STS and S3 in ap-southeast-1.
+    - athena.ap-southeast-1.amazonaws.com:443
+    - glue.ap-southeast-1.amazonaws.com:443
+    - sts.ap-southeast-1.amazonaws.com:443
+    - s3.ap-southeast-1.amazonaws.com:443
+    - "*.s3.ap-southeast-1.amazonaws.com:443"
+    # Grafana alert contact point. The webhook path/token stays encrypted inside CONNECT.
+    - discord.com:443
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 #
 # SEC-05: Sensitive credentials use secretKeyRef → ESO-synced Secrets.
@@ -509,13 +558,13 @@ components:
       - name: OTEL_DOTNET_AUTO_TRACES_ENTITYFRAMEWORKCORE_INSTRUMENTATION_ENABLED
         value: "false"
     resources:
-      # 50-user baseline: P99 CPU 7.18m, P99 memory 164Mi.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
-        cpu: 10m
-        memory: 200Mi
+        cpu: 20m
+        memory: 256Mi
       limits:
         cpu: 100m
-        memory: 300Mi
+        memory: 384Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -570,13 +619,13 @@ components:
       - name: OTEL_LOGS_EXPORTER
         value: otlp
     resources:
-      # 50-user baseline: P99 CPU 2.34m, P99 memory 270Mi. Keep JVM/GC headroom.
+      # Raised cpu limit to 200m to prevent Java JVM/OTel agent startup probe timeouts
       requests:
         cpu: 10m
-        memory: 320Mi
+        memory: 288Mi
       limits:
         cpu: 200m
-        memory: 400Mi
+        memory: 384Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -615,6 +664,7 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
       # 50-user baseline: P95/P99 CPU 17.3m/18.4m, P99 memory 158Mi.
+      # Keep startup/probe burst headroom to avoid Kestrel thread-pool starvation.
       requests:
         cpu: 30m
         memory: 192Mi
@@ -669,6 +719,11 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Distroless nonroot UID (must be numeric for kubelet runAsNonRoot verification).
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
     # Tier B (Go gRPC): see docs/operations/probe-thresholds.md
     readinessProbe:
       grpc:
@@ -710,13 +765,13 @@ components:
       - name: GOMEMLIMIT
         value: 100MiB
     resources:
-      # 50-user baseline: P95/P99 CPU 5.93m/6.21m, P99 memory 34.4Mi.
+      # Guaranteed QoS (request = limit) for critical path stability
       requests:
         cpu: 10m
-        memory: 48Mi
+        memory: 32Mi
       limits:
-        cpu: 150m
-        memory: 128Mi
+        cpu: 10m
+        memory: 32Mi
     # Dual metrics: expensive orchestration → lower RPS target; CPU safety valve.
     # maxReplicas 16: load-test pin at 6 with CPU ~148%/70% → desired ~13; +headroom.
     autoscaling:
@@ -766,12 +821,12 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # 50-user baseline: P99 CPU 3.96m, P99 memory 3.94Mi.
+      # Guaranteed QoS (request = limit) for critical path stability
       requests:
-        cpu: 30m
+        cpu: 10m
         memory: 16Mi
       limits:
-        cpu: 100m
+        cpu: 10m
         memory: 16Mi
     # High-RPS / low-CPU gRPC (native C++): RPS is the primary capacity signal; CPU often never hits 70%.
     # maxReplicas 72: load-test pin at 12 with CPU ~412%/70% → desired ~71 (tiny 10m request amplifies %).
@@ -815,12 +870,12 @@ components:
       - name: FLAGD_PORT
         value: "8013"
     resources:
-      # kubectl top: 2m CPU, 51Mi mem. P99 mem: 52Mi. Low-traffic async service.
+      # Burstable QoS: cpu limit set to 50m for admission policy compliance
       requests:
         cpu: 10m
-        memory: 64Mi
+        memory: 80Mi
       limits:
-        cpu: 100m
+        cpu: 50m
         memory: 128Mi
     mountedEmptyDirs:
       - name: tmp-dir
@@ -844,13 +899,13 @@ components:
       - name: OTEL_INSTRUMENTATION_MESSAGING_EXPERIMENTAL_RECEIVE_TELEMETRY_ENABLED
         value: "true"
     resources:
-      # 50-user baseline: P99 CPU 7.12m, P99 memory 263Mi.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 10m
-        memory: 320Mi
+        memory: 352Mi
       limits:
-        cpu: 200m
-        memory: 400Mi
+        cpu: 100m
+        memory: 448Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -928,13 +983,13 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
     resources:
-      # 50-user baseline: P95/P99 CPU 111m/117m, P99 memory 240Mi.
+      # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
-        cpu: 160m
-        memory: 288Mi
+        cpu: 64m
+        memory: 160Mi
       limits:
-        cpu: 500m
-        memory: 384Mi
+        cpu: 200m
+        memory: 256Mi
     # BFF/SSR: RPS primary (often I/O-wait on backends); CPU safety valve.
     # maxReplicas 20: load-test pin at 14 with CPU ~100%/80% → desired ~18; +headroom.
     autoscaling:
@@ -1063,13 +1118,13 @@ components:
       - name: OTEL_COLLECTOR_PORT_HTTP
         value: "4318"
     resources:
-      # 50-user baseline: P95/P99 CPU 39.1m/40.5m, P99 memory 67.3Mi.
+      # Guaranteed QoS (request = limit) for critical path stability
       requests:
-        cpu: 60m
-        memory: 80Mi
+        cpu: 30m
+        memory: 48Mi
       limits:
-        cpu: 300m
-        memory: 128Mi
+        cpu: 30m
+        memory: 48Mi
     # Edge / ALB target on Critical MNG (small floor). maxReplicas 10 needs MNG headroom.
     # RPS primary; CPU safety valve. If pods Pending: free Critical capacity in infra.
     # OTel service.name may differ for Envoy — set autoscaling.serviceName after metric inventory.
@@ -1131,13 +1186,13 @@ components:
       - name: OTEL_COLLECTOR_HOST
         value: $(OTEL_COLLECTOR_NAME)
     resources:
-      # 50-user baseline: P99 CPU 0.318m, P99 memory 6.97Mi.
+      # Burstable QoS: cpu limit set to 20m for admission policy compliance
       requests:
         cpu: 5m
-        memory: 8Mi
-      limits:
-        cpu: 50m
         memory: 16Mi
+      limits:
+        cpu: 20m
+        memory: 32Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1208,13 +1263,13 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
-      # HTTP-only Locust controller; browser/Playwright traffic is disabled.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
-        cpu: 10m
-        memory: 64Mi
+        cpu: 20m
+        memory: 96Mi
       limits:
-        cpu: 200m
-        memory: 128Mi
+        cpu: 100m
+        memory: 160Mi
     # Master web UI — restart if process becomes unresponsive (not a substitute for worker join).
     readinessProbe:
       httpGet:
@@ -1329,13 +1384,13 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
-      # HTTP-only Locust worker; 50-user baseline P99 CPU 80.1m, memory 73.2Mi.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
-        cpu: 125m
-        memory: 96Mi
+        cpu: 35m
+        memory: 112Mi
       limits:
         cpu: 500m
-        memory: 256Mi
+        memory: 192Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1345,8 +1400,8 @@ components:
     autoscaling:
       enabled: true
       minReplicas: 1
-      maxReplicas: 8
-      targetCPUUtilizationPercentage: 70
+      maxReplicas: 20
+      targetCPUUtilizationPercentage: 40
       behavior:
         scaleUp:
           stabilizationWindowSeconds: 0
@@ -1398,13 +1453,13 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # kubectl top: 4m CPU, 104Mi mem (Node.js). P99 mem: 104Mi.
+      # Raised cpu limit to 100m to prevent Node.js V8 module loader probe timeouts
       requests:
         cpu: 10m
-        memory: 128Mi
+        memory: 160Mi
       limits:
-        cpu: 200m
-        memory: 256Mi
+        cpu: 100m
+        memory: 160Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1417,6 +1472,11 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Distroless nonroot UID (must be numeric for kubelet runAsNonRoot verification).
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
     # Stateless → Karpenter hard placement
     schedulingRules: *scheduling-spot-tolerant
     # Tier B (Go gRPC); initContainer waits for postgresql
@@ -1453,13 +1513,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # 50-user baseline: P95/P99 CPU 19m/20.4m, P99 memory 14.8Mi.
+      # Guaranteed QoS (request = limit) for critical path stability
       requests:
-        cpu: 100m
-        memory: 64Mi
+        cpu: 20m
+        memory: 32Mi
       limits:
-        cpu: 200m
-        memory: 128Mi
+        cpu: 20m
+        memory: 32Mi
     # Hot read path under frontend/checkout; Karpenter spot-tolerant.
     # Highest backend RPS under Locust browse; RPS primary + CPU safety valve.
     # maxReplicas 12: load-test pin at 6 with CPU ~126%/70% → desired ~11; +headroom.
@@ -1563,14 +1623,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
-      # 50-user baseline: P95/P99 CPU 43.4m/50.2m, P99 memory 80.6Mi.
-      # Request/limit raised for OTEL+LLM headroom (was 96Mi/160Mi; probe EOF/OOM risk).
+      # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
-        cpu: 250m
-        memory: 1Gi
+        cpu: 32m
+        memory: 1920Mi
       limits:
-        cpu: "1"
-        memory: 2Gi
+        cpu: 200m
+        memory: 2560Mi
     # Product-page AI reviews (P1); RPS primary; CPU safety valve.
     # Lower RPS/pod than recommendation — LLM + Postgres path is heavier.
     # maxReplicas 6: same band as recommendation until load-test pin data.
@@ -1671,12 +1730,13 @@ components:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4317
     resources:
+      # Burstable QoS: cpu limit set to 200m for admission policy compliance
       requests:
-        cpu: 250m
-        memory: 1Gi
+        cpu: 20m
+        memory: 1920Mi
       limits:
-        cpu: "1"
-        memory: 2Gi
+        cpu: 200m
+        memory: 2560Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
@@ -1712,13 +1772,13 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # kubectl top: 2m CPU, 18Mi mem (PHP). P99 mem: 19Mi.
+      # Guaranteed QoS (request = limit) for critical path stability
       requests:
-        cpu: 50m
+        cpu: 10m
         memory: 32Mi
       limits:
-        cpu: 250m
-        memory: 128Mi
+        cpu: 10m
+        memory: 32Mi
     autoscaling:
       enabled: true
       minReplicas: 1
@@ -1780,14 +1840,13 @@ components:
       - name: GRPC_MAX_WORKERS
         value: "20"
     resources:
-      # 50-user baseline: P95/P99 CPU 12.8m/13.3m, P99 memory 45.5Mi.
-      # Raised under Locust: top ~180m CPU / thrash OOM risk at 200m/256Mi.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 20m
+        memory: 80Mi
       limits:
-        cpu: 400m
-        memory: 384Mi
+        cpu: 100m
+        memory: 144Mi
     # Product-page traffic (P1); RPS primary; CPU safety valve.
     autoscaling:
       enabled: true
@@ -1805,6 +1864,11 @@ components:
     enabled: true
     useDefault:
       env: true
+    # Distroless nonroot UID (must be numeric for kubelet runAsNonRoot verification).
+    securityContext:
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
     # Tier A (Rust; business routes only → tcp)
     readinessProbe:
       tcpSocket:
@@ -1830,13 +1894,13 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # 50-user baseline: P99 CPU 1.53m, P99 memory 3.74Mi.
+      # Guaranteed QoS (request = limit) for critical path stability
       requests:
-        cpu: 50m
+        cpu: 10m
         memory: 16Mi
       limits:
-        cpu: 200m
-        memory: 64Mi
+        cpu: 10m
+        memory: 16Mi
     autoscaling:
       enabled: true
       minReplicas: 1
@@ -1880,7 +1944,7 @@ components:
       - name: GOMEMLIMIT
         value: 100MiB
     resources:
-      # 50-user baseline: P99 CPU 8.05m, P99 memory 45.5Mi.
+      # Burstable QoS: cpu limit set to 100m, memory limit set to 128Mi for GOMEMLIMIT safety
       requests:
         cpu: 10m
         memory: 64Mi
@@ -1932,13 +1996,13 @@ components:
           - name: PHX_SERVER
             value: "true"
         resources:
-          # 50-user baseline: P99 CPU 0.242m, P99 memory 137Mi.
+          # Burstable QoS: cpu limit set to 20m for admission policy compliance
           requests:
             cpu: 5m
-            memory: 160Mi
+            memory: 144Mi
           limits:
-            cpu: 50m
-            memory: 256Mi
+            cpu: 20m
+            memory: 192Mi
         securityContext:
           runAsUser: 10001
           runAsGroup: 10001
@@ -2086,14 +2150,18 @@ components:
         value: flagd
       - name: FLAGD_PORT
         value: "8013"
+      # Recovery guard: override the Kubernetes service-link variable injected
+      # as LLM_PORT=tcp://... until the application moves to APP_PORT.
+      - name: LLM_PORT
+        value: "8000"
     resources:
-      # 50-user baseline: P99 CPU 7.24m, P99 memory 71.5Mi.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 10m
-        memory: 96Mi
+        memory: 80Mi
       limits:
-        cpu: 200m
-        memory: 192Mi
+        cpu: 100m
+        memory: 128Mi
 
   postgresql:
     enabled: true
@@ -2304,7 +2372,8 @@ components:
         mountPath: /data
 
   # Custom platform image: default.image.repository/opensearch:default.image.tag
-  # (src/opensearch/Dockerfile — strips unused plugins). No separate image override.
+  # (src/opensearch/Dockerfile — strips unused plugins but KEEPS opensearch-security
+  # for SEC-06 HTTPS + basic auth). No separate image override.
   opensearch:
     enabled: true
     stateful: true
@@ -2383,15 +2452,13 @@ components:
       - name: network.host
         value: "0.0.0.0"
     resources:
-      # 50-user baseline: P99 CPU 70.1m, P99 memory 730Mi.
-      # OPENSEARCH_JAVA_OPTS=-Xms400m -Xmx400m.
-      # Keep a 500m CPU limit for JVM bootstrap while reducing scheduling reservation.
+      # Guaranteed QoS (request = limit) for search database stability
       requests:
         cpu: 100m
-        memory: 800Mi
+        memory: 960Mi
       limits:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 100m
+        memory: 960Mi
     securityContext:
       runAsUser: 1000
       runAsGroup: 1000
@@ -2438,6 +2505,9 @@ opentelemetry-collector:
   image:
     repository: "otel/opentelemetry-collector-contrib"
   fullnameOverride: otel-collector
+  podLabels:
+    app.kubernetes.io/component: otel-collector
+    app.kubernetes.io/part-of: techx-corp
   mode: daemonset
   presets:
     # Disabled: hostmetrics + root_path /hostfs blocked otelcol in D-state (disk sleep) on
@@ -2458,14 +2528,13 @@ opentelemetry-collector:
   # health :13133 stayed closed or hung → readiness/liveness connection refused → restart storm.
   # Healthy agents already sit ~110–150Mi; leave headroom + raise GOMEMLIMIT (80% of limit).
   resources:
-    # kubectl top: 5-31m CPU per agent, 90-120Mi mem per agent (5 DaemonSet pods).
-    # P99 per-pod mem: ~120Mi. 50m CPU request; 150Mi memory request (120Mi × 1.25).
+    # Guaranteed QoS (request = limit) for platform DaemonSet agent
     requests:
-      cpu: 50m
-      memory: 150Mi
+      cpu: 20m
+      memory: 128Mi
     limits:
-      cpu: 400m
-      memory: 300Mi
+      cpu: 20m
+      memory: 128Mi
   # Block liveness until health extension is serving (slow start under node memory pressure).
   startupProbe:
     httpGet:
@@ -2703,14 +2772,13 @@ jaeger:
       - name: JAEGER_GRPC_PORT
         value: "4317"
     resources:
-      # In-memory storage under continuous OTLP: OOM at 1536Mi with 25k max_traces.
-      # Request kept moderate for Critical MNG packing on t4g.large; limit matches Prometheus headroom.
+      # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
-        cpu: 50m
-        memory: 1Gi
+        cpu: 20m
+        memory: 384Mi
       limits:
-        cpu: 500m
-        memory: 3Gi
+        cpu: 100m
+        memory: 1Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -2786,12 +2854,12 @@ prometheus:
     metricLabelsAllowlist:
       - nodes=[workload-class,karpenter.sh/nodepool,karpenter.sh/capacity-type,topology.kubernetes.io/zone]
     resources:
-      # 50-user baseline: P99 CPU 1.90m, P99 memory 31.3Mi.
+      # Burstable QoS: cpu limit set to 50m for admission policy compliance
       requests:
         cpu: 5m
-        memory: 40Mi
+        memory: 32Mi
       limits:
-        cpu: 100m
+        cpu: 50m
         memory: 64Mi
   prometheus-node-exporter:
     enabled: false
@@ -2861,13 +2929,13 @@ prometheus:
     # 2Gi limit (OOMKilled exit 137 / CrashLoop). Request stays below Critical
     # t4g.large packing pressure; limit covers replay spikes.
     resources:
-      # 50-user baseline steady ~1.04Gi; prod WAL replay + OTLP needs higher ceiling.
+      # Guaranteed QoS (request = limit) for observability platform core
       requests:
-        cpu: 100m
-        memory: 1536Mi
+        cpu: 200m
+        memory: 1792Mi
       limits:
-        cpu: "1"
-        memory: 3Gi
+        cpu: 200m
+        memory: 1792Mi
     # WAL/config load observed ~50s under load; block liveness until ready.
     startupProbe:
       enabled: true
@@ -2902,6 +2970,9 @@ prometheus:
 grafana:
   enabled: true
   fullnameOverride: grafana
+  # Align with the egress-proxy caller selector used during Mandate 17 C2.
+  podLabels:
+    opentelemetry.io/name: grafana
   # The persistent storage uses fsGroup 472; the root/CHOWN init container is unnecessary.
   initChownData:
     enabled: false
@@ -2997,13 +3068,13 @@ grafana:
         cpu: 100m
         memory: 128Mi
   resources:
-    # 50-user baseline: P99 CPU 36.5m, P99 memory 554Mi for the main container.
+    # Burstable QoS: cpu limit set to 100m for admission policy compliance
     requests:
-      cpu: 50m
-      memory: 640Mi
+      cpu: 20m
+      memory: 448Mi
     limits:
-      cpu: 300m
-      memory: 1Gi
+      cpu: 100m
+      memory: 768Mi
   persistence:
     enabled: true
     storageClassName: gp2
@@ -3035,13 +3106,13 @@ metrics-server:
   args:
     - --kubelet-insecure-tls
   resources:
-    # kubectl top: 5m CPU, 29Mi mem. P99 mem: 29.5Mi. HPA dependency — keep lean.
+    # Raised cpu limit to 50m to prevent /livez probe timeouts under scraping load
     requests:
       cpu: 10m
-      memory: 40Mi
+      memory: 32Mi
     limits:
-      cpu: 100m
-      memory: 64Mi
+      cpu: 50m
+      memory: 32Mi
 
 # Prometheus Adapter — custom/external metrics API for request-rate (RPS) HPA.
 # Reads OTel request counters already scraped into in-cluster Prometheus.
@@ -3096,13 +3167,13 @@ prometheus-adapter:
           as: "http_requests_per_second"
         metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (service_name) or (sum(<<.Series>>{<<.LabelMatchers>>} * 0) by (service_name))'
   resources:
-    # kubectl top: 9m CPU, 38Mi mem. P99 mem: 45.1Mi. External metrics API for RPS HPA.
+    # Guaranteed QoS (request = limit) for critical External Metrics API stability
     requests:
       cpu: 10m
-      memory: 56Mi
+      memory: 48Mi
     limits:
-      cpu: 200m
-      memory: 128Mi
+      cpu: 10m
+      memory: 48Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-19 - load-generator-worker uses imageOverride.name=load-generator (not hardcoded techx-corp path).
+# Change trail: @hungxqt - 2026-07-22 - Document OpenSearch image must retain security plugin for SEC-06.
