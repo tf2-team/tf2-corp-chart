@@ -1915,6 +1915,10 @@ spec:
         - protocol: TCP
           port: 4317
     - from:
+        {{- range .Values.networkPolicy.albIngressCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
         - podSelector:
             matchExpressions:
               - key: opentelemetry.io/name
@@ -1967,6 +1971,10 @@ spec:
 {{- end }}
   ingress:
     - from:
+        {{- range .Values.networkPolicy.albIngressCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
         - podSelector:
             matchLabels:
               opentelemetry.io/name: frontend-proxy
