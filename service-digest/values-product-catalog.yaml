@@ -3,5 +3,5 @@
 components:
   product-catalog:
     imageOverride:
-      digest: "sha256:cd1914d2fbdcf51e24733fb7d358cf84e6ca1a3a824443cbfda43dbe6c3b9e64"
-# Change trail: @MinhKhoa2209 - 2026-07-22 - Pin verified production digest.
+      digest: "sha256:7e763a886fafb937268fcd04f2c4143072b4f55b6bdee55f1c3354989f1eb7e8"
+# Change trail: @datpn02 - 2026-07-22 - Update verified production ECR digest.
