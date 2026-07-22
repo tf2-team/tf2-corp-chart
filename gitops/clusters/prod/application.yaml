@@ -61,6 +61,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Required with ignoreDifferences: without this, Argo still applies full desired
+      # Helm PVC (volumeName: "") and fails Bound claim patches (immutable volumeName).
+      - RespectIgnoreDifferences=true
       # Do NOT enable ServerSideApply in v1 baseline.
     retry:
       limit: 3
@@ -72,9 +75,11 @@ spec:
   # Bound PVCs: the API fills /spec/volumeName after bind; Helm never sets it.
   # After static rebind (encrypted EBS), live volumeName is pv-enc-*; desired is "".
   # Patching volumeName is forbidden on Bound claims and fails the whole sync.
+  # Pair with RespectIgnoreDifferences=true so sync/apply skips these fields too
+  # (ignoreDifferences alone only affects comparison / OutOfSync status).
   ignoreDifferences:
     - group: ""
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec/volumeName
-# Change trail: @hungxqt - 2026-07-22 - Ignore PVC volumeName so Bound claims do not block Argo sync.
+# Change trail: @hungxqt - 2026-07-22 - RespectIgnoreDifferences so PVC volumeName is not applied.

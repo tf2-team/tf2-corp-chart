@@ -2,7 +2,7 @@
 
 ## Summary
 
-Adds `ignoreDifferences` on the production `techx-corp` Application for `PersistentVolumeClaim` `/spec/volumeName` so Argo CD no longer tries to clear the bound volume name and fails the entire sync.
+Adds `ignoreDifferences` on the production `techx-corp` Application for `PersistentVolumeClaim` `/spec/volumeName`, and enables `RespectIgnoreDifferences=true`, so Argo CD neither marks those fields OutOfSync nor applies a patch that clears the bound volume name.
 
 ## Context
 
@@ -22,20 +22,21 @@ Kubernetes rejects that patch on Bound claims (`spec is immutable`), and the App
 
 ## After
 
-* Application ignores `/spec/volumeName` on all PVCs.
-* Sync can apply other objects without mutating immutable Bound claim fields.
-* Encrypted static PV binding is preserved.
+* Application ignores `/spec/volumeName` on all PVCs for comparison **and** apply.
+* `syncOptions` includes `RespectIgnoreDifferences=true` (required: without it, ignoreDifferences only affects status while sync still patches empty volumeName).
+* Encrypted static PV binding is preserved; other resources can sync.
 
 ## Technical Design Decisions
 
-* Ignore **all** PVC `volumeName` fields, not only grafana/prometheus — Helm never owns this field; the API always sets it after bind for dynamic claims too (prevents recurring noise).
-* Do not delete/recreate PVCs in Git — that would risk data loss; ignoreDifferences is the GitOps-safe fix for immutable bind fields.
-* Keep self-heal and prune; only narrow the diff for this field.
+* Ignore **all** PVC `volumeName` fields, not only grafana/prometheus — Helm never owns this field; the API always sets it after bind for dynamic claims too.
+* **`RespectIgnoreDifferences=true`** is mandatory with self-heal; first commit only set ignoreDifferences and sync still failed on immutable patches.
+* Do not delete/recreate PVCs in Git — that would risk data loss.
 
 ## Implementation Details
 
-1. Added `spec.ignoreDifferences` to `gitops/clusters/prod/application.yaml`.
-2. Root App of Apps / Argo will reconcile the Application CR from `gitops/clusters/prod` on `main`.
+1. Added `spec.ignoreDifferences` for PVC `/spec/volumeName`.
+2. Added `RespectIgnoreDifferences=true` under `syncPolicy.syncOptions`.
+3. Root App of Apps / Argo reconciles the Application CR from `gitops/clusters/prod` on `main`.
 
 ## Files Changed
 
@@ -87,4 +88,4 @@ None. Follow-up to encrypted PVC rebind (`2026-07-22-encrypted-storageclass-and-
 
 **Rollback procedure:** Remove `ignoreDifferences` block via Git revert (only if needed).
 
-<!-- Change trail: @hungxqt - 2026-07-22 - Argo ignoreDifferences for Bound PVC volumeName. -->
+<!-- Change trail: @hungxqt - 2026-07-22 - RespectIgnoreDifferences for Bound PVC volumeName. -->
