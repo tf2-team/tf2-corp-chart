@@ -2372,7 +2372,8 @@ components:
         mountPath: /data
 
   # Custom platform image: default.image.repository/opensearch:default.image.tag
-  # (src/opensearch/Dockerfile — strips unused plugins). No separate image override.
+  # (src/opensearch/Dockerfile — strips unused plugins but KEEPS opensearch-security
+  # for SEC-06 HTTPS + basic auth). No separate image override.
   opensearch:
     enabled: true
     stateful: true
@@ -3175,4 +3176,4 @@ prometheus-adapter:
       memory: 48Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-21 - Set runAsUser 65532 for checkout, product-catalog, shipping (kubelet non-numeric USER fix)
+# Change trail: @hungxqt - 2026-07-22 - Document OpenSearch image must retain security plugin for SEC-06.
