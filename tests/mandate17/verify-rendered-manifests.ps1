@@ -166,6 +166,20 @@ if ($apiCidrRules.Count -ne $apiConsumerPolicies.Count) {
 if ($fullRendered -notmatch 'app.kubernetes.io/component: otel-collector') {
     throw "OTel collector pods are missing the selector label used by NetworkPolicy"
 }
+$otelDestinationRules = [regex]::Matches(
+    $fullText,
+    '(?ms)- to:\s*- podSelector:\s*matchLabels:\s*app\.kubernetes\.io/name: opentelemetry-collector\s*ports:\s*- (?:\{ )?protocol: TCP(?:, port: 4317 \})?'
+)
+if ($otelDestinationRules.Count -lt 20) {
+    throw "OTel egress rules must use the collector Service selector"
+}
+$staleOtelDestinationRules = [regex]::Matches(
+    $fullText,
+    '(?ms)- to:\s*- podSelector:\s*matchLabels:\s*app\.kubernetes\.io/component: otel-collector\s*ports:\s*- (?:\{ )?protocol: TCP(?:, port: 4317 \})?'
+)
+if ($staleOtelDestinationRules.Count -ne 0) {
+    throw "OTel egress must not use a selector absent from the Service selector"
+}
 
 $grafanaDoc = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '# Source: techx-corp/charts/grafana/templates/deployment.yaml' -and
@@ -205,6 +219,26 @@ $proxyDoc = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '(?m)^kind: Deployment$'
 }
 if ($proxyDoc -notmatch '(?m)^  replicas: 2$') { throw "egress proxy must have two replicas" }
+if ($proxyDoc -notmatch '(?m)^        checksum/egress-proxy-config: "[a-f0-9]{64}"$') {
+    throw "egress proxy must roll when its static allowlist ConfigMap changes"
+}
+$proxyChecksum = [regex]::Match($proxyDoc, 'checksum/egress-proxy-config: "([a-f0-9]{64})"').Groups[1].Value
+$changedProxyArgs = $baseArgs + @(
+    "--values", (Join-Path $PSScriptRoot "network-policy-values.yaml"),
+    "--set", "networkPolicy.enabled=true",
+    "--set", "networkPolicy.enforceEgress=true",
+    "--set", "egressProxy.enabled=true",
+    "--set-string", "egressProxy.allowedDomains[0]=checksum-test.invalid:443"
+)
+$changedProxyRendered = (& $Helm @changedProxyArgs) -join "`n"
+if ($LASTEXITCODE -ne 0) { throw "proxy checksum variant did not render" }
+$changedProxyChecksum = [regex]::Match(
+    $changedProxyRendered,
+    'checksum/egress-proxy-config: "([a-f0-9]{64})"'
+).Groups[1].Value
+if (-not $changedProxyChecksum -or $changedProxyChecksum -eq $proxyChecksum) {
+    throw "egress proxy checksum must change with the static allowlist"
+}
 foreach ($required in @(
     'runAsNonRoot: true', 'readOnlyRootFilesystem: true',
     'allowPrivilegeEscalation: false', 'automountServiceAccountToken: false',

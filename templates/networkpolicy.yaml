@@ -122,7 +122,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - { protocol: TCP, port: 4318 }
     # Kubernetes attributes and cluster metrics use the in-cluster API Service.
@@ -358,7 +358,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -495,7 +495,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -606,7 +606,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -673,7 +673,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -722,7 +722,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -771,7 +771,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -811,7 +811,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -853,7 +853,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -902,7 +902,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -951,7 +951,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1007,7 +1007,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1071,7 +1071,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1149,7 +1149,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1226,7 +1226,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1292,7 +1292,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1353,7 +1353,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1402,7 +1402,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1575,7 +1575,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1640,7 +1640,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1697,7 +1697,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1765,7 +1765,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -1874,7 +1874,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - { protocol: TCP, port: 8888 }
     - to:
@@ -1957,7 +1957,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317

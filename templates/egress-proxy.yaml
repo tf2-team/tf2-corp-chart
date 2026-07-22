@@ -128,6 +128,8 @@ spec:
       app.kubernetes.io/name: egress-proxy
   template:
     metadata:
+      annotations:
+        checksum/egress-proxy-config: {{ printf "%v|%s" $proxy.port (toJson $proxy.allowedDomains) | sha256sum | quote }}
       labels:
         app.kubernetes.io/name: egress-proxy
         app.kubernetes.io/component: egress-proxy
