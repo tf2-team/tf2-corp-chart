@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: CloudWatch
+    uid: mandate11-cloudwatch
+    type: cloudwatch
+    editable: false
+    isDefault: false
+    jsonData:
+      authType: default
+      defaultRegion: us-east-1
+      customMetricsNamespaces: TechX/Mandate11
