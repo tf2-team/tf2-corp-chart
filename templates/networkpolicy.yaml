@@ -329,7 +329,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              opentelemetry.io/name: jaeger
+              app.kubernetes.io/name: jaeger
       ports:
         - protocol: TCP
           port: 16686
