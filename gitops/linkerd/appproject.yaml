@@ -1,0 +1,65 @@
+# AppProject "linkerd" — dedicated project for Linkerd service mesh components.
+#
+# Kept separate from AppProject "techx-corp" because:
+#   1. Linkerd Helm charts come from helm.linkerd.io (not tf2-corp-chart.git).
+#   2. Linkerd installs cluster-scoped resources (CRDs, ClusterRoles, Webhooks)
+#      that are broader than the techx-corp workload boundary.
+#   3. Allows independent RBAC and sync-failure isolation.
+#
+# Change trail: @hungxqt - 2026-07-24 - M16: Linkerd GitOps AppProject.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: linkerd
+  namespace: argocd
+  # sync-wave: "-1" ensures AppProject is created before the Applications
+  # in this directory that reference project: linkerd.
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Linkerd service mesh — gRPC L7 load balancing (Mandate 16)
+
+  sourceRepos:
+    # Linkerd stable Helm charts
+    - https://helm.linkerd.io/stable
+    # tf2-corp-chart for any supplementary manifests
+    - https://github.com/tf2-team/tf2-corp-chart.git
+    - git@github.com:tf2-team/tf2-corp-chart.git
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: linkerd
+    # Allow kube-system for MutatingWebhookConfiguration (proxy-injector) RoleBinding
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+
+  clusterResourceWhitelist:
+    # Linkerd CRDs (ServiceProfile, ServerAuthorization, HTTPRoute, ...)
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    # Control plane RBAC
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    # Proxy injector and tap webhooks
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    # Namespace creation (linkerd namespace)
+    - group: ""
+      kind: Namespace
+    # metrics-server APIService used by Linkerd viz (future)
+    - group: apiregistration.k8s.io
+      kind: APIService
+
+  orphanedResources:
+    warn: true
+    ignore:
+      - kind: Secret
+        name: linkerd-identity-issuer
+      - kind: Secret
+        name: sh.helm.release*

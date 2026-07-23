@@ -1,0 +1,136 @@
+# linkerd-control-plane Application — sync-wave: "1", runs after linkerd-crds (wave 0).
+#
+# Installs Linkerd control plane: destination, identity, proxy-injector components.
+# Proxy-injector MutatingWebhook auto-injects linkerd-proxy sidecar into pods in
+# namespaces annotated with linkerd.io/inject: enabled.
+#
+# PREREQUISITE (manual, one-time):
+#   Generate mTLS certs and create Secret before first sync. See gitops/linkerd/README.md.
+#
+#   Required Secret in namespace "linkerd":
+#     kubectl create secret generic linkerd-identity-issuer \
+#       --from-file=tls.crt=issuer.crt \
+#       --from-file=tls.key=issuer.key \
+#       -n linkerd
+#
+# identityTrustAnchorsPEM below must contain the CA cert (ca.crt output).
+# It is a public cert — safe to store in Git.
+#
+# Change trail: @hungxqt - 2026-07-24 - M16: Linkerd control-plane GitOps Application.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: linkerd-control-plane
+  namespace: argocd
+  annotations:
+    # Run after linkerd-crds (wave 0)
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: linkerd
+
+  source:
+    repoURL: https://helm.linkerd.io/stable
+    chart: linkerd-control-plane
+    # Must match linkerd-crds targetRevision.
+    # Latest stable as of 2026-07: check https://artifacthub.io/packages/helm/linkerd2/linkerd-control-plane
+    targetRevision: 2024.11.4
+    helm:
+      releaseName: linkerd-control-plane
+      valuesObject:
+        # -----------------------------------------------------------------------
+        # mTLS Identity — reads issuer cert/key from K8s Secret (kubernetes.io/tls)
+        # The Secret "linkerd-identity-issuer" must exist in namespace "linkerd"
+        # before this Application syncs. See README.md for generation steps.
+        # -----------------------------------------------------------------------
+        identity:
+          issuer:
+            scheme: kubernetes.io/tls
+
+        # -----------------------------------------------------------------------
+        # Trust anchor (CA cert) — PUBLIC, safe to store in Git.
+        # Replace the placeholder below with the output of: cat ca.crt
+        # -----------------------------------------------------------------------
+        identityTrustAnchorsPEM: |
+          -----BEGIN CERTIFICATE-----
+          MIIBjjCCATSgAwIBAgIRAMWAs1CanfDn1R6Fghyuf7EwCgYIKoZIzj0EAwIwJTEj
+          MCEGA1UEAxMacm9vdC5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjYwNzIzMTk1
+          NjQ0WhcNMzYwNzIwMTk1NjQ0WjAlMSMwIQYDVQQDExpyb290LmxpbmtlcmQuY2x1
+          c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABFClVktOmVnZfEGP
+          LJsa+SrzNvou4V+WndVWfvJqkI4dcpkVNbNaTfzDHl2m2/aYpircwCjdDjZHs4xa
+          zxN+LEyjRTBDMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEBMB0G
+          A1UdDgQWBBQCXpRmU+7eKTYVXbMNCr9Ho9mU6zAKBggqhkjOPQQDAgNIADBFAiEA
+          h5MWo3Uvg5NOXIh7L87tOxKc2/4I36p6MIDRYDVPgY0CIH4DQGNtYtKurKOaLPEw
+          5Unkdc2smwIVVWLozxlpfd5q
+          -----END CERTIFICATE-----
+
+        # -----------------------------------------------------------------------
+        # Proxy resource limits — tuned for TechX Corp budget constraints.
+        # Keeps overhead minimal while allowing bursting on high-RPS services.
+        # See BUDGET.md for cluster-wide resource constraints.
+        # -----------------------------------------------------------------------
+        proxy:
+          resources:
+            cpu:
+              request: 10m
+              limit: 100m
+            memory:
+              request: 20Mi
+              limit: 250Mi
+
+        # -----------------------------------------------------------------------
+        # Control plane resources — minimal footprint for single-region cluster.
+        # -----------------------------------------------------------------------
+        controllerResources:
+          cpu:
+            request: 50m
+            limit: 250m
+          memory:
+            request: 50Mi
+            limit: 250Mi
+
+        # Log level — warn in prod to reduce noise; use debug only when troubleshooting.
+        controllerLogLevel: warn
+
+        # -----------------------------------------------------------------------
+        # Proxy injector — auto-inject linkerd-proxy into annotated namespaces.
+        # Namespace techx-corp-prod has linkerd.io/inject: enabled annotation
+        # (managed by templates/linkerd-namespace-inject.yaml in main chart).
+        # -----------------------------------------------------------------------
+        proxyInjector:
+          failurePolicy: Ignore  # Do not block pod creation if injector is unavailable
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: linkerd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+
+  # Linkerd auto-rotates webhook TLS certificates. Ignore caBundle to avoid
+  # constant OutOfSync noise from Argo re-applying stale bundle.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+    # Linkerd identity controller updates the issuer cert annotation at runtime.
+    - group: ""
+      kind: Secret
+      name: linkerd-identity-issuer
+      jqPathExpressions:
+        - .metadata.annotations

@@ -1,0 +1,38 @@
+{{- /*
+Namespace resource for techx-corp-prod with Linkerd proxy injection enabled.
+
+Why a Namespace resource in the chart instead of relying on CreateNamespace=true:
+  ArgoCD's CreateNamespace syncOption creates the namespace without any labels or
+  annotations. To set linkerd.io/inject: enabled, we need to manage the Namespace
+  as an explicit Kubernetes resource so GitOps controls its metadata.
+
+Effect of linkerd.io/inject: enabled:
+  Linkerd's proxy-injector MutatingWebhookConfiguration intercepts Pod CREATE/UPDATE
+  calls in this namespace and injects the linkerd-proxy sidecar container. The proxy
+  performs L7 (per-request) load balancing for gRPC (HTTP/2) traffic, solving the
+  connection-pinning problem where all requests from a single gRPC client go to one pod.
+
+Proxy resource overhead per pod (configured in linkerd-control-plane valuesObject):
+  CPU: 10m request / 100m limit
+  Memory: 20Mi request / 250Mi limit
+  This is Linkerd's default "lightweight" profile, suitable for the TechX Corp budget.
+
+Change trail: @hungxqt - 2026-07-24 - M16: Enable Linkerd proxy injection for techx-corp-prod.
+*/ -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    # Enable automatic Linkerd proxy injection for all pods in this namespace.
+    # Requires Linkerd control plane to be running (linkerd-control-plane ArgoCD Application).
+    # Individual pods can opt-out with annotation: linkerd.io/inject: disabled
+    linkerd.io/inject: enabled
+    # Proxy resource profile — matches values set in linkerd-control-plane Application.
+    # Override per-pod if a specific service needs different limits.
+    config.linkerd.io/proxy-cpu-request: "10m"
+    config.linkerd.io/proxy-cpu-limit: "100m"
+    config.linkerd.io/proxy-memory-request: "20Mi"
+    config.linkerd.io/proxy-memory-limit: "250Mi"

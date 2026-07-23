@@ -1,0 +1,52 @@
+# Linkerd child Application — registered in root app-of-apps (prod).
+#
+# This Application points to gitops/linkerd/applications/ (directory mode).
+# ArgoCD will discover and manage the linkerd-crds and linkerd-control-plane
+# Applications defined there, respecting their sync-wave annotations.
+#
+# Deployment order is controlled by sync-wave annotations inside each Application:
+#   wave 0: linkerd-crds       (CRDs must exist first)
+#   wave 1: linkerd-control-plane
+#
+# AppProject "linkerd" is defined in gitops/linkerd/appproject.yaml.
+# It must be created before this Application syncs (bootstrap step or manual apply).
+#
+# Change trail: @hungxqt - 2026-07-24 - M16: Register Linkerd in prod root app-of-apps.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: linkerd
+  namespace: argocd
+  annotations:
+    # Linkerd must be ready before workloads attempt proxy injection.
+    # Place after runtime-hardening (wave 0) if both are managed by root.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: techx-corp
+
+  source:
+    repoURL: https://github.com/tf2-team/tf2-corp-chart.git
+    targetRevision: main
+    # Directory mode: discovers all Application + AppProject YAMLs in this path.
+    path: gitops/linkerd
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      # prune: false — do NOT auto-delete Linkerd Applications.
+      # Accidental prune of linkerd-control-plane while pods are injected
+      # will break mTLS and drop all inter-service traffic.
+      # Remove Linkerd intentionally via git revert + manual sync.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # argocd namespace already exists
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m

@@ -1,0 +1,56 @@
+# linkerd-crds Application — MUST sync before linkerd-control-plane (sync-wave: "0").
+#
+# Installs all Linkerd CRDs: ServiceProfile, ServerAuthorization, AuthorizationPolicy,
+# HTTPRoute, GRPCRoute, Server, MeshTLSAuthentication, NetworkAuthentication, etc.
+# CRDs must exist before the control-plane chart tries to create CRs.
+#
+# Chart: https://helm.linkerd.io/stable / linkerd-crds
+# Upstream docs: https://linkerd.io/docs/tasks/install-helm/
+#
+# Change trail: @hungxqt - 2026-07-24 - M16: Linkerd CRDs GitOps Application.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: linkerd-crds
+  namespace: argocd
+  annotations:
+    # Must complete before linkerd-control-plane (wave 1)
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: linkerd
+
+  source:
+    repoURL: https://helm.linkerd.io/stable
+    chart: linkerd-crds
+    # Pin to a specific stable release. Upgrade deliberately via PR.
+    # Latest stable as of 2026-07: check https://artifacthub.io/packages/helm/linkerd2/linkerd-crds
+    targetRevision: 2024.11.4
+    helm:
+      releaseName: linkerd-crds
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: linkerd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRDs are cluster-scoped and must be applied with server-side apply
+      # to handle large annotation sizes from Helm.
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+
+  # Helm manages CRDs via the crds/ directory; ArgoCD should not diff them as orphans.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jqPathExpressions:
+        - .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"
