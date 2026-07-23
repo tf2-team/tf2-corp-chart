@@ -2,15 +2,17 @@ apiVersion: policy.sigstore.dev/v1beta1
 kind: ClusterImagePolicy
 metadata:
   name: ecr-signature-policy
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   images:
     - glob: "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/**"
   authorities:
     - name: kms-key-authority
       key:
-        kms: "awskms:///alias/tf2-cosign-signing-key"
+        kms: "awskms:///arn:aws:kms:us-east-1:493499579600:key/f96d445c-43c3-49d3-b508-7243e07c4f27"
       attestations:
         - name: sbom-attestation
-          predicateType: cyclonedx
+          predicateType: "https://cyclonedx.org/bom"
         - name: provenance-attestation
           predicateType: "https://techx-corp.dev/attestations/provenance/v1"
