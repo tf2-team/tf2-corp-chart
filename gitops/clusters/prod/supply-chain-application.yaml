@@ -43,11 +43,13 @@ spec:
       name: policy.sigstore.dev
       jqPathExpressions:
         - .webhooks[]?.clientConfig.caBundle
+        - .webhooks[]?.namespaceSelector.matchExpressions[]? | select(.key == "webhooks.knative.dev/exclude")
     - group: admissionregistration.k8s.io
       kind: ValidatingWebhookConfiguration
       name: policy.sigstore.dev
       jqPathExpressions:
         - .webhooks[]?.clientConfig.caBundle
+        - .webhooks[]?.namespaceSelector.matchExpressions[]? | select(.key == "webhooks.knative.dev/exclude")
 
   syncPolicy:
     automated:
