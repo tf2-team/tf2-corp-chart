@@ -11,6 +11,8 @@ spec:
     - name: kms-key-authority
       key:
         kms: "awskms:///arn:aws:kms:us-east-1:493499579600:key/f96d445c-43c3-49d3-b508-7243e07c4f27"
+      source:
+        - oci: "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/cosign-artifacts"
       attestations:
         - name: sbom-attestation
           predicateType: "https://cyclonedx.org/bom"
