@@ -18,9 +18,8 @@ toàn minh bạch với ứng dụng, không cần thay đổi code, áp dụng 
 gitops/linkerd/
 ├── README.md                           # File này
 ├── appproject.yaml                     # AppProject "linkerd" riêng với Helm repos được phép
-└── applications/
-    ├── linkerd-crds.yaml               # App: linkerd-crds chart (sync-wave 0 — CRDs trước)
-    └── linkerd-control-plane.yaml      # App: linkerd-control-plane chart (sync-wave 1)
+├── linkerd-crds.yaml                   # App: linkerd-crds chart (sync-wave 0 — CRDs trước)
+└── linkerd-control-plane.yaml          # App: linkerd-control-plane chart (sync-wave 1)
 ```
 
 Root app-of-apps (`clusters/prod/`) có file `linkerd-application.yaml` trỏ vào thư mục này.
