@@ -211,9 +211,22 @@ foreach ($required in @(
 )) {
     if ($grafanaDoc -notmatch [regex]::Escape($required)) { throw "Grafana proxy environment missing: $required" }
 }
+$grafanaOpenSearchNoProxy = '.svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,opensearch'
+$grafanaText = $grafanaDoc -join "`n"
+foreach ($proxyName in @('NO_PROXY', 'no_proxy')) {
+    $pattern = 'name: "' + $proxyName + '"\s+value: "' + [regex]::Escape($grafanaOpenSearchNoProxy) + '"'
+    if ($grafanaText -notmatch $pattern) {
+        throw "Grafana $proxyName must bypass the egress proxy for OpenSearch"
+    }
+}
 $grafanaPolicy = $full | Where-Object { $_ -match '(?m)^  name: grafana$' }
 if ($grafanaPolicy.Count -ne 1 -or $grafanaPolicy -notmatch 'app.kubernetes.io/name: egress-proxy') {
     throw "Grafana policy must allow egress to the proxy"
+}
+
+$otelOpenSearchTls = '(?ms)endpoint: https://opensearch:9200\s+tls:\s+insecure_skip_verify: true'
+if ($fullRendered -notmatch $otelOpenSearchTls) {
+    throw "OTel OpenSearch exporter must keep HTTPS and skip verification for the demo certificate hostname"
 }
 
 $proxyConfig = ($fullRendered -split '(?m)^---\s*$') | Where-Object {

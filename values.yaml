@@ -2669,7 +2669,7 @@ opentelemetry-collector:
           # SEC-06: security plugin serves HTTPS (demo self-signed certs on single-node).
           endpoint: https://opensearch:9200
           tls:
-            insecure: true
+            insecure_skip_verify: true
           # SEC-06: basic auth credentials from ESO-synced Secret techx-corp-opensearch.
           # The otel-collector DaemonSet mounts these via secretKeyRef (see below).
           auth:
