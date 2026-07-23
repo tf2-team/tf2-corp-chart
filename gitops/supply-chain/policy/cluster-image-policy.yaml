@@ -2,6 +2,8 @@ apiVersion: policy.sigstore.dev/v1beta1
 kind: ClusterImagePolicy
 metadata:
   name: ecr-signature-policy
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   images:
     - glob: "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/**"
