@@ -221,6 +221,8 @@ $proxyConfig = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '(?m)^kind: ConfigMap$'
 }
 foreach ($requiredDomain in @(
+    'monitoring.us-east-1.amazonaws.com:443',
+    'logs.us-east-1.amazonaws.com:443',
     'athena.ap-southeast-1.amazonaws.com:443',
     'glue.ap-southeast-1.amazonaws.com:443',
     'sts.ap-southeast-1.amazonaws.com:443',

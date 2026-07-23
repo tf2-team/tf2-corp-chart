@@ -45,6 +45,9 @@ egressProxy:
     - api.groq.com:443
     - bedrock-runtime.us-east-1.amazonaws.com:443
     - sts.us-east-1.amazonaws.com:443
+    # Grafana CloudWatch datasource uses the regional metrics and logs APIs.
+    - monitoring.us-east-1.amazonaws.com:443
+    - logs.us-east-1.amazonaws.com:443
     - dynamodb.us-east-1.amazonaws.com:443
     - 493499579600.ddb.us-east-1.amazonaws.com:443
     - "*.ddb.us-east-1.amazonaws.com:443"
