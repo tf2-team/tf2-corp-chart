@@ -18,6 +18,8 @@ spec:
           webhook:
             # TLS and CRDs must be healthy before production enforcement is enabled.
             failurePolicy: Ignore
+            env:
+              COSIGN_REPOSITORY: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/cosign-artifacts
             podSecurityContext:
               runAsNonRoot: true
             serviceAccount:
