@@ -3,4 +3,4 @@
 components:
   frontend:
     imageOverride:
-      digest: "sha256:745273578a6c9b47928317680171ab6681b1c11c0a2f035c15eef13b27c76d45"
+      digest: "sha256:3249a2f8275a05f52ffea476c2fa559e097a5acd1e6036d2640addb6079f9ed2"

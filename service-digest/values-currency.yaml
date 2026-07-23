@@ -3,5 +3,5 @@
 components:
   currency:
     imageOverride:
-      digest: "sha256:a879dd92080377bca664ba5d5d48a365f744b785c96eb51d5f8cfa7c597c5f32"
+      digest: "sha256:ebb17c69b82853e153d22673b8c11665e4fc900f7a7fc951bac0a2d65a45c488"
 # Change trail: @MinhKhoa2209 - 2026-07-22 - Pin verified production digest.
