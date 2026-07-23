@@ -10,19 +10,6 @@
   "links": [],
   "panels": [
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "panels": [],
-      "title": "1. Traffic Distribution & Throughput per Pod",
-      "type": "row"
-    },
-    {
       "datasource": {
         "type": "prometheus",
         "uid": "webstore-metrics"
@@ -44,9 +31,9 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 1
+        "y": 0
       },
-      "id": 2,
+      "id": 1,
       "options": {
         "legend": {
           "calcs": [
@@ -63,7 +50,7 @@
           "sort": "desc"
         }
       },
-      "title": "RPS per Pod ($service)",
+      "title": "Request rate theo pod ($service)",
       "type": "timeseries",
       "targets": [
         {
@@ -72,8 +59,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (rate(traces_span_metrics_calls_total{service_name=\"$service\", pod=~\"$pod\"}[$__rate_interval])) or sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\", pod=~\"$pod\", container!=\"\"}[$__rate_interval]))",
-          "legendFormat": "{{pod}}",
+          "expr": "sum by (k8s_pod_name) (rate(traces_span_metrics_calls_total{service_name=\"$service\", k8s_pod_name=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{k8s_pod_name}}",
           "refId": "A"
         }
       ]
@@ -100,9 +87,9 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 1
+        "y": 0
       },
-      "id": 3,
+      "id": 2,
       "options": {
         "legend": {
           "calcs": [
@@ -119,7 +106,7 @@
           "sort": "desc"
         }
       },
-      "title": "Traffic Share % per Pod ($service)",
+      "title": "T\u1ef7 l\u1ec7 traffic c\u1ee7a t\u1eebng $service pod (%)",
       "type": "timeseries",
       "targets": [
         {
@@ -128,24 +115,11 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "100 * (sum by (pod) (rate(traces_span_metrics_calls_total{service_name=\"$service\", pod=~\"$pod\"}[$__rate_interval]))) / scalar(sum(rate(traces_span_metrics_calls_total{service_name=\"$service\"}[$__rate_interval])))",
-          "legendFormat": "{{pod}} (%)",
+          "expr": "100 * (sum by (k8s_pod_name) (rate(traces_span_metrics_calls_total{service_name=\"$service\", k8s_pod_name=~\"$pod\"}[$__rate_interval]))) / scalar(sum(rate(traces_span_metrics_calls_total{service_name=\"$service\"}[$__rate_interval])))",
+          "legendFormat": "{{k8s_pod_name}}",
           "refId": "A"
         }
       ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 4,
-      "panels": [],
-      "title": "2. Tail Latency per Pod (p95 & p99)",
-      "type": "row"
     },
     {
       "datasource": {
@@ -169,9 +143,9 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 7
       },
-      "id": 5,
+      "id": 3,
       "options": {
         "legend": {
           "calcs": [
@@ -188,7 +162,7 @@
           "sort": "desc"
         }
       },
-      "title": "p95 Latency per Pod ($service)",
+      "title": "$service p95 theo pod (ms)",
       "type": "timeseries",
       "targets": [
         {
@@ -197,8 +171,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le, pod) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"$service\", pod=~\"$pod\"}[$__rate_interval])))",
-          "legendFormat": "{{pod}} p95",
+          "expr": "histogram_quantile(0.95, sum by (le, k8s_pod_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"$service\", k8s_pod_name=~\"$pod\"}[$__rate_interval])))",
+          "legendFormat": "{{k8s_pod_name}}",
           "refId": "A"
         }
       ]
@@ -225,9 +199,9 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 7
       },
-      "id": 6,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [
@@ -244,7 +218,7 @@
           "sort": "desc"
         }
       },
-      "title": "p99 Latency per Pod ($service)",
+      "title": "$service p99 theo pod (ms)",
       "type": "timeseries",
       "targets": [
         {
@@ -253,24 +227,11 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (le, pod) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"$service\", pod=~\"$pod\"}[$__rate_interval])))",
-          "legendFormat": "{{pod}} p99",
+          "expr": "histogram_quantile(0.99, sum by (le, k8s_pod_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"$service\", k8s_pod_name=~\"$pod\"}[$__rate_interval])))",
+          "legendFormat": "{{k8s_pod_name}}",
           "refId": "A"
         }
       ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 16
-      },
-      "id": 7,
-      "panels": [],
-      "title": "3. Resource Consumption per Pod (CPU & Memory)",
-      "type": "row"
     },
     {
       "datasource": {
@@ -292,11 +253,11 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 17
+        "y": 14
       },
-      "id": 8,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [
@@ -313,7 +274,7 @@
           "sort": "desc"
         }
       },
-      "title": "CPU Usage per Pod ($service)",
+      "title": "$service CPU theo pod (Cores)",
       "type": "timeseries",
       "targets": [
         {
@@ -323,63 +284,7 @@
           },
           "editorMode": "code",
           "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\", pod=~\"$pod\", container!=\"\"}[$__rate_interval]))",
-          "legendFormat": "{{pod}} CPU",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "webstore-metrics"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 5,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never"
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 17
-      },
-      "id": 9,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max",
-            "mean"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "title": "RAM Working Set per Pod ($service)",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "webstore-metrics"
-          },
-          "editorMode": "code",
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"techx-corp-prod\", pod=~\"$service-.*\", pod=~\"$pod\", container!=\"\"})",
-          "legendFormat": "{{pod}} RAM",
+          "legendFormat": "{{pod}}",
           "refId": "A"
         }
       ]
@@ -404,7 +309,7 @@
           "type": "prometheus",
           "uid": "webstore-metrics"
         },
-        "definition": "label_values(traces_span_metrics_calls_total, service_name) or label_values(kube_pod_info{namespace=\"techx-corp-prod\"}, pod)",
+        "definition": "label_values(traces_span_metrics_calls_total, service_name)",
         "includeAll": false,
         "label": "Service",
         "name": "service",
@@ -427,14 +332,14 @@
           "type": "prometheus",
           "uid": "webstore-metrics"
         },
-        "definition": "label_values(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\"}, pod) or label_values(traces_span_metrics_calls_total{service_name=\"$service\"}, pod)",
+        "definition": "label_values(traces_span_metrics_calls_total{service_name=\"$service\"}, k8s_pod_name) or label_values(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\"}, pod)",
         "includeAll": true,
         "allValue": ".*",
         "label": "Pod",
         "name": "pod",
         "options": [],
         "query": {
-          "query": "label_values(container_cpu_usage_seconds_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\"}, pod)",
+          "query": "label_values(traces_span_metrics_calls_total{service_name=\"$service\"}, k8s_pod_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
