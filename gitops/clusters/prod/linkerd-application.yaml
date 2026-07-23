@@ -22,7 +22,7 @@ metadata:
     # Place after runtime-hardening (wave 0) if both are managed by root.
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: techx-corp
+  project: platform-root
 
   source:
     repoURL: https://github.com/tf2-team/tf2-corp-chart.git
