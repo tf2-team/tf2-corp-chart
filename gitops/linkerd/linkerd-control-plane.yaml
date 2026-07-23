@@ -33,7 +33,7 @@ spec:
     chart: linkerd-control-plane
     # Must match linkerd-crds targetRevision.
     # Latest stable as of 2026-07: check https://artifacthub.io/packages/helm/linkerd2/linkerd-control-plane
-    targetRevision: 2024.11.4
+    targetRevision: 1.16.11
     helm:
       releaseName: linkerd-control-plane
       valuesObject:

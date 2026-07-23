@@ -24,7 +24,7 @@ spec:
     chart: linkerd-crds
     # Pin to a specific stable release. Upgrade deliberately via PR.
     # Latest stable as of 2026-07: check https://artifacthub.io/packages/helm/linkerd2/linkerd-crds
-    targetRevision: 2024.11.4
+    targetRevision: 1.8.0
     helm:
       releaseName: linkerd-crds
 
