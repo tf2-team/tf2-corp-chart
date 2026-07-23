@@ -3,4 +3,4 @@
 components:
   llm:
     imageOverride:
-      digest: "sha256:39fefd939c07c16b457f1cd833d29a94300018d9b471fa716a8c8c2f5221cbfc"
+      digest: "sha256:3703b4e024eb3f814e503f64837268c07e98846f52015d883e251250682fe215"
