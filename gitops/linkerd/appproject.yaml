@@ -6,7 +6,7 @@
 #      that are broader than the techx-corp workload boundary.
 #   3. Allows independent RBAC and sync-failure isolation.
 #
-# Change trail: @hungxqt - 2026-07-24 - M16: Linkerd GitOps AppProject.
+# Change trail: @chinhgithub04 - 2026-07-24 - M16: Linkerd GitOps AppProject.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:

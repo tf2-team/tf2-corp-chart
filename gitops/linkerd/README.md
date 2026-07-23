@@ -102,4 +102,4 @@ kubectl annotate namespace techx-corp-prod linkerd.io/inject-
 - [Linkerd gRPC LB](https://linkerd.io/2.17/features/load-balancing/)
 - [ADR M16](../docs/adr/ADR-M16-latency-under-load.md)
 
-<!-- Change trail: @hungxqt - 2026-07-24 - M16 Linkerd service mesh via GitOps for gRPC L7 LB. -->
+<!-- Change trail: @chinhgithub04 - 2026-07-24 - M16 Linkerd service mesh via GitOps for gRPC L7 LB. -->

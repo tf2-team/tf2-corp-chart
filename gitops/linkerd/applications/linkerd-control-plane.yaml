@@ -16,7 +16,7 @@
 # identityTrustAnchorsPEM below must contain the CA cert (ca.crt output).
 # It is a public cert — safe to store in Git.
 #
-# Change trail: @hungxqt - 2026-07-24 - M16: Linkerd control-plane GitOps Application.
+# Change trail: @chinhgithub04 - 2026-07-24 - M16: Linkerd control-plane GitOps Application.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -7,7 +7,7 @@
 # Chart: https://helm.linkerd.io/stable / linkerd-crds
 # Upstream docs: https://linkerd.io/docs/tasks/install-helm/
 #
-# Change trail: @hungxqt - 2026-07-24 - M16: Linkerd CRDs GitOps Application.
+# Change trail: @chinhgithub04 - 2026-07-24 - M16: Linkerd CRDs GitOps Application.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
