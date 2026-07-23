@@ -32,8 +32,6 @@ egressProxy:
   enabled: true
 
 grafana:
-  podAnnotations:
-    linkerd.io/inject: disabled
   grafana.ini:
     server:
       # Alert links are generated outside an HTTP request, so the base
@@ -43,29 +41,6 @@ grafana:
       root_url: "https://internal.hungtran.id.vn/grafana"
       serve_from_sub_path: true
 
-metrics-server:
-  podAnnotations:
-    linkerd.io/inject: disabled
-
-prometheus-adapter:
-  podAnnotations:
-    linkerd.io/inject: disabled
-
-prometheus:
-  server:
-    podAnnotations:
-      linkerd.io/inject: disabled
-  kube-state-metrics:
-    podAnnotations:
-      linkerd.io/inject: disabled
-
-jaeger:
-  podAnnotations:
-    linkerd.io/inject: disabled
-
-opentelemetry-collector:
-  podAnnotations:
-    linkerd.io/inject: disabled
 
 
 
@@ -442,11 +417,18 @@ components:
 # Ensures prod overlay does not inherit a future base-values drift unintentionally.
 # Arrays replace under Helm merge — keep the full attributes list.
 prometheus:
+  server:
+    podAnnotations:
+      linkerd.io/inject: disabled
   kube-state-metrics:
+    podAnnotations:
+      linkerd.io/inject: disabled
     nodeSelector:
       workload-class: critical
 
 grafana:
+  podAnnotations:
+    linkerd.io/inject: disabled
   env:
     HTTPS_PROXY: "http://egress-proxy:10000"
     https_proxy: "http://egress-proxy:10000"
@@ -455,6 +437,19 @@ grafana:
   serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-grafana-athena
+
+metrics-server:
+  podAnnotations:
+    linkerd.io/inject: disabled
+
+prometheus-adapter:
+  podAnnotations:
+    linkerd.io/inject: disabled
+
+jaeger:
+  podAnnotations:
+    linkerd.io/inject: disabled
+
 
 opentelemetry-collector:
   # Kafka observability follows MSK. Restate OpenSearch envs because Helm
