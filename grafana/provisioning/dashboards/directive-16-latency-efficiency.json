@@ -392,6 +392,8 @@
               }
             ]
           },
+          "max": 600,
+          "min": 0,
           "unit": "ms"
         },
         "overrides": []
@@ -463,6 +465,8 @@
               }
             ]
           },
+          "max": 1400,
+          "min": 0,
           "unit": "ms"
         },
         "overrides": []
@@ -547,6 +551,8 @@
               }
             ]
           },
+          "max": 600,
+          "min": 0,
           "unit": "ms"
         },
         "overrides": []
@@ -618,6 +624,8 @@
               }
             ]
           },
+          "max": 1400,
+          "min": 0,
           "unit": "ms"
         },
         "overrides": []
@@ -702,6 +710,8 @@
               }
             ]
           },
+          "max": 1000,
+          "min": 0,
           "unit": "ms"
         },
         "overrides": []
@@ -773,6 +783,8 @@
               }
             ]
           },
+          "max": 2000,
+          "min": 0,
           "unit": "ms"
         },
         "overrides": []
