@@ -34,12 +34,28 @@ spec:
     server: https://kubernetes.default.svc
     namespace: cosign-system
 
+  # The policy-controller certificate reconciler owns these CA bundles.
+  # Keep all other webhook fields, including failurePolicy and selectors,
+  # under normal GitOps drift detection.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      name: policy.sigstore.dev
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: policy.sigstore.dev
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
