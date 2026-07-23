@@ -45,13 +45,6 @@ spec:
         identity:
           issuer:
             scheme: kubernetes.io/tls
-          resources:
-            cpu:
-              request: 50m
-              limit: 250m
-            memory:
-              request: 50Mi
-              limit: 250Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -59,6 +52,15 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 2102
+
+        # top-level resource keys per chart schema (helm show values linkerd/linkerd-control-plane)
+        identityResources:
+          cpu:
+            request: 50m
+            limit: 250m
+          memory:
+            request: 50Mi
+            limit: 250Mi
 
         # -----------------------------------------------------------------------
         # Trust anchor (CA cert) — PUBLIC, safe to store in Git.
@@ -123,7 +125,31 @@ spec:
           seccompProfile:
             type: RuntimeDefault
 
-        destination:
+        destinationResources:
+          cpu:
+            request: 50m
+            limit: 250m
+          memory:
+            request: 50Mi
+            limit: 250Mi
+
+        spValidatorResources:
+          cpu:
+            request: 50m
+            limit: 250m
+          memory:
+            request: 50Mi
+            limit: 250Mi
+
+        policyControllerResources:
+          cpu:
+            request: 50m
+            limit: 250m
+          memory:
+            request: 50Mi
+            limit: 250Mi
+
+        policyController:
           resources:
             cpu:
               request: 50m
@@ -131,6 +157,16 @@ spec:
             memory:
               request: 50Mi
               limit: 250Mi
+
+        proxyInjectorResources:
+          cpu:
+            request: 50m
+            limit: 250m
+          memory:
+            request: 50Mi
+            limit: 250Mi
+
+        destination:
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -139,17 +175,8 @@ spec:
             runAsNonRoot: true
             runAsUser: 2102
 
-
-
         proxyInjector:
           failurePolicy: Ignore  # Do not block pod creation if injector is unavailable
-          resources:
-            cpu:
-              request: 50m
-              limit: 250m
-            memory:
-              request: 50Mi
-              limit: 250Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
