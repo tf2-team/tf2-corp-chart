@@ -1,7 +1,6 @@
 # Managed by tf2-corp-platform secure delivery pipeline.
-# Mandate 10 migration: verified KMS signature, CycloneDX SBOM, and provenance.
+# Change trail: @hungxqt - 2026-07-20 - Selective service digest promote into service-digest/.
 components:
   shopping-copilot:
     imageOverride:
-      digest: "sha256:8538bad0a9ab4fd7cbecb299c2e7beb65c87c325b9b6984d88cbf096fd2c2fa7"
-# Change trail: @MinhKhoa2209 - 2026-07-22 - Pin verified production digest.
+      digest: "sha256:0b4054b5406d68042547b07e73c795a3324e7a35561ef4e2a08aaa150bc23d79"
