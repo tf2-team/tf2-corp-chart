@@ -65,7 +65,7 @@ The following resource configurations were applied to `values.yaml`:
 - **`load-generator-worker` (Locust worker):** `requests: 50m / 128Mi`, `limits: 500m / 256Mi` (Fixed 10 replicas, HPA disabled for static load test baseline).
 
 ### 2. Infrastructure & Observability Platform Components
-- **`prometheus-server` (Go):** `requests: 200m / 1792Mi`, `limits: 200m / 1792Mi` (P99: 193.8m CPU, 1668.75Mi Memory - Guaranteed QoS).
+- **`prometheus-server` (Go):** `requests: 200m / 2560Mi`, `limits: 200m / 2560Mi` (Guaranteed QoS; bounded recovery headroom after the 1792Mi cgroup was OOMKilled during WAL replay/compaction on 2026-07-24).
 - **`opensearch` (JVM):** `requests: 100m / 960Mi`, `limits: 100m / 960Mi` (P99: 87.9m CPU, 917.30Mi Memory - Guaranteed QoS).
 - **`otel-collector` (DaemonSet):** `requests: 20m / 128Mi`, `limits: 20m / 128Mi` (P99: 13.3m CPU, 117.86Mi Memory - Guaranteed QoS).
 - **`metrics-server` (Go):** `requests: 10m / 32Mi`, `limits: 50m / 32Mi` (P99: 5.3m CPU, 27.29Mi Memory - limits.cpu raised to 50m for /livez probe safety).
