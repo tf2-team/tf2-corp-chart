@@ -1,0 +1,86 @@
+[
+  {
+    "pod": "accounting-5599d7f599-gv5n6",
+    "deployment": "accounting",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "ad-7df9776d9-2qwhf",
+    "deployment": "ad",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "cart-7d94dbc667-4b6v6",
+    "deployment": "cart",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "checkout-dff9cd57b-svf2q",
+    "deployment": "checkout",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "currency-fb78f676d-sb5gk",
+    "deployment": "currency",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "email-846dc874cb-ncv95",
+    "deployment": "email",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "frontend-c88f786f8-ngchx",
+    "deployment": "frontend",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "image-provider-ffb99b8bc-fsfs5",
+    "deployment": "image-provider",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "llm-7659dbf7c6-dzffb",
+    "deployment": "llm",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "payment-6cbf6456-cz5gd",
+    "deployment": "payment",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "product-catalog-5944c56b56-bqz4m",
+    "deployment": "product-catalog",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "quote-696b6b9dfc-knpf8",
+    "deployment": "quote",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "recommendation-6bd768bcd7-wk47z",
+    "deployment": "recommendation",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "shipping-59c9487779-k8zxj",
+    "deployment": "shipping",
+    "node": "ip-10-0-25-228.ec2.internal",
+    "zone": "us-east-1a"
+  }
+]

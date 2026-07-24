@@ -1,0 +1,273 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "annotations": {
+      "deployment.kubernetes.io/revision": "72",
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"metadata\":{\"annotations\":{},\"labels\":{\"app.kubernetes.io/component\":\"ad\",\"app.kubernetes.io/managed-by\":\"Helm\",\"app.kubernetes.io/name\":\"ad\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"argocd.argoproj.io/instance\":\"techx-corp\",\"helm.sh/chart\":\"techx-corp-0.48.11\",\"opentelemetry.io/name\":\"ad\"},\"name\":\"ad\",\"namespace\":\"techx-corp-prod\"},\"spec\":{\"minReadySeconds\":10,\"progressDeadlineSeconds\":300,\"replicas\":2,\"revisionHistoryLimit\":2,\"selector\":{\"matchLabels\":{\"opentelemetry.io/name\":\"ad\"}},\"strategy\":{\"rollingUpdate\":{\"maxSurge\":1,\"maxUnavailable\":0},\"type\":\"RollingUpdate\"},\"template\":{\"metadata\":{\"annotations\":{\"resource.opentelemetry.io/service.namespace\":\"techx-corp-prod\"},\"labels\":{\"app.kubernetes.io/component\":\"ad\",\"app.kubernetes.io/name\":\"ad\",\"app.kubernetes.io/part-of\":\"techx-corp\",\"app.kubernetes.io/version\":\"2.2.0\",\"opentelemetry.io/name\":\"ad\"}},\"spec\":{\"affinity\":{\"nodeAffinity\":{\"preferredDuringSchedulingIgnoredDuringExecution\":[{\"preference\":{\"matchExpressions\":[{\"key\":\"karpenter.sh/capacity-type\",\"operator\":\"In\",\"values\":[\"spot\"]}]},\"weight\":100}]}},\"automountServiceAccountToken\":false,\"containers\":[{\"env\":[{\"name\":\"OTEL_SERVICE_NAME\",\"valueFrom\":{\"fieldRef\":{\"apiVersion\":\"v1\",\"fieldPath\":\"metadata.labels['app.kubernetes.io/component']\"}}},{\"name\":\"OTEL_COLLECTOR_NAME\",\"value\":\"otel-collector\"},{\"name\":\"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE\",\"value\":\"cumulative\"},{\"name\":\"AD_PORT\",\"value\":\"8080\"},{\"name\":\"FLAGD_HOST\",\"value\":\"flagd\"},{\"name\":\"FLAGD_PORT\",\"value\":\"8013\"},{\"name\":\"OTEL_EXPORTER_OTLP_ENDPOINT\",\"value\":\"http://$(OTEL_COLLECTOR_NAME):4318\"},{\"name\":\"OTEL_LOGS_EXPORTER\",\"value\":\"otlp\"}],\"image\":\"493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/ad@sha256:dc0e0c35b700b39b7791354c3a6ec313ca4f6b2a17180414157d4e35917a4d38\",\"imagePullPolicy\":\"IfNotPresent\",\"lifecycle\":{\"preStop\":{\"sleep\":{\"seconds\":10}}},\"livenessProbe\":{\"failureThreshold\":5,\"grpc\":{\"port\":8080},\"periodSeconds\":20,\"timeoutSeconds\":5},\"name\":\"ad\",\"ports\":[{\"containerPort\":8080,\"name\":\"service\"}],\"readinessProbe\":{\"failureThreshold\":6,\"grpc\":{\"port\":8080},\"periodSeconds\":10,\"timeoutSeconds\":5},\"resources\":{\"limits\":{\"cpu\":\"200m\",\"memory\":\"384Mi\"},\"requests\":{\"cpu\":\"10m\",\"memory\":\"288Mi\"}},\"securityContext\":{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"readOnlyRootFilesystem\":true,\"runAsNonRoot\":true},\"volumeMounts\":[{\"mountPath\":\"/tmp\",\"name\":\"tmp-dir\"}]}],\"nodeSelector\":{\"workload-class\":\"spot-tolerant\"},\"securityContext\":{\"seccompProfile\":{\"type\":\"RuntimeDefault\"}},\"serviceAccountName\":\"ad\",\"terminationGracePeriodSeconds\":30,\"tolerations\":[{\"effect\":\"NoSchedule\",\"key\":\"workload-class\",\"operator\":\"Equal\",\"value\":\"spot-tolerant\"}],\"topologySpreadConstraints\":[{\"labelSelector\":{\"matchLabels\":{\"opentelemetry.io/name\":\"ad\"}},\"matchLabelKeys\":[\"pod-template-hash\"],\"maxSkew\":1,\"topologyKey\":\"topology.kubernetes.io/zone\",\"whenUnsatisfiable\":\"ScheduleAnyway\"},{\"labelSelector\":{\"matchLabels\":{\"opentelemetry.io/name\":\"ad\"}},\"matchLabelKeys\":[\"pod-template-hash\"],\"maxSkew\":1,\"minDomains\":2,\"topologyKey\":\"kubernetes.io/hostname\",\"whenUnsatisfiable\":\"DoNotSchedule\"}],\"volumes\":[{\"emptyDir\":{},\"name\":\"tmp-dir\"}]}}}}\n"
+    },
+    "creationTimestamp": "2026-07-13T02:55:00Z",
+    "generation": 111,
+    "labels": {
+      "app.kubernetes.io/component": "ad",
+      "app.kubernetes.io/managed-by": "Helm",
+      "app.kubernetes.io/name": "ad",
+      "app.kubernetes.io/part-of": "techx-corp",
+      "app.kubernetes.io/version": "2.2.0",
+      "argocd.argoproj.io/instance": "techx-corp",
+      "helm.sh/chart": "techx-corp-0.48.11",
+      "opentelemetry.io/name": "ad"
+    },
+    "name": "ad",
+    "namespace": "techx-corp-prod",
+    "resourceVersion": "7559721",
+    "uid": "421647cc-2369-4ae2-b137-071ca1c6a7e1"
+  },
+  "spec": {
+    "minReadySeconds": 10,
+    "progressDeadlineSeconds": 300,
+    "replicas": 2,
+    "revisionHistoryLimit": 2,
+    "selector": {
+      "matchLabels": {
+        "opentelemetry.io/name": "ad"
+      }
+    },
+    "strategy": {
+      "rollingUpdate": {
+        "maxSurge": 1,
+        "maxUnavailable": 0
+      },
+      "type": "RollingUpdate"
+    },
+    "template": {
+      "metadata": {
+        "annotations": {
+          "kubectl.kubernetes.io/restartedAt": "2026-07-24T04:49:53+07:00",
+          "resource.opentelemetry.io/service.namespace": "techx-corp-prod"
+        },
+        "labels": {
+          "app.kubernetes.io/component": "ad",
+          "app.kubernetes.io/name": "ad",
+          "app.kubernetes.io/part-of": "techx-corp",
+          "app.kubernetes.io/version": "2.2.0",
+          "opentelemetry.io/name": "ad"
+        }
+      },
+      "spec": {
+        "affinity": {
+          "nodeAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "preference": {
+                  "matchExpressions": [
+                    {
+                      "key": "karpenter.sh/capacity-type",
+                      "operator": "In",
+                      "values": [
+                        "spot"
+                      ]
+                    }
+                  ]
+                },
+                "weight": 100
+              }
+            ]
+          }
+        },
+        "automountServiceAccountToken": false,
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "OTEL_SERVICE_NAME",
+                "valueFrom": {
+                  "fieldRef": {
+                    "apiVersion": "v1",
+                    "fieldPath": "metadata.labels['app.kubernetes.io/component']"
+                  }
+                }
+              },
+              {
+                "name": "OTEL_COLLECTOR_NAME",
+                "value": "otel-collector"
+              },
+              {
+                "name": "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE",
+                "value": "cumulative"
+              },
+              {
+                "name": "AD_PORT",
+                "value": "8080"
+              },
+              {
+                "name": "FLAGD_HOST",
+                "value": "flagd"
+              },
+              {
+                "name": "FLAGD_PORT",
+                "value": "8013"
+              },
+              {
+                "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+                "value": "http://$(OTEL_COLLECTOR_NAME):4318"
+              },
+              {
+                "name": "OTEL_LOGS_EXPORTER",
+                "value": "otlp"
+              }
+            ],
+            "image": "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/ad@sha256:dc0e0c35b700b39b7791354c3a6ec313ca4f6b2a17180414157d4e35917a4d38",
+            "imagePullPolicy": "IfNotPresent",
+            "lifecycle": {
+              "preStop": {
+                "sleep": {
+                  "seconds": 10
+                }
+              }
+            },
+            "livenessProbe": {
+              "failureThreshold": 5,
+              "grpc": {
+                "port": 8080,
+                "service": ""
+              },
+              "periodSeconds": 20,
+              "successThreshold": 1,
+              "timeoutSeconds": 5
+            },
+            "name": "ad",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "service",
+                "protocol": "TCP"
+              }
+            ],
+            "readinessProbe": {
+              "failureThreshold": 6,
+              "grpc": {
+                "port": 8080,
+                "service": ""
+              },
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 5
+            },
+            "resources": {
+              "limits": {
+                "cpu": "200m",
+                "memory": "384Mi"
+              },
+              "requests": {
+                "cpu": "10m",
+                "memory": "288Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "readOnlyRootFilesystem": true,
+              "runAsNonRoot": true
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "volumeMounts": [
+              {
+                "mountPath": "/tmp",
+                "name": "tmp-dir"
+              }
+            ]
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "nodeSelector": {
+          "workload-class": "spot-tolerant"
+        },
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "serviceAccount": "ad",
+        "serviceAccountName": "ad",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+          {
+            "effect": "NoSchedule",
+            "key": "workload-class",
+            "operator": "Equal",
+            "value": "spot-tolerant"
+          }
+        ],
+        "topologySpreadConstraints": [
+          {
+            "labelSelector": {
+              "matchLabels": {
+                "opentelemetry.io/name": "ad"
+              }
+            },
+            "matchLabelKeys": [
+              "pod-template-hash"
+            ],
+            "maxSkew": 1,
+            "topologyKey": "topology.kubernetes.io/zone",
+            "whenUnsatisfiable": "ScheduleAnyway"
+          },
+          {
+            "labelSelector": {
+              "matchLabels": {
+                "opentelemetry.io/name": "ad"
+              }
+            },
+            "matchLabelKeys": [
+              "pod-template-hash"
+            ],
+            "maxSkew": 1,
+            "minDomains": 2,
+            "topologyKey": "kubernetes.io/hostname",
+            "whenUnsatisfiable": "DoNotSchedule"
+          }
+        ],
+        "volumes": [
+          {
+            "emptyDir": {},
+            "name": "tmp-dir"
+          }
+        ]
+      }
+    }
+  },
+  "status": {
+    "availableReplicas": 2,
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-07-23T21:57:25Z",
+        "lastUpdateTime": "2026-07-23T23:20:20Z",
+        "message": "ReplicaSet \"ad-7df9776d9\" has successfully progressed.",
+        "reason": "NewReplicaSetAvailable",
+        "status": "True",
+        "type": "Progressing"
+      },
+      {
+        "lastTransitionTime": "2026-07-24T05:21:44Z",
+        "lastUpdateTime": "2026-07-24T05:21:44Z",
+        "message": "Deployment has minimum availability.",
+        "reason": "MinimumReplicasAvailable",
+        "status": "True",
+        "type": "Available"
+      }
+    ],
+    "observedGeneration": 111,
+    "readyReplicas": 2,
+    "replicas": 2,
+    "terminatingReplicas": 0,
+    "updatedReplicas": 2
+  }
+}

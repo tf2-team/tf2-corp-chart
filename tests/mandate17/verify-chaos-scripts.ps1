@@ -43,6 +43,7 @@ foreach ($required in @(
     "[switch]`$Execute",
     "[switch]`$CapacityApproved",
     "[switch]`$FenceProvisioning",
+    "[int]`$EvacuationTimeoutSeconds",
     "[string[]]`$NodePoolNames",
     "stateless-spot",
     "stateless-on-demand",
@@ -53,6 +54,8 @@ foreach ($required in @(
     "-restored.json",
     "resourceVersion",
     "new node(s) appeared in fenced zone",
+    "fault-boundary.json",
+    "Fault boundary established",
     "concurrent drift",
     "get`", `"deployments`"",
     "get`", `"replicasets`"",
@@ -68,6 +71,13 @@ foreach ($required in @(
     if ($az -notmatch [regex]::Escape($required)) {
         throw "AZ chaos script missing contract: $required"
     }
+}
+if (
+    $az.IndexOf('$evacuationDeadline') -lt 0 -or
+    $az.IndexOf('$faultDeadline') -lt 0 -or
+    $az.IndexOf('$evacuationDeadline') -ge $az.IndexOf('$faultDeadline')
+) {
+    throw "AZ chaos must establish evacuation before starting the fault hold window"
 }
 
 Write-Host "Mandate 17 dependency and AZ chaos script contracts passed."

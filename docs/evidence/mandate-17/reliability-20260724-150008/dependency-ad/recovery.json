@@ -1,0 +1,11 @@
+{
+  "dependency": "ad",
+  "desiredReplicas": 2,
+  "readyReplicas": 2,
+  "availableReplicas": 2,
+  "faultStartedAt": "2026-07-24T15:08:27.0929106+07:00",
+  "acceptanceStartedAt": "2026-07-24T15:08:36.0358948+07:00",
+  "recoveryStartedAt": "2026-07-24T15:09:48.8054607+07:00",
+  "recoveryFinishedAt": "2026-07-24T15:11:02.4680258+07:00",
+  "rolloutExitCode": 0
+}

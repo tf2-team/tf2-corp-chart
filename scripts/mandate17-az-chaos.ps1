@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Zone,
     [string]$Namespace = "techx-corp-prod",
     [int]$HoldSeconds = 300,
+    [ValidateRange(10, 300)][int]$EvacuationTimeoutSeconds = 120,
     [string]$EvidenceDirectory = "",
     [string[]]$NodePoolNames = @("stateless-spot", "stateless-on-demand"),
     [switch]$CapacityApproved,
@@ -235,6 +236,56 @@ try {
     $podNames = @($targets.pod)
     & kubectl --context $KubeContext -n $Namespace delete pod @podNames --wait=false
     if ($LASTEXITCODE -ne 0) { throw "Failed to delete AZ application pods" }
+
+    $evacuationStartedAt = Get-Date
+    $evacuationDeadline = $evacuationStartedAt.AddSeconds($EvacuationTimeoutSeconds)
+    do {
+        $currentNodes = Invoke-KubectlJson @("get", "nodes", "-o", "json")
+        $currentFaultNodeNames = @(
+            $currentNodes.items |
+                Where-Object {
+                    $_.metadata.labels."topology.kubernetes.io/zone" -eq $Zone
+                } |
+                ForEach-Object { $_.metadata.name }
+        )
+        $unexpectedFaultNodes = @($currentFaultNodeNames | Where-Object { $_ -notin $nodeNames })
+        if ($unexpectedFaultNodes.Count -gt 0) {
+            throw "Fault invalid: new node(s) appeared in fenced zone ${Zone}: $($unexpectedFaultNodes -join ', ')"
+        }
+
+        $currentPods = Invoke-KubectlJson @("-n", $Namespace, "get", "pods", "-o", "json")
+        $readyOnFaultNodes = @(
+            $currentPods.items |
+                Where-Object {
+                    if ($_.spec.nodeName -notin $currentFaultNodeNames) { return $false }
+                    $rsOwner = @($_.metadata.ownerReferences | Where-Object {
+                        $_.kind -eq "ReplicaSet" -and $_.controller -eq $true
+                    } | Select-Object -First 1)
+                    if ($rsOwner.Count -ne 1) { return $false }
+                    $deploymentName = $replicaSetToDeployment[$rsOwner[0].name]
+                    return $deploymentName -in $firstPartyDeployments -and
+                        ($_.status.conditions | Where-Object {
+                            $_.type -eq "Ready" -and $_.status -eq "True"
+                        })
+                }
+        )
+        if ($readyOnFaultNodes.Count -eq 0) { break }
+        if ((Get-Date) -ge $evacuationDeadline) {
+            throw "Fault invalid: evacuation timeout with $($readyOnFaultNodes.Count) first-party pod(s) still Ready in fault zone"
+        }
+        Start-Sleep -Seconds 2
+    } while ($true)
+
+    $faultEstablishedAt = Get-Date
+    [pscustomobject]@{
+        evacuationStartedAt = $evacuationStartedAt.ToString("o")
+        faultEstablishedAt = $faultEstablishedAt.ToString("o")
+        evacuationSeconds = [Math]::Round(($faultEstablishedAt - $evacuationStartedAt).TotalSeconds, 3)
+        faultNodes = @($nodeNames)
+        targetPods = @($podNames)
+    } | ConvertTo-Json -Depth 5 |
+        Out-File -Encoding utf8 (Join-Path $EvidenceDirectory "fault-boundary.json")
+    Write-Host "Fault boundary established: zero first-party Deployment pods Ready in $Zone"
 
     $faultDeadline = (Get-Date).AddSeconds($HoldSeconds)
     do {

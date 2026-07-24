@@ -1,0 +1,18 @@
+[
+  {
+    "nodePool": "stateless-spot",
+    "result": "restored"
+  },
+  {
+    "nodePool": "stateless-on-demand",
+    "result": "restored"
+  },
+  {
+    "node": "ip-10-0-16-62.ec2.internal",
+    "result": "uncordoned"
+  },
+  {
+    "node": "ip-10-0-29-227.ec2.internal",
+    "result": "NotFound/replaced"
+  }
+]

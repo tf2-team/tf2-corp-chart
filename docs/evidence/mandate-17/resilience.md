@@ -1,181 +1,192 @@
-# Mandate 17 resilience evidence
+# Mandate 17 resilience and containment evidence
 
-## Scope
+## Scope and verdict
 
-This file records the read-only production preflight and local resilience test
-results completed on 2026-07-21. It does not claim that dependency or AZ chaos
-has passed. Those tests require an approved change window, a named rollback
-operator, active load, and fault-window SLO evidence.
+This record covers the mentor requirements in
+`MANDATE-17-resilience-and-containment.md`: graceful optional-dependency
+failure, whole-AZ loss, network blast-radius containment, and least-privilege
+workload identity.
 
-## Revisions and release artifact
+The implementation and live gates are complete. The accepted reliability runs
+used production chart revision `4899e05`; no SLO was lowered, no broad network
+allowlist was added, and flagd was excluded from fault mutation.
 
-| Item | Verified value |
+## Revisions
+
+| Component | Verified revision |
 |---|---|
-| Platform `origin/main` | `f3c2aa6` |
-| Platform resilience merge | `ba6dd5b` (PR #54) |
-| Platform route-test completion | `f3c2aa6` (PR #59, contains `61db75f`) |
-| Chart `origin/main` and Argo target | `48ff38f` |
-| Infra `origin/main` | `9f76760` |
-| VPC CNI NetworkPolicy merge | `d6ddda3` (PR #102) |
-| Frontend image | `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend:sha-ba6dd5b` |
-| Frontend ECR digest | `sha256:4cd1cd02fdca08e48ec3888c5e24a77aaef0346695920e5a88c7985eaa4b929f` |
+| Platform `origin/main` | `e3f6f5142511a58ea3b51e3ab864f530dc3a71ff` |
+| Chart and Argo production | `4899e054f43d3af3795f4aced5b41f0f7861f0d4` |
+| Infra `origin/main` | `5e07b2cfe1ec54a00638dd45e96638abd59e8f74` |
+| Final AZ harness | `0d85f980001507ec2dfb18fd95c45049d9f0e377` |
+| Frontend runtime digest | `sha256:3249a2f8275a05f52ffea476c2fa559e097a5acd1e6036d2640addb6079f9ed2` |
 
-All four Argo CD applications were `Synced/Healthy` at revision `48ff38f`.
-The live frontend Deployment used the image and digest listed above, and
-`OPTIONAL_DEPENDENCY_TIMEOUT_MS` was `500`.
+Platform PR #54 supplied the runtime fallback. Platform PR #59 added automated
+contract tests only, so production correctly stayed on the already verified
+runtime digest. Chart PRs #178/#187 supplied identity, topology and containment;
+#226 restricted Kubernetes API access to the inventoried consumers; #253–#256
+hardened Linkerd runtime and the fault harness; #259 fixed only the proven
+Linkerd init redirect on managed Valkey TCP 6379; #260 added reversible
+provisioning fencing.
 
-At the 2026-07-21 preflight, the Platform `f3c2aa6` build-and-push workflow was
-still pending and ECR did not yet contain `sha-f3c2aa6`. Production therefore
-correctly remained on the previously verified `sha-ba6dd5b` artifact; no image
-promotion should reference `sha-f3c2aa6` until its release workflow and ECR
-verification complete.
+## Local and static verification
 
-## Local resilience verification
+The final branch passed:
 
-The completion branch adds gateway and API-route coverage in addition to the
-existing optional-dependency helper tests.
+- Helm lint with production values;
+- rendered disabled, ingress-only, full-egress, egress-proxy and attacker
+  NetworkPolicy contracts;
+- chaos-script mutation/cleanup contracts;
+- Directive #3 public/private exposure checks;
+- live identity/token/RBAC inventory for 21 first-party workloads;
+- CoreDNS readiness and AZ `-WhatIf`.
 
-```powershell
-cd D:\tf2-corp-platform\tf2-corp-platform\src\frontend
-npm ci
-npm run test:resilience
-npx tsc --noEmit
-npm run build
+No application or infrastructure remediation was introduced for the final
+evidence run. The only final harness change waits for actual target-Pod
+evacuation before opening the AZ acceptance window.
+
+## Identity, RBAC and IRSA
+
+- 21/21 first-party workloads use dedicated ServiceAccounts.
+- Default Kubernetes token automount is disabled.
+- Dangerous `auth can-i` checks return `no`; no wildcard application binding
+  exists.
+- checkout, product-reviews, and shopping-copilot use scoped IRSA roles and
+  projected STS tokens without a default Kubernetes token.
+- The attacker has no Kubernetes token and cannot read Secrets.
+
+The production inventory Job passed with `violationCount=0`. Old failed Job
+history was removed only after consecutive successful scans; the final
+recovery snapshot contains zero failed Jobs.
+
+## Network containment
+
+Production runs with:
+
+```yaml
+networkPolicy:
+  enabled: true
+  enforceEgress: true
+egressProxy:
+  enabled: true
 ```
 
-Observed result:
+The positive matrix preserves the public storefront, private operations,
+observability, flagd, DNS, declared service dependencies, and only the seven
+inventoried Kubernetes API consumers. The attacker matrix passed: DNS lookup
+works, while service lateral movement, Argo, Kubernetes API, egress proxy,
+Internet, RDS, MSK and Valkey access are denied. Attacker resources are removed
+in `finally`.
 
-- 10/10 resilience tests passed.
-- Ad and recommendation gateways applied a deadline approximately 500 ms in
-  the future.
-- Availability/deadline failures returned HTTP 200, an empty list, and the
-  expected degraded-dependency header.
-- Non-degradable errors propagated.
-- Recommendation fallback did not call product catalog.
-- TypeScript compilation and the Next.js production build passed.
-
-The clean install reported the frontend dependency findings already present in
-the npm dependency tree. No broad dependency upgrade or `npm audit fix` was
-performed as part of this scoped resilience change.
-
-## Identity, token, and RBAC inventory
-
-Command:
-
-```powershell
-$env:KUBECONFIG = "$env:TEMP\codex-m17-kubeconfig"
-./scripts/mandate17-inventory.ps1 -KubeContext techx-tf2-prod
-```
-
-Observed result:
-
-- 21/21 rendered first-party workloads used a dedicated ServiceAccount.
-- Pod and ServiceAccount token automount checks passed.
-- All dangerous live `auth can-i` checks returned `no` for all 21 identities.
-- No wildcard or unexpected application RBAC binding was found by the
-  inventory.
-
-## IRSA preflight
-
-| Workload | IAM role | Projected STS token | Default K8s token |
-|---|---|---|---|
-| checkout | `techx-prod-tf2-checkout-outbox` | Present, read-only | Disabled |
-| product-reviews | `techx-prod-tf2-product-reviews-model-read` | Present, read-only | Disabled |
-| shopping-copilot | `techx-prod-tf2-shopping-copilot-model-read` | Present, read-only | Disabled |
-
-Each Pod had `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE`, an
-`sts.amazonaws.com` projected token volume, and
-`automountServiceAccountToken=false`. The previous 30 minutes of logs had no
-`AccessDenied`, `NoCredential`, `InvalidIdentityToken`, or `ExpiredToken`
-match. A fault-window functional IRSA smoke test remains required.
-
-## Read-only traffic baseline
-
-Prometheus five-minute baseline before any fault:
-
-| Signal | Observed value |
-|---|---:|
-| Frontend non-5xx rate | 100% |
-| Frontend p95 | approximately 36 ms |
-| Frontend request rate | approximately 2.5 requests/second |
-
-Three internal black-box GET probes to `/`, `/api/data`, and
-`/api/recommendations` returned HTTP 200 with no degraded header. This is a
-smoke baseline only. The traffic rate and sample count are not sufficient to
-replace the required Locust baseline/fault/recovery evidence.
-
-## AZ and DNS preflight
-
-The cluster had three Ready nodes in each of `us-east-1a` and `us-east-1b`.
-Observed placement:
-
-| Workload | Ready | AZ placement |
-|---|---:|---|
-| cart | 2/2 | both in `us-east-1b` |
-| checkout | 2/2 | one per AZ |
-| frontend | 3/3 | one in `1a`, two in `1b` |
-| frontend-proxy | 2/2 | one per AZ |
-| payment | 2/2 | one per AZ |
-| product-catalog | 2/2 | both in `us-east-1b` |
-| shipping | 2/2 | one per AZ |
-| CoreDNS | 2/2 | same node in `us-east-1b` |
-
-CoreDNS already had preferred hostname anti-affinity and soft zone spread.
-The current co-location is runtime placement drift; Kubernetes does not
-automatically rebalance already-running Pods when capacity returns. A reviewed,
-one-Pod-at-a-time CoreDNS/workload rebalance and a surviving-zone capacity
-check are required before testing loss of `us-east-1b`.
-
-The repository provides `scripts/mandate17-coredns-readiness.ps1` for this
-gate. Its default mode is read-only. Live mode requires both
-`-CapacityApproved` and `-Execute`, deletes no more than one ready replica, and
-stops without retry if the replacement does not land across two nodes and two
-zones. This preparation does not claim that the live rebalance has run.
-
-The follow-up read-only preflight found one Ready `workload-class=critical`
-node in each AZ and no Pending Pods. The `us-east-1a` critical node had 51% CPU
-requests, 65% memory requests, 39% observed CPU use, and 54% observed memory
-use. The CoreDNS readiness gate still reported `ready=False`, `2/2` available,
-one distinct node, and one distinct zone. `-WhatIf` selected only
-`coredns-5656b4cd55-468xq`; normalized Pod UID/resourceVersion snapshots were
-unchanged before and after the dry-run. These observations support a capacity
-review but do not constitute capacity approval.
-
-Node CPU was low, but several nodes showed high current memory use (up to 94%).
-Actual usage alone is not capacity approval. Requested resources, allocatable
-capacity, Pending events, and scale-up policy must be reviewed for the fault
-window.
-
-## Dependency chaos dry-run
-
-The script was corrected so `-WhatIf` does not execute the restore scale when
-no fault was injected. The dry-run compared the ad Deployment before and after:
+Static rollback proof remains:
 
 ```text
-before=5339867:87:2
-after=5339867:87:2
-unchanged=True
+true/true -> true/false -> false/false
 ```
 
-Ad is a fixed two-replica Deployment and is suitable for the approved demo.
-Recommendation has an active HPA and must not be scaled directly without an
-approved HPA/Argo ownership procedure.
+A live C2 rollback was not repeated because C2 was healthy and the mentor
+requirement is containment evidence, not an unnecessary production rollback.
 
-## Remaining production gates
+## Dependency fault
 
-- Approve a change window and name both the fault operator and rollback
-  operator.
-- Confirm rolling error budget and active incident status.
-- Rebalance CoreDNS and the co-located money-path replicas, then verify normal
-  placement.
-- Approve surviving-zone capacity using requests/allocatable data.
-- Run Locust warm-up, dependency fault, and recovery windows; capture CSV and
-  Prometheus/Grafana data for the exact timestamps.
-- Run dependency faults separately and restore fully before any AZ fault.
-- Run AZ chaos only with `-CapacityApproved -Execute` and verify every cordoned
-  node is uncordoned.
-- Re-run IRSA, storefront exposure, observability, and flagd checks during and
-  after each fault.
+Authoritative artifacts:
+`reliability-20260724-150008/dependency-ad`.
 
-No secret, token, authorization header, webhook, or raw customer data belongs
-in this evidence directory.
+The `ad` Deployment kept desired replicas at two while the deletion loop held
+its EndpointSlice at zero Ready endpoints for the fault window. Six of six
+cache-busted `/api/data` probes returned:
+
+- HTTP 200;
+- body `[]`;
+- `X-TechX-Degraded-Dependencies: ad`;
+- structured `optional_dependency_fallback` log evidence.
+
+k6 completed 600 iterations: browse/cart/checkout 100%, browse p95 525.46 ms,
+zero failed requests and zero dropped iterations. Cleanup stopped the deletion
+loop, restored `ad` 2/2 and two Ready endpoints, and returned Argo to Healthy.
+
+`ad` was selected because it is optional on the browse data path, has an
+explicit fallback contract, and is a fixed two-replica Deployment without HPA
+ownership conflict. Recommendation was retained as a second documented
+optional dependency, not mutated concurrently.
+
+## Whole-AZ loss
+
+Authoritative artifacts:
+`reliability-20260724-190910`.
+
+### Entry gate and capacity
+
+Locust was explicitly stopped at zero users. The five-minute baseline on
+`4899e05` completed 601 iterations with browse/cart/checkout 100%, browse p95
+316.42 ms, and zero dropped iterations. The seven-node set did not change.
+
+CoreDNS was 2/2 across two nodes/two AZs. All Argo applications were
+Synced/Healthy, all Deployments Available, and every node Ready/uncordoned.
+The surviving `us-east-1b` zone had approximately 3420m free requested CPU and
+10.25 GiB free requested memory versus 1390m CPU and 1.63 GiB requested by the
+13 selected Pods. `requiresScaleOut` was false.
+
+### Fault and SLO
+
+The approved command used `-CapacityApproved -FenceProvisioning -Execute`.
+Both stateless NodePools were atomically fenced to `us-east-1b`. The harness
+cordoned two `us-east-1a` nodes and evacuated all 13 selected first-party
+Deployment Pods in 26.462 seconds before starting the 300-second acceptance
+window. No new node entered the failed AZ.
+
+The 10-minute external k6 run completed:
+
+| Signal | Result |
+|---|---:|
+| Iterations | 1200 |
+| Browse | 100% |
+| Cart | 100% |
+| Checkout | 1199/1200 (99.9167%) |
+| Browse p95 | 311.46 ms |
+| Dropped iterations | 0 |
+
+DNS and flagd stayed Ready. One checkout did not meet the HTTP-200-with-order
+check, remaining within the required >=99% SLO. This k6 version persisted only
+aggregate output, so it cannot prove the exact response timestamp/body.
+Prometheus showed no non-200 `/api/checkout` handler increment in the fault
+interval. Evidence therefore supports only a pre-handler transient during Pod
+evacuation; it does not support assigning an application/payment root cause.
+
+### Rollback and recovery
+
+Cleanup restored exact zone requirements on both NodePools. Node
+`ip-10-0-16-62` was uncordoned; `ip-10-0-29-227` had already been replaced and
+was recorded as `NotFound/replaced`. Every current node was subsequently
+Ready/uncordoned.
+
+The independent five-minute recovery run completed 600 iterations with
+browse/cart/checkout 100%, browse p95 308.61 ms, zero failed requests and zero
+dropped iterations. The final snapshot at `19:42:56 +07` shows all Argo
+applications Synced/Healthy, every Deployment Available/updated, both
+NodePools restored to two AZs, CoreDNS 2/2, flagd 1/1, and zero failed Jobs.
+
+## Invalid runs retained for audit
+
+- `reliability-20260724-182851`: baseline passed, but the harness stopped
+  before opening the fault window because asynchronous Pod deletion had not
+  completed. Cleanup passed.
+- `reliability-20260724-185120`: retained for post-baseline node-convergence
+  diagnosis.
+- `reliability-20260724-190043`: aborted before fault injection when the node
+  set changed.
+
+These runs demonstrate that the gate stopped on invalid conditions; they are
+not counted as reliability proof.
+
+## Reproduction and safety
+
+The exact one-command dependency, AZ and attacker reproductions are indexed in
+[`README.md`](README.md). Mutating scripts require an explicit `-Execute`;
+AZ loss additionally requires `-CapacityApproved` and
+`-FenceProvisioning`. Cleanup is in `finally`, dependency and AZ faults must
+never overlap, and the entry baseline must be rerun if revision, load owner or
+node state changes.
+
+No evidence artifact contains a Secret, token, authorization header, webhook
+URL, or customer payload.
