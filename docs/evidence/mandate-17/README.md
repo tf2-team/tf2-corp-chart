@@ -71,7 +71,8 @@ $ctx = "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod"
 keeps the Deployment replica target unchanged while repeatedly deleting
 replacement Pods until the EndpointSlice has zero ready endpoints. The AZ fault
 discovers Deployment-owned first-party Pods at runtime, excludes load-generator,
-Jobs and StatefulSets, and prints the exact target inventory before execution.
+flagd, platform/observability components, Jobs and StatefulSets, and prints the
+exact target inventory before execution.
 
 The CoreDNS script deletes at most one ready replica and waits for full
 Deployment recovery. It does not automatically retry when the replacement is
