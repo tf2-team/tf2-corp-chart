@@ -2908,7 +2908,10 @@ prometheus:
     enabled: false
   configmapReload:
     prometheus:
-      enabled: false
+      # Reload Prometheus when ArgoCD updates extraScrapeConfigs.  Without this
+      # sidecar, a ConfigMap update leaves the running server on its old scrape
+      # configuration until a manual rollout.
+      enabled: true
   kube-state-metrics:
     enabled: true
     # Expose only the node-placement labels required by capacity alerts.
