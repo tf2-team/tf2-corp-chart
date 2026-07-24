@@ -1,0 +1,18 @@
+# Provisioned by the Grafana datasource sidecar.
+# Authentication uses the AWS SDK default provider chain; in production the
+# Grafana service account is annotated with the CUR Athena IRSA role.
+apiVersion: 1
+
+datasources:
+  - name: Athena CUR
+    uid: finops-athena-cur
+    type: grafana-athena-datasource
+    editable: false
+    isDefault: false
+    jsonData:
+      authType: default
+      defaultRegion: ap-southeast-1
+      catalog: AwsDataCatalog
+      database: finops_cur
+      workgroup: grafana-cur
+      outputLocation: s3://techx-prod-tf2-athena-results-493499579600-ap-southeast-1/results/
