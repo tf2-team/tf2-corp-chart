@@ -98,6 +98,18 @@ if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
 }
 
 $fullRendered = Render $true $true $true
+$opensearchDatasourcePosition = $fullRendered.IndexOf("01-opensearch.yaml")
+$jaegerDatasourcePosition = $fullRendered.IndexOf("02-jaeger.yaml")
+$defaultDatasourcePosition = $fullRendered.IndexOf("default.yaml")
+if (
+    $opensearchDatasourcePosition -lt 0 -or
+    $jaegerDatasourcePosition -lt 0 -or
+    $defaultDatasourcePosition -lt 0 -or
+    $opensearchDatasourcePosition -ge $defaultDatasourcePosition -or
+    $jaegerDatasourcePosition -ge $defaultDatasourcePosition
+) {
+    throw "OpenSearch and Jaeger datasources must be provisioned before dependent defaults"
+}
 $inventoryJob = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '# Source: techx-corp/templates/runtime-hardening-inventory.yaml' -and
     $_ -match '(?m)^kind: CronJob$'
