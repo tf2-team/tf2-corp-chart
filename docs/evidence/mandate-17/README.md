@@ -61,9 +61,17 @@ $ctx = "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod"
 ./scripts/mandate17-coredns-readiness.ps1 -KubeContext $ctx
 # Review the generated placement evidence and surviving-zone capacity first.
 ./scripts/mandate17-coredns-readiness.ps1 -KubeContext $ctx -CapacityApproved -Execute
-./scripts/mandate17-dependency-chaos.ps1 -KubeContext $ctx -Dependency ad -ProbeUri "<storefront>/api/data"
+./scripts/mandate17-dependency-chaos.ps1 -KubeContext $ctx -Dependency ad -ProbeUri "<storefront>/api/data" -WhatIf
+./scripts/mandate17-dependency-chaos.ps1 -KubeContext $ctx -Dependency ad -ProbeUri "<storefront>/api/data" -Execute
+./scripts/mandate17-az-chaos.ps1 -KubeContext $ctx -Zone us-east-1a -WhatIf
 ./scripts/mandate17-az-chaos.ps1 -KubeContext $ctx -Zone us-east-1a -CapacityApproved -Execute
 ```
+
+`-WhatIf` is read-only and creates no evidence directory. The dependency fault
+keeps the Deployment replica target unchanged while repeatedly deleting
+replacement Pods until the EndpointSlice has zero ready endpoints. The AZ fault
+discovers Deployment-owned first-party Pods at runtime, excludes load-generator,
+Jobs and StatefulSets, and prints the exact target inventory before execution.
 
 The CoreDNS script deletes at most one ready replica and waits for full
 Deployment recovery. It does not automatically retry when the replacement is
