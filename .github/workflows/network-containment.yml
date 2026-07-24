@@ -56,6 +56,9 @@ jobs:
         run: |
           ./scripts/mandate17-inventory.ps1
           ./scripts/verify-directive-03.ps1
+      - name: Verify chaos script contracts
+        shell: pwsh
+        run: ./tests/mandate17/verify-chaos-scripts.ps1
       - name: Validate Envoy proxy configuration
         run: |
           helm template techx-corp . \

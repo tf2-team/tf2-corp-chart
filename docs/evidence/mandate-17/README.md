@@ -64,7 +64,7 @@ $ctx = "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod"
 ./scripts/mandate17-dependency-chaos.ps1 -KubeContext $ctx -Dependency ad -ProbeUri "<storefront>/api/data" -WhatIf
 ./scripts/mandate17-dependency-chaos.ps1 -KubeContext $ctx -Dependency ad -ProbeUri "<storefront>/api/data" -Execute
 ./scripts/mandate17-az-chaos.ps1 -KubeContext $ctx -Zone us-east-1a -WhatIf
-./scripts/mandate17-az-chaos.ps1 -KubeContext $ctx -Zone us-east-1a -CapacityApproved -Execute
+./scripts/mandate17-az-chaos.ps1 -KubeContext $ctx -Zone us-east-1a -CapacityApproved -FenceProvisioning -Execute
 ```
 
 `-WhatIf` is read-only and creates no evidence directory. The dependency fault
