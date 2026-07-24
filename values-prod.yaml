@@ -53,6 +53,8 @@ egressProxy:
     - discord.com:443
     - grafana.com:443
     - "*.grafana.com:443"
+    # Grafana plugin installer downloads zip artifacts from Google Cloud Storage.
+    - storage.googleapis.com:443
 
 
 
