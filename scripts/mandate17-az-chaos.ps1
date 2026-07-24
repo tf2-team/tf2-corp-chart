@@ -34,11 +34,24 @@ if ($zoneNodes.Count -eq 0) { throw "No Ready nodes found in zone $Zone" }
 if ($survivingNodes.Count -eq 0) { throw "No Ready recovery nodes remain outside zone $Zone" }
 $nodeNames = @($zoneNodes.metadata.name)
 
+$excludedDeploymentPattern = @(
+    "^load-generator(-worker)?$",
+    "^flagd$",
+    "^egress-proxy$",
+    "^grafana$",
+    "^jaeger$",
+    "^metrics-server$",
+    "^prometheus(-adapter)?$",
+    "^techx-corp-kube-state-metrics$",
+    "^otel-collector"
+) -join "|"
+
 $deploymentData = Invoke-KubectlJson @("-n", $Namespace, "get", "deployments", "-o", "json")
 $firstPartyDeployments = @(
     $deploymentData.items |
         Where-Object {
-            $_.metadata.name -notmatch "^(load-generator|locust)" -and
+            $_.metadata.labels."app.kubernetes.io/part-of" -eq "techx-corp" -and
+            $_.metadata.name -notmatch $excludedDeploymentPattern -and
             $_.metadata.labels."app.kubernetes.io/managed-by" -ne "Helm-operator"
         } |
         ForEach-Object { $_.metadata.name }
@@ -83,7 +96,7 @@ if ($targets.Count -eq 0) { throw "No first-party Deployment pods found in zone 
 Write-Host "Fault zone: $Zone"
 Write-Host "Nodes to cordon: $($nodeNames -join ', ')"
 Write-Host "Surviving Ready nodes: $($survivingNodes.Count)"
-Write-Host "First-party Deployment pod targets (load-generator/Jobs/StatefulSets excluded):"
+Write-Host "First-party Deployment pod targets (load-generator, flagd, platform/observability, Jobs and StatefulSets excluded):"
 $targets | Sort-Object deployment, pod | Format-Table -AutoSize
 
 if (-not $Execute) {
