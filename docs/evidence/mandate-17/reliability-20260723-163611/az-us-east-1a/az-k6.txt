@@ -1,0 +1,57 @@
+
+
+  █ THRESHOLDS 
+
+    browse_success
+    ✓ 'rate>=0.995' rate=100.00%
+
+    cart_success
+    ✓ 'rate>=0.995' rate=100.00%
+
+    checkout_success
+    ✗ 'rate>=0.99' rate=95.83%
+
+    dropped_iterations
+    ✓ 'count==0' count=0
+
+    http_req_duration{flow:browse}
+    ✓ 'p(95)<1000' p(95)=379.2ms
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 3364   7.961055/s
+    checks_succeeded...: 98.95% 3329 out of 3364
+    checks_failed......: 1.04%  35 out of 3364
+
+    ✓ homepage HTTP 200
+    ✓ products HTTP 200
+    ✓ cart HTTP 200
+    ✗ checkout HTTP 200 with order
+      ↳  95% — ✓ 806 / ✗ 35
+
+    CUSTOM
+    browse_success.................: 100.00% 841 out of 841
+    cart_success...................: 100.00% 841 out of 841
+    checkout_success...............: 95.83%  806 out of 841
+
+    HTTP
+    http_req_duration..............: avg=655.89ms min=240.14ms med=281.47ms max=23.69s p(90)=950.21ms p(95)=2.06s  
+      { expected_response:true }...: avg=551.7ms  min=240.14ms med=281.19ms max=17.53s p(90)=812.27ms p(95)=1.83s  
+      { flow:browse }..............: avg=308.34ms min=248.87ms med=279.14ms max=3.13s  p(90)=325.04ms p(95)=379.2ms
+    http_req_failed................: 1.04%   35 out of 3364
+    http_reqs......................: 3364    7.961055/s
+
+    EXECUTION
+    dropped_iterations.............: 0       0/s
+    iteration_duration.............: avg=2.89s    min=1.23s    med=1.71s    max=24.71s p(90)=5.29s    p(95)=9.1s   
+    iterations.....................: 841     1.990264/s
+    vus............................: 5       min=2          max=36
+    vus_max........................: 60      min=60         max=60
+
+    NETWORK
+    data_received..................: 18 MB   43 kB/s
+    data_sent......................: 762 kB  1.8 kB/s
+
+
+

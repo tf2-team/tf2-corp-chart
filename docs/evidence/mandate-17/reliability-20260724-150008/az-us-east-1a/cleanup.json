@@ -1,0 +1,10 @@
+[
+  {
+    "node": "ip-10-0-16-62.ec2.internal",
+    "result": "uncordoned"
+  },
+  {
+    "node": "ip-10-0-25-228.ec2.internal",
+    "result": "uncordoned"
+  }
+]

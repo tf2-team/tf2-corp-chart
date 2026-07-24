@@ -1,0 +1,50 @@
+[
+  {
+    "time": "2026-07-24T15:08:37.7388179+07:00",
+    "uri": "https://shop.hungtran.id.vn/api/data?mandate17=1784880516044",
+    "status": 200,
+    "degraded": "ad",
+    "body": "[]",
+    "readyEndpoints": 0
+  },
+  {
+    "time": "2026-07-24T15:08:49.5818068+07:00",
+    "uri": "https://shop.hungtran.id.vn/api/data?mandate17=1784880528786",
+    "status": 200,
+    "degraded": "ad",
+    "body": "[]",
+    "readyEndpoints": 0
+  },
+  {
+    "time": "2026-07-24T15:09:02.3002953+07:00",
+    "uri": "https://shop.hungtran.id.vn/api/data?mandate17=1784880541033",
+    "status": 200,
+    "degraded": "ad",
+    "body": "[]",
+    "readyEndpoints": 0
+  },
+  {
+    "time": "2026-07-24T15:09:14.5123374+07:00",
+    "uri": "https://shop.hungtran.id.vn/api/data?mandate17=1784880553207",
+    "status": 200,
+    "degraded": "ad",
+    "body": "[]",
+    "readyEndpoints": 0
+  },
+  {
+    "time": "2026-07-24T15:09:26.6973295+07:00",
+    "uri": "https://shop.hungtran.id.vn/api/data?mandate17=1784880565933",
+    "status": 200,
+    "degraded": "ad",
+    "body": "[]",
+    "readyEndpoints": 0
+  },
+  {
+    "time": "2026-07-24T15:09:41.1350596+07:00",
+    "uri": "https://shop.hungtran.id.vn/api/data?mandate17=1784880579285",
+    "status": 200,
+    "degraded": "ad",
+    "body": "[]",
+    "readyEndpoints": 0
+  }
+]

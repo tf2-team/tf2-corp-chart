@@ -1,0 +1,1 @@
+time="2026-07-24T08:00:32Z" level=warning msg="Request Failed" error="Get \"https://shop.hungtran.id.vn/\": dial tcp 52.85.193.109:443: connect: connection refused"
