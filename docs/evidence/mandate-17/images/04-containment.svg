@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470">
+  <rect width="1200" height="470" rx="20" fill="#0d1117"/>
+  <text x="48" y="60" fill="#f0f6fc" font-family="Segoe UI,Arial" font-size="30" font-weight="700">NETWORK CONTAINMENT + IDENTITY — PASS</text>
+  <text x="48" y="94" fill="#8b949e" font-family="Segoe UI,Arial" font-size="17">Attacker negative control • 2026-07-23 10:38–10:40 +07</text>
+  <g font-family="Segoe UI,Arial">
+    <rect x="48" y="128" width="250" height="230" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="73" y="169" fill="#8b949e" font-size="18">POSITIVE CONTROL</text><text x="73" y="218" fill="#3fb950" font-size="36" font-weight="700">DNS PASS</text><text x="73" y="253" fill="#f0f6fc" font-size="17">172.20.0.10:53</text><text x="73" y="283" fill="#f0f6fc" font-size="17">resolved Kubernetes</text><text x="73" y="313" fill="#f0f6fc" font-size="17">service name</text>
+    <rect x="322" y="128" width="390" height="230" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="347" y="169" fill="#8b949e" font-size="18">DENY MATRIX</text><text x="347" y="215" fill="#3fb950" font-size="32" font-weight="700">8 / 8 BLOCKED</text><text x="347" y="251" fill="#f0f6fc" font-size="16">service • Argo • Kubernetes API</text><text x="347" y="281" fill="#f0f6fc" font-size="16">egress proxy • Internet</text><text x="347" y="311" fill="#f0f6fc" font-size="16">RDS • MSK • Valkey</text>
+    <rect x="736" y="128" width="416" height="230" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="761" y="169" fill="#8b949e" font-size="18">IDENTITY + CLEANUP</text><text x="761" y="215" fill="#3fb950" font-size="32" font-weight="700">21 / 21 PASS</text><text x="761" y="251" fill="#f0f6fc" font-size="16">no attacker token • no RBAC</text><text x="761" y="281" fill="#f0f6fc" font-size="16">dedicated ServiceAccounts</text><text x="761" y="311" fill="#f0f6fc" font-size="16">attacker resources deleted</text>
+  </g>
+  <text x="48" y="414" fill="#8b949e" font-family="Consolas,monospace" font-size="15">Sources: attacker-test.txt • mandate17-inventory.ps1 • runtime-hardening-inventory.yaml</text>
+</svg>
