@@ -75,6 +75,17 @@ foreach ($required in @(
     }
 }
 
+$defaultValues = Get-Content -Raw (Join-Path $chartRoot "values.yaml")
+foreach ($required in @(
+    'rootKey: linkerd-cni/DaemonSet/linkerd-cni',
+    '- repair-controller',
+    '- NON_ROOT'
+)) {
+    if ($defaultValues -notmatch [regex]::Escape($required)) {
+        throw "Linkerd repair-controller exception must remain exact: $required"
+    }
+}
+
 $disabled = NetworkPolicyDocuments (Render $false $false $false)
 if ($disabled.Count -ne 0) { throw "disabled state rendered NetworkPolicy resources" }
 

@@ -180,6 +180,14 @@ runtimeHardeningInventory:
         - NON_ROOT
         - PRIV_ESC
         - HOST_PATH
+    # The upstream Linkerd 30.12.2 chart hardens repair-controller but does not
+    # expose an explicit runAsNonRoot/runAsUser value. Keep this exception to
+    # the single observed tuple; all other container rules remain enforced.
+    - rootKey: linkerd-cni/DaemonSet/linkerd-cni
+      containers:
+        - repair-controller
+      rules:
+        - NON_ROOT
     - rootKey: kube-system/Deployment/ebs-csi-controller
       containers:
         - ebs-plugin
