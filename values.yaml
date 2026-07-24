@@ -874,11 +874,11 @@ components:
       # multi-item checkout (Jaeger: Convert p50 ~3ms vs p99 ~1.4s; checkout p95 ~1.7s).
       # Same pattern as checkout: modest request keeps HPA % sane; higher limit allows burst.
       requests:
-        cpu: 100m
+        cpu: 50m
         memory: 64Mi
       limits:
-        cpu: 500m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
     # High-RPS / low-CPU gRPC (native C++): RPS is the primary capacity signal; CPU often never hits 70%.
     # maxReplicas 72: load-test pin at 12 with CPU ~412%/70% → desired ~71 (tiny request amplifies %).
     autoscaling:
