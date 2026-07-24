@@ -25,9 +25,9 @@ fault đồng thời.
 | Thành phần | `origin/main` mới nhất |
 |---|---|
 | Platform | `e3f6f51` |
-| Chart | `d216073` |
+| Chart | `4899e05` |
 | Infra | `5e07b2c` |
-| Argo | `techx-corp` `Synced/Healthy` tại `d216073`; `linkerd-cni` đang `Synced/Progressing` do Spot node termination, các application còn lại `Synced/Healthy` |
+| Argo | tất cả application `Synced/Healthy` tại `4899e05` trong preflight `18:02`; `techx-corp` tạm `Progressing` lúc `18:13` trong khi mọi Deployment vẫn Available |
 
 ### Production
 
@@ -46,21 +46,20 @@ fault đồng thời.
   `runAsNonRoot`; remediation local chỉ thêm một exception tuple
   `repair-controller/NON_ROOT`, không miễn các rule khác; PR #255 đã merge.
   Hai inventory Job mới nhất đã `Complete`, `violationCount=0`.
-- Snapshot lúc `16:44 +07` ngày 24/07 có 13 node Ready và một Spot node
-  `ip-10-0-37-80` đang terminate/NotReady sau Karpenter disruption; không có node
-  bị cordon thủ công. Đây chưa phải entry gate sạch.
+- Snapshot lúc `18:13 +07` ngày 24/07 có 17 node Ready (7 ở `us-east-1a`, 10 ở
+  `us-east-1b`), không node nào cordon và mọi Deployment Available.
 - CoreDNS 2/2 Ready trên hai node và hai AZ.
 - Grafana đã trở lại 1/1 Ready sau khi datasource provisioning được sắp lại.
 - C2 vẫn live:
   `networkPolicy.enabled=true`, `networkPolicy.enforceEgress=true`,
   `egressProxy.enabled=true`; NetworkPolicy per-workload đang tồn tại.
 - Egress proxy 2/2 Ready trên hai node/hai AZ.
-- Snapshot lúc `16:44 +07`: Locust vẫn `running`, `200 users`, `10 workers`,
-  khoảng `40.8 RPS`, `fail_ratio≈0.0030`. HPA còn giữ frontend `7`,
-  frontend-proxy `4`, recommendation `6` và product-reviews `2`; một Spot node
-  đang terminate nên `linkerd-cni` còn `Progressing`. Đây là tải ngoài evidence
-  lane: không chạy baseline/AZ fault và không tự dừng run của team khác.
-- Hai inventory Job lúc `16:35` và `16:40 +07` đều `Complete`; cluster-wide
+- Snapshot lúc `18:13 +07`: Locust vẫn `running`, `200 users`, `10 workers`,
+  khoảng `83.9 RPS`, `fail_ratio≈0.0000133`. HPA còn giữ cart `4`, frontend
+  `13`, frontend-proxy `7`, product-reviews `4` và recommendation `6`. Đây là
+  tải ngoài evidence lane: không chạy baseline/AZ fault và không tự dừng run
+  của team khác.
+- Hai inventory Job lúc `17:55` và `18:00 +07` đều `Complete`; cluster-wide
   không có Job failed. Entry gate chỉ mở lại khi Locust `stopped`/`0 users`,
   mọi Deployment Available, tất cả node hiện hữu Ready/không cordon, không còn
   Spot/Karpenter churn và toàn bộ Argo application `Synced/Healthy`.
@@ -68,8 +67,9 @@ fault đồng thời.
   14:40, tăng currency `minReplicas`/CPU burst và tài nguyên OTel agent.
   PR #259 đã merge ở `ff7cb59`, bổ sung đúng Linkerd bypass TCP 6379 cho init
   probe của cart. Cart đã rollout `2/2`; cả hai Pod mới Ready với annotation
-  `6379,10000,9901`. PR #260 harden AZ harness và đã merge ở `d216073`;
-  revision live để retest từ đây là `d216073`. Không dùng
+  `6379,10000,9901`. PR #260 harden AZ harness và đã merge ở `d216073`.
+  PR #261 ngoài phạm vi Mandate 17 chỉ giảm currency `minReplicas` từ 3 xuống 2;
+  revision live để retest từ đây là `4899e05`. Không dùng
   baseline của revision cũ làm entry gate cho lần AZ-loss kế tiếp.
 
 Không dùng snapshot capacity, Locust state hoặc SLO của audit trước làm evidence.
@@ -98,8 +98,8 @@ chứng minh còn lỗi.
 
 ### R0 — Tạo evidence lane do CDO tự sở hữu
 
-R0 đã **PASS** cho baseline/dependency window; trước AZ-loss phải lấy một
-baseline mới vì PR #259 đã đổi chart revision:
+R0 đã **PASS** cho baseline/dependency window cũ; trước AZ-loss phải lấy một
+baseline mới trên live revision `4899e05`:
 
 1. [x] Linkerd CNI/heartbeat/exception remediation đã merge; static test pass và
    inventory có hai lần `Complete` với `violationCount=0`.
@@ -216,7 +216,7 @@ Root cause cart đã được chứng minh: Linkerd CNI redirect TCP 6379 của 
 container trước khi proxy sidecar chạy. DNS, SG, NetworkPolicy và PolicyEndpoint
 đều đúng; Pod annotation chỉ skip `10000,9901`. PR #259 thêm đúng override prod
 `6379,10000,9901` và render assertion, không mở CIDR/rule mới. PR đã merge ở
-`ff7cb59`; Argo hiện `Synced/Healthy` tại `d216073`, cart `2/2`, mọi Deployment Available và
+`ff7cb59`; chart live hiện tại là `4899e05`, cart `2/2`, mọi Deployment Available và
 inventory `violationCount=0`. Chỉ retest sau khi baseline mới pass.
 
 Gap fault harness còn lại: phải ngăn Karpenter tạo node mới trong fault AZ
@@ -228,14 +228,18 @@ Hardened harness đã merge qua PR #260 tại `d216073`: fence cả `stateless-s
 `stateless-on-demand`, dùng JSON Patch có `resourceVersion`/exact requirement
 test, xác minh không có node mới trong AZ fault và restore exact zone values
 trong `finally`. `-WhatIf`, server-side dry-run cho cả hai patch và toàn bộ
-local/static suite đã pass. Chưa mutation production khi Locust còn chạy và
-chưa có phê duyệt rõ cho `-FenceProvisioning`.
+local/static suite đã pass. Audit `18:02–18:13` trên `4899e05` cũng PASS Helm,
+rendered NetworkPolicy/attacker, Directive #3, chaos contract, identity/RBAC cho
+21 workload và live AZ `-WhatIf`. Preview chọn 7 node/24 first-party Pod ở
+`us-east-1a`, còn 10 node Ready ở `us-east-1b`; cả hai NodePool sẽ được fence
+`[1a,1b] → [1b]`. Chưa mutation production khi Locust còn chạy và chưa có phê
+duyệt rõ cho `-FenceProvisioning`.
 
 Không phân tích hoặc tạo remediation mới trước retest. Chụp exact checkout
 image digest trước baseline; đó là candidate duy nhất cho retest hiện tại.
 
 1. Lấy capacity snapshot mới. Với placement hiện tại, ưu tiên fault
-   `us-east-1a` (hiện có hai node) và xác minh năm node `us-east-1b` đủ requests
+   `us-east-1a` (hiện có 7 node) và xác minh 10 node `us-east-1b` đủ requests
    headroom. Xác minh lại Locust master/workers vẫn nằm ở AZ sống sót.
 2. Harden `mandate17-az-chaos.ps1` trong cùng PR script: thay fixed list dễ bỏ
    sót bằng inventory first-party Deployment pods; loại trừ rõ load-generator
@@ -296,10 +300,11 @@ và một evidence PR.
   hardening (PR #253–#256).
 - **DONE** read-only preflight/baseline tại `45fcd05` và R1 dependency fault.
 - **DONE** cart init/Linkerd remediation PR #259 và AZ harness PR #260; live
-  revision `d216073`, cart `2/2`, inventory pass và không còn Job failed.
-- **HOLD** trước R2: lúc `16:44 +07`, Locust còn chạy 200 users, HPA chưa
-  scale-down, một Spot node đang terminate và `linkerd-cni` còn `Progressing`.
-  Chờ entry gate sạch, lấy baseline mới trên `d216073`, snapshot capacity mới và
+  revision `4899e05`, cart `2/2`, inventory/RBAC/static suite pass và không còn
+  Job failed.
+- **HOLD** trước R2: lúc `18:13 +07`, Locust còn chạy 200 users ở khoảng
+  `83.9 RPS`, HPA chưa scale-down và `techx-corp` tạm `Progressing`.
+  Chờ entry gate sạch, lấy baseline mới trên `4899e05`, snapshot capacity mới và
   phê duyệt rõ `-FenceProvisioning`. Không tự ý dừng test của team khác hoặc
   patch NodePool production.
 - Nếu R1 và R2 pass: đi thẳng R3, không điều tra/mở remediation khác.
