@@ -136,6 +136,17 @@ if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
 }
 
 $fullRendered = Render $true $true $true
+$cartDeployment = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/templates/component.yaml' -and
+    $_ -match '(?m)^kind: Deployment$' -and
+    $_ -match '(?m)^  name: cart$'
+})
+if ($cartDeployment.Count -ne 1) {
+    throw "full state must render one cart Deployment"
+}
+if ($cartDeployment[0] -notmatch '(?m)^\s+config\.linkerd\.io/skip-outbound-ports: 6379,10000,9901$') {
+    throw "cart must bypass Linkerd CNI for the managed Valkey init probe while retaining Envoy admin bypasses"
+}
 $opensearchDatasourcePosition = $fullRendered.IndexOf("01-opensearch.yaml")
 $jaegerDatasourcePosition = $fullRendered.IndexOf("02-jaeger.yaml")
 $defaultDatasourcePosition = $fullRendered.IndexOf("default.yaml")

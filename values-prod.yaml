@@ -147,6 +147,11 @@ components:
     pdb:
       maxUnavailable: 1
     schedulingRules: *directive03-hard-spread
+    # Linkerd CNI redirects init-container traffic before the proxy sidecar is
+    # running. Bypass only the managed Valkey startup probe; retain the
+    # namespace-level Envoy admin bypasses.
+    podAnnotations:
+      config.linkerd.io/skip-outbound-ports: "6379,10000,9901"
     envOverrides:
       # Stable private DNS (Route53 CNAME → ElastiCache primary). TCP-only init
       # proves reachability; the app must use TLS + AUTH (replication group has
