@@ -21,6 +21,23 @@ spec:
     helm:
       releaseName: linkerd-cni
       valuesObject:
+        # Schedule the node networking prerequisite ahead of application Pods.
+        priorityClassName: system-node-critical
+
+        # Linkerd documents this controller for the node-join race where an
+        # application Pod is created before the CNI chain is installed. It
+        # deletes only Pods whose network-validator reports that exact failure,
+        # allowing their controller to recreate them with correct iptables.
+        repairController:
+          enabled: true
+          resources:
+            cpu:
+              request: 10m
+              limit: 100m
+            memory:
+              request: 32Mi
+              limit: 128Mi
+
         resources:
           cpu:
             request: 10m
