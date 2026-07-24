@@ -2986,17 +2986,17 @@ prometheus:
       size: 8Gi
     service:
       servicePort: 9090
-    # PVC + OTLP + exemplars: WAL replay (~50s) and head block exceed the former
-    # 2Gi limit (OOMKilled exit 137 / CrashLoop). Request stays below Critical
-    # t4g.large packing pressure; limit covers replay spikes.
+    # PVC + OTLP + exemplars: a 4m07s WAL replay followed by compaction exceeded
+    # 1792Mi on 2026-07-24 (OOMKilled exit 137). 2560Mi adds bounded recovery
+    # headroom while preserving Guaranteed QoS and Critical-node capacity.
     resources:
       # Guaranteed QoS (request = limit) for observability platform core
       requests:
         cpu: 200m
-        memory: 1792Mi
+        memory: 2560Mi
       limits:
         cpu: 200m
-        memory: 1792Mi
+        memory: 2560Mi
     # WAL/config load observed ~50s under load; block liveness until ready.
     startupProbe:
       enabled: true
