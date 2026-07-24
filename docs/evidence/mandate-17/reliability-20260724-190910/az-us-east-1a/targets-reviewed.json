@@ -1,0 +1,80 @@
+[
+  {
+    "pod": "ad-7df9776d9-j247z",
+    "deployment": "ad",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "cart-57b6bb695c-zwlxl",
+    "deployment": "cart",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "checkout-dff9cd57b-98s6z",
+    "deployment": "checkout",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "currency-fb78f676d-h6prm",
+    "deployment": "currency",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "email-846dc874cb-584gl",
+    "deployment": "email",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "frontend-c88f786f8-dkg5m",
+    "deployment": "frontend",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "image-provider-ffb99b8bc-t6w48",
+    "deployment": "image-provider",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "llm-7659dbf7c6-mtsb6",
+    "deployment": "llm",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "payment-6cbf6456-pr5qr",
+    "deployment": "payment",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "product-catalog-5944c56b56-bssb7",
+    "deployment": "product-catalog",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "quote-696b6b9dfc-nhq47",
+    "deployment": "quote",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "recommendation-6bd768bcd7-c7jns",
+    "deployment": "recommendation",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  },
+  {
+    "pod": "shipping-59c9487779-hqrc9",
+    "deployment": "shipping",
+    "node": "ip-10-0-29-227.ec2.internal",
+    "zone": "us-east-1a"
+  }
+]
