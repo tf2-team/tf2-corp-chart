@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Per-Pod Load Balancing Verification Dashboard (RPS, Traffic %, p95/p99 Latency, CPU, RAM per Pod)",
+  "description": "Per-Pod Load Balancing Verification Dashboard. Traffic panels use Linkerd inbound L7 response counters, not container network bytes.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -59,8 +59,8 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "(sum by (pod) (rate(container_network_receive_bytes_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\"}[$__rate_interval])) / 1024) * on (pod) group_left() (kube_pod_status_phase{namespace=\"techx-corp-prod\", phase=\"Running\"} == 1)",
-          "legendFormat": "{{pod}} (KB/s)",
+          "expr": "sum by (pod) (rate(response_total{namespace=\"techx-corp-prod\", direction=\"inbound\", deployment=\"$service\", pod=~\"$pod\"}[$__rate_interval]))",
+          "legendFormat": "{{pod}}",
           "refId": "A"
         }
       ]
@@ -115,7 +115,7 @@
             "uid": "webstore-metrics"
           },
           "editorMode": "code",
-          "expr": "100 * ((sum by (pod) (rate(container_network_receive_bytes_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\"}[$__rate_interval])) * on (pod) group_left() (kube_pod_status_phase{namespace=\"techx-corp-prod\", phase=\"Running\"} == 1)) / scalar(sum(rate(container_network_receive_bytes_total{namespace=\"techx-corp-prod\", pod=~\"$service-.*\"}[$__rate_interval]) * on (pod) group_left() (kube_pod_status_phase{namespace=\"techx-corp-prod\", phase=\"Running\"} == 1))))",
+          "expr": "100 * sum by (pod) (rate(response_total{namespace=\"techx-corp-prod\", direction=\"inbound\", deployment=\"$service\", pod=~\"$pod\"}[$__rate_interval])) / scalar(sum(rate(response_total{namespace=\"techx-corp-prod\", direction=\"inbound\", deployment=\"$service\", pod=~\"$pod\"}[$__rate_interval])))",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }

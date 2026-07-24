@@ -2933,6 +2933,34 @@ prometheus:
       static_configs:
         - targets:
             - karpenter.kube-system.svc.cluster.local:8080
+    # M16: scrape Linkerd's L7 proxy metrics from every injected workload pod.
+    # Linkerd exposes Prometheus metrics on :4191.  Restrict discovery to pods
+    # created by proxy-injector so this job neither probes nor labels arbitrary
+    # application pods.  The namespace/pod labels below identify the *receiving*
+    # proxy for inbound response_total, which is the signal used by the per-pod
+    # load-balancing dashboard.
+    - job_name: linkerd-proxy
+      metrics_path: /metrics
+      kubernetes_sd_configs:
+        - role: pod
+      relabel_configs:
+        - source_labels:
+            - __meta_kubernetes_pod_annotation_linkerd_io_created_by
+          action: keep
+          regex: linkerd/proxy-injector.*
+        - source_labels:
+            - __meta_kubernetes_pod_ip
+          target_label: __address__
+          replacement: $1:4191
+        - source_labels:
+            - __meta_kubernetes_namespace
+          target_label: namespace
+        - source_labels:
+            - __meta_kubernetes_pod_name
+          target_label: pod
+        - source_labels:
+            - __meta_kubernetes_pod_label_linkerd_io_proxy_deployment
+          target_label: deployment
   server:
     fullnameOverride: prometheus
     # Observability control plane → Critical MNG
