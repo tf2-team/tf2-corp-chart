@@ -268,7 +268,7 @@ components:
     autoscaling:
       # Floor 3 pods: concurrent Convert from multi-item checkout (errgroup) needs headroom
       # beyond HPA RPS/CPU averages (those stay low while Convert p99 is multi-second).
-      minReplicas: 3
+      minReplicas: 2
     schedulingRules: *directive03-hard-spread
   email:
     replicas: 2
