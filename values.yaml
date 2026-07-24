@@ -3081,7 +3081,7 @@ grafana:
     AIOPS_GRAFANA_WEBHOOK_URL: http://aiops-runtime:8080/api/v1/events/grafana
   plugins:
     - grafana-opensearch-datasource
-    - grafana-athena-datasource
+    # - grafana-athena-datasource
   sidecar:
     alerts:
       enabled: true
