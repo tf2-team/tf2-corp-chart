@@ -98,6 +98,19 @@ if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
 }
 
 $fullRendered = Render $true $true $true
+$inventoryJob = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/templates/runtime-hardening-inventory.yaml' -and
+    $_ -match '(?m)^kind: CronJob$'
+})
+if ($inventoryJob.Count -ne 1) {
+    throw "full state must render one runtime-hardening inventory CronJob"
+}
+if ($inventoryJob[0] -notmatch '(?m)^\s+linkerd\.io/inject: disabled$') {
+    throw "runtime-hardening inventory must opt out of Linkerd sidecar injection"
+}
+if ($fullRendered -notmatch '(?m)^\s+preinstall_auto_update = false$') {
+    throw "Grafana must disable runtime plugin auto-updates on its read-only filesystem"
+}
 $full = NetworkPolicyDocuments $fullRendered
 $fullText = $full -join "`n---`n"
 if ($fullText -notmatch '(?m)^    - Egress\s*$') { throw "full state did not isolate egress" }

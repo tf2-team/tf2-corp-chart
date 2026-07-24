@@ -69,7 +69,9 @@ spec:
   podSelector: {}
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     # Allow inbound mTLS traffic from other meshed pods in the namespace
     - from:
@@ -90,6 +92,7 @@ spec:
       ports:
         - protocol: TCP
           port: 4191
+{{- if $enforceEgress }}
   egress:
     # Allow outbound mTLS traffic to other meshed pods in the namespace
     - to:
@@ -109,6 +112,7 @@ spec:
           port: 8086  # destination
         - protocol: TCP
           port: 8090  # policy
+{{- end }}
 
 
 {{/* ── 3. OTEL-COLLECTOR: accept telemetry from all pods ──────────── */}}
@@ -2086,12 +2090,6 @@ spec:
     - to:
         - ipBlock:
             cidr: {{ $kubernetesApiCidr }}
-      ports:
-        - protocol: TCP
-          port: 443
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
           port: 443

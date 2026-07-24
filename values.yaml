@@ -3027,6 +3027,10 @@ grafana:
   testFramework:
     enabled: false
   grafana.ini:
+    plugins:
+      # Keep chart-requested plugins, but do not update bundled plugins at startup.
+      # Bundled plugin paths are part of Grafana's read-only root filesystem.
+      preinstall_auto_update: false
     # SEC-02: require login, disable anonymous access (no anonymous Admin)
     auth:
       disable_login_form: false
