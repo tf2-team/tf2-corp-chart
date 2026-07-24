@@ -2585,15 +2585,17 @@ opentelemetry-collector:
         enabled: true
   # Packed Critical MNG nodes (t4g.medium ~96% mem) could not finish startup under 200Mi:
   # health :13133 stayed closed or hung → readiness/liveness connection refused → restart storm.
-  # Healthy agents already sit ~110–150Mi; leave headroom + raise GOMEMLIMIT (80% of limit).
+  # Healthy agents sit ~100–150Mi; memory_limiter uses 80% of cgroup limit as soft ceiling.
+  # Guaranteed 128Mi/128Mi → soft limit ~102Mi → "data refused due to high memory usage" while
+  # agents were at 94–105Mi; currency SimpleSpan/Log processors then blocked Convert on export
+  # (checkout p95 multi-second). Burstable limit restores headroom (see also 2026-07-11 probe fix).
   resources:
-    # Guaranteed QoS (request = limit) for platform DaemonSet agent
     requests:
-      cpu: 20m
-      memory: 128Mi
+      cpu: 50m
+      memory: 200Mi
     limits:
-      cpu: 20m
-      memory: 128Mi
+      cpu: 400m
+      memory: 512Mi
   # Block liveness until health extension is serving (slow start under node memory pressure).
   startupProbe:
     httpGet:
@@ -3240,4 +3242,4 @@ prometheus-adapter:
       memory: 256Mi
   replicas: 1
 
-# Change trail: @hungxqt - 2026-07-24 - Raise currency CPU limit after checkout Convert tail latency.
+# Change trail: @hungxqt - 2026-07-24 - Raise otel-collector agent memory after OTLP refuse/checkout latency.
