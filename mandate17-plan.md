@@ -143,8 +143,9 @@ or infrastructure change is required.
 2. [x] Mark diagnostic runs as excluded from acceptance.
 3. [x] Run the complete local/static CI suite on the final evidence branch.
 4. [x] Review the diff for credentials and oversized/unnecessary artifacts.
-5. [ ] Commit/push the evidence branch and create one evidence PR.
-6. [ ] Wait for required CI/review, merge, and record the merged SHA.
+5. [x] Commit/push the evidence branch and create evidence PR #262.
+6. [ ] GitHub CI passed; obtain the required independent review, merge PR #262,
+   and record the merged SHA.
 
 If final static CI fails, fix only the proven documentation/script issue and
 rerun it. Do not reopen a production fault gate for a local evidence-pack
@@ -161,7 +162,7 @@ failure.
 - [x] Flagd, exposure and observability checks pass.
 - [x] Evidence index, rollback proof and mentor reproduction are complete on
   the branch.
-- [ ] Evidence PR passes CI/review and is merged.
+- [ ] Evidence PR #262 has passed CI; required review and merge remain.
 
 Mandate 17 is technically complete; administrative completion occurs when the
 single evidence PR is merged.
