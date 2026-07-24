@@ -2912,6 +2912,25 @@ prometheus:
       # sidecar, a ConfigMap update leaves the running server on its old scrape
       # configuration until a manual rollout.
       enabled: true
+      # Runtime-hardening requires every added container to explicitly drop
+      # privileges and declare bounded resources.
+      containerSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 5m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
   kube-state-metrics:
     enabled: true
     # Expose only the node-placement labels required by capacity alerts.
