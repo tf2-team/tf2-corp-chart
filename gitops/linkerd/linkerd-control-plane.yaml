@@ -1,4 +1,5 @@
-# linkerd-control-plane Application — sync-wave: "1", runs after linkerd-crds (wave 0).
+# linkerd-control-plane Application - sync-wave: "2", runs after linkerd-crds
+# (wave 0) and linkerd-cni (wave 1).
 #
 # Installs Linkerd control plane: destination, identity, proxy-injector components.
 # Proxy-injector MutatingWebhook auto-injects linkerd-proxy sidecar into pods in
@@ -23,8 +24,8 @@ metadata:
   name: linkerd-control-plane
   namespace: argocd
   annotations:
-    # Run after linkerd-crds (wave 0)
-    argocd.argoproj.io/sync-wave: "1"
+    # Run after linkerd-crds (wave 0) and linkerd-cni (wave 1).
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   project: linkerd
 
@@ -42,6 +43,9 @@ spec:
         # The Secret "linkerd-identity-issuer" must exist in namespace "linkerd"
         # before this Application syncs. See README.md for generation steps.
         # -----------------------------------------------------------------------
+        cniEnabled: true
+        disableHeartBeat: true
+
         identity:
           issuer:
             scheme: kubernetes.io/tls

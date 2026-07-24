@@ -171,6 +171,15 @@ runtimeHardeningInventory:
         - PRIV_ESC
         - HOST_NETWORK
         - HOST_PATH
+    - rootKey: linkerd-cni/DaemonSet/linkerd-cni
+      containers:
+        - install-cni
+        - "<pod-spec>"
+      rules:
+        - DROP_ALL
+        - NON_ROOT
+        - PRIV_ESC
+        - HOST_PATH
     - rootKey: kube-system/Deployment/ebs-csi-controller
       containers:
         - ebs-plugin

@@ -48,6 +48,30 @@ function Assert-InvalidValues([bool]$Enabled, [bool]$Enforce, [bool]$Proxy) {
     }
 }
 
+$linkerdControlPlane = Get-Content -Raw (Join-Path $chartRoot "gitops/linkerd/linkerd-control-plane.yaml")
+$linkerdCni = Get-Content -Raw (Join-Path $chartRoot "gitops/linkerd/linkerd-cni.yaml")
+if ($linkerdControlPlane -notmatch '(?m)^\s+argocd\.argoproj\.io/sync-wave: "2"$') {
+    throw "linkerd-control-plane must sync after linkerd-cni"
+}
+foreach ($required in @('cniEnabled: true', 'disableHeartBeat: true')) {
+    if ($linkerdControlPlane -notmatch [regex]::Escape($required)) {
+        throw "linkerd-control-plane missing required runtime-hardening remediation: $required"
+    }
+}
+foreach ($required in @(
+    'chart: linkerd2-cni',
+    'targetRevision: 30.12.2',
+    'namespace: linkerd-cni',
+    'request: 10m',
+    'limit: 100m',
+    'request: 32Mi',
+    'limit: 128Mi'
+)) {
+    if ($linkerdCni -notmatch [regex]::Escape($required)) {
+        throw "linkerd-cni Application missing required field: $required"
+    }
+}
+
 $disabled = NetworkPolicyDocuments (Render $false $false $false)
 if ($disabled.Count -ne 0) { throw "disabled state rendered NetworkPolicy resources" }
 

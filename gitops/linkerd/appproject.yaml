@@ -31,6 +31,8 @@ spec:
   destinations:
     - server: https://kubernetes.default.svc
       namespace: linkerd
+    - server: https://kubernetes.default.svc
+      namespace: linkerd-cni
     # Allow kube-system for MutatingWebhookConfiguration (proxy-injector) RoleBinding
     - server: https://kubernetes.default.svc
       namespace: kube-system

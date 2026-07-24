@@ -13,8 +13,8 @@ spec:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           # System namespaces and service-mesh infrastructure are excluded.
-          # linkerd: proxy-init requires NET_ADMIN for iptables; argocd: GitOps controller.
-          values: [techx-corp-prod, linkerd, argocd]
+          # linkerd-cni owns reviewed host CNI writes; argocd: GitOps controller.
+          values: [techx-corp-prod, linkerd, linkerd-cni, argocd]
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -30,7 +30,7 @@ spec:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: [techx-corp-prod, linkerd, argocd]
+          values: [techx-corp-prod, linkerd, linkerd-cni, argocd]
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -46,7 +46,7 @@ spec:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: [techx-corp-prod, linkerd, argocd]
+          values: [techx-corp-prod, linkerd, linkerd-cni, argocd]
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

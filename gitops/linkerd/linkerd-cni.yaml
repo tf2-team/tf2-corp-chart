@@ -1,0 +1,47 @@
+# linkerd-cni Application - sync-wave: "1", runs before linkerd-control-plane.
+#
+# Installs the Linkerd CNI plugin so data-plane pods no longer need the
+# linkerd-init/proxy-init initContainer with NET_ADMIN/NET_RAW.
+#
+# Change trail: Codex - 2026-07-24 - M16: replace proxy-init with Linkerd CNI.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: linkerd-cni
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: linkerd
+
+  source:
+    repoURL: https://helm.linkerd.io/stable
+    chart: linkerd2-cni
+    targetRevision: 30.12.2
+    helm:
+      releaseName: linkerd-cni
+      valuesObject:
+        resources:
+          cpu:
+            request: 10m
+            limit: 100m
+          memory:
+            request: 32Mi
+            limit: 128Mi
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: linkerd-cni
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
