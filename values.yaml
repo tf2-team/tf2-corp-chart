@@ -2985,6 +2985,12 @@ prometheus:
           target_label: deployment
   server:
     fullnameOverride: prometheus
+    podAnnotations:
+      # Prometheus scrapes each Linkerd proxy directly at PodIP:4191.  The
+      # scrape must bypass Prometheus's own outbound proxy; otherwise Linkerd
+      # treats the Pod IP as a non-Service destination and every scrape times
+      # out.  Keep the namespace-level egress-proxy exceptions as well.
+      config.linkerd.io/skip-outbound-ports: "10000,9901,4191"
     # Observability control plane → Critical MNG
     nodeSelector:
       workload-class: critical
