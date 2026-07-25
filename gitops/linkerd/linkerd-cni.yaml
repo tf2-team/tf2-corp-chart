@@ -26,9 +26,11 @@ spec:
         priorityClassName: system-node-critical
         # Custom image refreshes the projected CNI API token on every node.
         # Tag is immutable; CI signs and attests the corresponding digest.
+        # Custom image refreshes the projected CNI API token on every node.
+        # Tag is immutable; CI signs and attests the corresponding digest.
         image:
           name: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/linkerd-cni
-          version: "sha-8c209c6"
+          version: "sha-bc40df5"
 
         # Linkerd documents this controller for the node-join race where an
         # application Pod is created before the CNI chain is installed. It
