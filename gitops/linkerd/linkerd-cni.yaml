@@ -15,9 +15,10 @@ spec:
   project: linkerd
 
   source:
-    repoURL: https://helm.linkerd.io/stable
+    repoURL: https://helm.linkerd.io/edge
     chart: linkerd2-cni
-    targetRevision: 30.12.2
+    # Matches edge-26.7.2, which supplies CNI v1.7.0-alpha.1.
+    targetRevision: 2026.7.2
     helm:
       releaseName: linkerd-cni
       valuesObject:
