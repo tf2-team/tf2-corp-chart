@@ -2983,6 +2983,22 @@ prometheus:
         - source_labels:
             - __meta_kubernetes_pod_label_linkerd_io_proxy_deployment
           target_label: deployment
+      # Prometheus stores every unique metric-name/label set as a TSDB series.
+      # Scraping every Linkerd proxy without this filter produced >338k series
+      # (authority/client identity/route/target labels multiply per-pod
+      # histograms), which OOMKilled the 2560Mi Prometheus server during WAL
+      # replay and compaction.  M16's per-pod dashboard needs only request rate
+      # and latency buckets, grouped by namespace/deployment/pod/direction.
+      metric_relabel_configs:
+        - source_labels:
+            - __name__
+          action: keep
+          regex: response_total|response_latency_ms_bucket
+        # Preserve job for existing PromQL selectors, plus the four workload
+        # labels and histogram `le`. Drop destination/identity/policy labels
+        # which are not queried by M16 and create high-cardinality series.
+        - action: labeldrop
+          regex: authority|authz_kind|authz_name|client_id|instance|route_kind|route_name|srv_kind|srv_name|status_code|target_addr|target_ip|target_port|tls
   server:
     fullnameOverride: prometheus
     # Observability control plane → Critical MNG
