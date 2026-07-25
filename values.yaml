@@ -2847,7 +2847,7 @@ jaeger:
         memory: 512Mi
       limits:
         cpu: 100m
-        memory: 1Gi
+        memory: 3Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
