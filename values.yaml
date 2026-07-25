@@ -3215,20 +3215,38 @@ grafana:
 metrics-server:
   enabled: true
   fullnameOverride: metrics-server
-  # HPA dependency — pin to critical MNG floor
+  # Resource metrics are a cluster-wide dependency, not a Checkout-only signal.
+  # Keep the APIService on the critical node floor so workload scale-out cannot
+  # evict it to a spot-tolerant node.
   nodeSelector:
     workload-class: critical
-  # EKS / many managed node groups: kubelet serving certs are not trusted by default.
+  # EKS kubelet serving certificates are not trusted by default.  This is needed
+  # for Metrics Server to collect resource metrics from every node; it does not
+  # affect Prometheus RPS metrics or Linkerd telemetry.
   args:
     - --kubelet-insecure-tls
   resources:
-    # Raised cpu limit to 50m to prevent /livez probe timeouts under scraping load
+    # At 1,000-user load and 24 nodes, the previous 50m/32Mi allocation caused
+    # /livez and /readyz to exceed their one-second timeout, restarting the sole
+    # Metrics Server pod and making all HPA CPU metrics temporarily unavailable.
+    # These bounded values add collection and API-serving headroom without
+    # changing the 15-second metrics resolution or HPA targets.
     requests:
-      cpu: 10m
-      memory: 32Mi
+      cpu: 100m
+      memory: 128Mi
     limits:
-      cpu: 50m
-      memory: 32Mi
+      cpu: 250m
+      memory: 256Mi
+  livenessProbe:
+    # Avoid killing a healthy server while it is scraping all cluster nodes.
+    timeoutSeconds: 5
+    failureThreshold: 6
+  readinessProbe:
+    # Do not advertise the aggregated metrics API until the first collection
+    # cycle has had time to complete; retain an endpoint during brief load spikes.
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
 
 # Prometheus Adapter — custom/external metrics API for request-rate (RPS) HPA.
 # Reads OTel request counters already scraped into in-cluster Prometheus.
