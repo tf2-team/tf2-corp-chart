@@ -2821,7 +2821,7 @@ jaeger:
       # Cap in-memory backend size so multi-service OTLP ingest cannot grow past the cgroup limit.
       # 25000 traces under load exceeded 1536Mi (~6 min) and OOMKilled (exit 137 / CrashLoopBackOff).
       - name: MEMORY_MAX_TRACES
-        value: "10000"
+        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -2836,10 +2836,10 @@ jaeger:
       # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 20m
-        memory: 384Mi
+        memory: 512Mi
       limits:
         cpu: 100m
-        memory: 1Gi
+        memory: 2Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
