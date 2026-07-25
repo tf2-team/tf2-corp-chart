@@ -53,6 +53,10 @@ spec:
         # to expose code/dependency bottlenecks at 200 users. Remove after the
         # discovery run; values-prod remains the steady-state capacity policy.
         - values-m16-bottleneck-200.yaml
+        # M16 temporary observability profile: retain logs during the extended
+        # AI load test without allowing OpenSearch backpressure to erase SLO
+        # telemetry. Remove after the experiment; see docs/changes entry.
+        - values-m16-observability-load.yaml
       releaseName: techx-corp
 
   destination:

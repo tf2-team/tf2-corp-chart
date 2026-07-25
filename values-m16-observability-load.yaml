@@ -1,0 +1,41 @@
+# M16 temporary observability profile — extended AI load tests only.
+#
+# This raises OpenSearch storage while a high, sustained synthetic workload is
+# collected. It also retains only three days of otel-logs-* indices and bounds
+# the OpenSearch log exporter backlog so a failed log store cannot starve the
+# traces/spanmetrics pipeline used for M16 SLO evidence.
+#
+# Remove this file from gitops/clusters/prod/application.yaml after M16. PVC
+# capacity cannot be reduced in place; returning from 30Gi to 10Gi requires a
+# deliberate data migration/recreation, as documented in docs/changes.
+m16ObservabilityLoad:
+  enabled: true
+  retentionDays: 3
+  retentionSchedule: "17 * * * *"
+  bootstrapImage: public.ecr.aws/docker/library/python:3.13.5-alpine3.22
+
+components:
+  opensearch:
+    volumeClaimTemplates:
+      - metadata:
+          name: opensearch-data
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: gp3-encrypted
+          resources:
+            requests:
+              # Temporary M16 capacity for long AI load-test evidence capture.
+              storage: 30Gi
+
+opentelemetry-collector:
+  config:
+    exporters:
+      opensearch:
+        retry_on_failure:
+          # Logs are best-effort during an OpenSearch outage. Do not retain a
+          # five-minute backlog that can make the shared Collector reject SLO
+          # metrics and traces.
+          max_elapsed_time: 30s
+        sending_queue:
+          # Bound in-memory log backlog per Collector agent.
+          queue_size: 128
