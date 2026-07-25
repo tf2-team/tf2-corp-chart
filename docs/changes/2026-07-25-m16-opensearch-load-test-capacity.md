@@ -13,7 +13,10 @@ evidence without allowing a log-store outage to erase latency telemetry.
 
 ## Temporary changes
 
-- Expand the OpenSearch PVC from 10Gi to 30Gi.
+- Expand the existing OpenSearch PVC from 10Gi to 30Gi with a one-time
+  Kubernetes PVC patch. This must not be placed in the StatefulSet
+  `volumeClaimTemplates`: that field is immutable after the StatefulSet exists
+  and would make Argo CD sync fail.
 - Install an OpenSearch ISM policy for `otel-logs-*`; daily indices transition
   to deletion after three days. The bootstrap Job attaches the policy to
   existing indices and the hourly CronJob keeps the policy present.
@@ -31,6 +34,13 @@ PVC expansion is **not reversible in place** on EBS/Kubernetes. Returning the
 existing 30Gi claim to 10Gi requires a planned data migration or replacement
 of the OpenSearch data volume; simply reverting Helm values cannot shrink it.
 Do not remove the temporary profile until that storage decision is recorded.
+
+The PVC expansion is intentionally user-executed after the retention profile
+syncs successfully:
+
+```powershell
+wsl kubectl -n techx-corp-prod patch pvc opensearch-data-opensearch-0 --type merge --patch '{"spec":{"resources":{"requests":{"storage":"30Gi"}}}}'
+```
 
 ## Verification
 

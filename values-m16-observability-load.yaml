@@ -6,26 +6,14 @@
 # traces/spanmetrics pipeline used for M16 SLO evidence.
 #
 # Remove this file from gitops/clusters/prod/application.yaml after M16. PVC
-# capacity cannot be reduced in place; returning from 30Gi to 10Gi requires a
-# deliberate data migration/recreation, as documented in docs/changes.
+# expansion is deliberately not expressed through the StatefulSet because its
+# volumeClaimTemplates are immutable after creation. The existing claim is
+# expanded once through the documented, user-run Kubernetes PVC patch.
 m16ObservabilityLoad:
   enabled: true
   retentionDays: 3
   retentionSchedule: "17 * * * *"
   bootstrapImage: public.ecr.aws/docker/library/python:3.13.5-alpine3.22
-
-components:
-  opensearch:
-    volumeClaimTemplates:
-      - metadata:
-          name: opensearch-data
-        spec:
-          accessModes: ["ReadWriteOnce"]
-          storageClassName: gp3-encrypted
-          resources:
-            requests:
-              # Temporary M16 capacity for long AI load-test evidence capture.
-              storage: 30Gi
 
 opentelemetry-collector:
   config:
