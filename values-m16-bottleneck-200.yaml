@@ -24,10 +24,10 @@ components:
       # Override the temporary production maintenance floor of three for this
       # controlled experiment only; do not reduce the normal production floor.
       minReplicas: 2
-      maxReplicas: 2
+      maxReplicas: 20
   frontend-proxy:
     autoscaling:
-      maxReplicas: 2
+      maxReplicas: 20
   product-catalog:
     autoscaling:
       maxReplicas: 2
