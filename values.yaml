@@ -2966,6 +2966,13 @@ prometheus:
       kubernetes_sd_configs:
         - role: pod
       relabel_configs:
+        # Prometheus has cluster-wide pod discovery. Restrict this job before
+        # scraping so Linkerd control-plane and non-production proxies cannot
+        # silently expand the production TSDB cardinality.
+        - source_labels:
+            - __meta_kubernetes_namespace
+          action: keep
+          regex: techx-corp-prod
         - source_labels:
             - __meta_kubernetes_pod_annotation_linkerd_io_created_by
           action: keep
@@ -2983,6 +2990,18 @@ prometheus:
         - source_labels:
             - __meta_kubernetes_pod_label_linkerd_io_proxy_deployment
           target_label: deployment
+      # The per-pod distribution dashboard only consumes inbound request count
+      # and inbound latency. Scraping every proxy/process/TCP/outbound metric
+      # retained hundreds of thousands of stale series after pod and endpoint
+      # churn. Keep the two required metric families at ingestion time; retain
+      # all latency buckets so p95/p99 histogram_quantile remains accurate.
+      metric_relabel_configs:
+        - source_labels:
+            - __name__
+            - direction
+          separator: ";"
+          action: keep
+          regex: (response_total|response_latency_ms_bucket);inbound
   server:
     fullnameOverride: prometheus
     # Observability control plane → Critical MNG
