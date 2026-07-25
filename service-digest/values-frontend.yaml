@@ -3,4 +3,7 @@
 components:
   frontend:
     imageOverride:
-      digest: "sha256:3249a2f8275a05f52ffea476c2fa559e097a5acd1e6036d2640addb6079f9ed2"
+      # The promoted multi-arch index was expired by the production ECR
+      # lifecycle policy. Pin the surviving linux/arm64 manifest used by the
+      # production node architecture until the next signed index promotion.
+      digest: "sha256:dc8d9e42556b5184b7e6a9a471bd836da5e21c42fd85ad2d90594b4f5729b573"
