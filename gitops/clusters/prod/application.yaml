@@ -49,6 +49,10 @@ spec:
         - service-digest/values-recommendation.yaml
         - service-digest/values-shipping.yaml
         - service-digest/values-shopping-copilot.yaml
+        # M16 temporary experiment: cap the synchronous path at two replicas
+        # to expose code/dependency bottlenecks at 200 users. Remove after the
+        # discovery run; values-prod remains the steady-state capacity policy.
+        - values-m16-bottleneck-200.yaml
       releaseName: techx-corp
 
   destination:

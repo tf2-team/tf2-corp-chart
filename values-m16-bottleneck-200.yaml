@@ -1,0 +1,45 @@
+# M16 temporary bottleneck-discovery profile — 200 virtual users only.
+#
+# Purpose: prevent HPA scale-out from masking latency in the synchronous
+# browse -> cart -> checkout path while traces and per-pod telemetry identify
+# the next real bottleneck.  Every affected service remains at two replicas:
+# this preserves the Directive #3 availability floor and Linkerd endpoint
+# selection, but deliberately removes scale-out headroom.
+#
+# This is NOT the production capacity policy and is not M16 success evidence.
+# Remove this file from gitops/clusters/prod/application.yaml immediately after
+# the discovery run, then re-run the sustained-load validation with values-prod.
+components:
+  cart:
+    autoscaling:
+      maxReplicas: 2
+  checkout:
+    autoscaling:
+      maxReplicas: 2
+  currency:
+    autoscaling:
+      maxReplicas: 2
+  frontend:
+    autoscaling:
+      # Override the temporary production maintenance floor of three for this
+      # controlled experiment only; do not reduce the normal production floor.
+      minReplicas: 2
+      maxReplicas: 2
+  frontend-proxy:
+    autoscaling:
+      maxReplicas: 2
+  product-catalog:
+    autoscaling:
+      maxReplicas: 2
+  product-reviews:
+    autoscaling:
+      maxReplicas: 2
+  quote:
+    autoscaling:
+      maxReplicas: 2
+  recommendation:
+    autoscaling:
+      maxReplicas: 2
+  shipping:
+    autoscaling:
+      maxReplicas: 2
