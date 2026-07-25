@@ -30,11 +30,11 @@ spec:
   project: linkerd
 
   source:
-    repoURL: https://helm.linkerd.io/stable
+    repoURL: https://helm.linkerd.io/edge
     chart: linkerd-control-plane
-    # Must match linkerd-crds targetRevision.
-    # Latest stable as of 2026-07: check https://artifacthub.io/packages/helm/linkerd2/linkerd-control-plane
-    targetRevision: 1.16.11
+    # Must match linkerd-crds and linkerd-cni targetRevision.
+    # edge chart 2026.7.2 provides Linkerd edge-26.7.2.
+    targetRevision: 2026.7.2
     helm:
       releaseName: linkerd-control-plane
       valuesObject:
@@ -89,6 +89,10 @@ spec:
         # See BUDGET.md for cluster-wide resource constraints.
         # -----------------------------------------------------------------------
         proxy:
+          # Keep the pre-upgrade sidecar lifecycle during this migration.
+          # Native sidecars are enabled by default in this Linkerd generation
+          # and will be evaluated in a separate, workload-focused rollout.
+          nativeSidecar: false
           resources:
             cpu:
               request: 10m
