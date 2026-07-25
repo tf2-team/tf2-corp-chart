@@ -310,6 +310,9 @@ $proxyConfig = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
 foreach ($requiredDomain in @(
     'monitoring.us-east-1.amazonaws.com:443',
     'logs.us-east-1.amazonaws.com:443',
+    'dynamodb.us-east-1.amazonaws.com:443',
+    '493499579600.ddb.us-east-1.amazonaws.com:443',
+    '*.ddb.us-east-1.amazonaws.com:443',
     'athena.ap-southeast-1.amazonaws.com:443',
     'glue.ap-southeast-1.amazonaws.com:443',
     'sts.ap-southeast-1.amazonaws.com:443',
