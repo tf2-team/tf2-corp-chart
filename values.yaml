@@ -1906,12 +1906,14 @@ components:
       - name: GRPC_MAX_WORKERS
         value: "20"
     resources:
-      # Burstable QoS: cpu limit set to 100m for admission policy compliance
+      # At 100m, sustained browse load caused 23–43% CFS throttling per pod and
+      # recommendation p99 > the frontend's 500ms optional-dependency deadline.
+      # 200m removes that artificial CPU ceiling while retaining a bounded HPA.
       requests:
-        cpu: 20m
+        cpu: 50m
         memory: 80Mi
       limits:
-        cpu: 100m
+        cpu: 200m
         memory: 144Mi
     # Product-page traffic (P1); RPS primary; CPU safety valve.
     autoscaling:
