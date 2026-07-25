@@ -3,7 +3,7 @@
 | Trường            | Nội dung                                                                                        |
 | ----------------- | ----------------------------------------------------------------------------------------------- |
 | **Mandate**       | MANDATE-16 — Latency Under Load                                                                 |
-| **Trạng thái**    | **Đã xác nhận** — Đạt SLO tại 200 Locust users trên production                               |
+| **Trạng thái**    | **Đã hoàn thành**                             |
 | **Tác giả**       | Nguyễn Đức Chinh ([@chinhgithub04](https://github.com/chinhgithub04)) — CDO-03 / TF 2 |
 | **Ngày**          | 2026-07-25                                                                                      |
 
@@ -161,17 +161,18 @@ gRPC dùng **HTTP/2 multiplexing** — nhiều request chia sẻ 1 TCP connectio
 
 ---
 
-## 3. Giải pháp: Linkerd Service Mesh
+## 3. Quyết định và thay đổi tối ưu
 
-### Lý do chọn Linkerd
+### 3.1 Chọn Linkerd để loại bỏ gRPC connection pinning
 
-| Tiêu chí                   | Headless Service             | Linkerd Service Mesh              |
-| -------------------------- | ---------------------------- | --------------------------------- |
-| **Phạm vi**                | Phải cấu hình từng service   | Inject 1 lần → áp dụng 18 service |
-| **Thay đổi code**          | Sửa env var + client config  | **Không cần đụng code**            |
-| **gRPC Load Balancing**    | L4 DNS-level                 | **L7 per-request** (đúng cấp)     |
-| **Các tính năng thêm**     | Không có                     | mTLS, observability, retries       |
-| **Rủi ro khi thay đổi**    | Cao (sửa từng service)       | Thấp (non-invasive sidecar)        |
+| Tiêu chí | Headless Service + `round_robin` | Linkerd | Istio |
+| --- | --- | --- | --- |
+| **Phạm vi áp dụng** | Cấu hình và kiểm thử từng client/backend | Namespace injection, áp dụng nhất quán cho workload đã mesh | Namespace injection, áp dụng nhất quán cho workload đã mesh |
+| **Thay đổi ứng dụng** | Sửa DNS scheme, resolver và LB policy trong client | Không sửa client gRPC | Không sửa client gRPC |
+| **Cấp cân bằng tải** | Endpoint DNS/client-side; phụ thuộc cấu hình từng client | L7, nhận biết HTTP/2/gRPC và chọn endpoint thích nghi | L7, nhận biết HTTP/2/gRPC và có traffic management phong phú |
+| **Tính năng vận hành** | Không có mesh telemetry hay mTLS | mTLS và metrics mesh; retry chỉ bật khi cấu hình policy | mTLS, telemetry, traffic policy/retry/routing phong phú |
+| **Độ phức tạp vận hành** | Thấp ban đầu, nhưng nhân lên theo số service/client | Nhẹ, phù hợp mục tiêu xử lý load-balancing | Cao hơn: control plane, CRD và policy surface lớn hơn |
+| **Phù hợp với M16** | Không bao phủ HTTP/1.1 keep-alive và dễ sót client | **Có — xử lý đúng nguyên nhân với footprint vận hành nhỏ** | Có, nhưng vượt nhu cầu hiện tại và tăng chi phí vận hành |
 
 Linkerd inject sidecar proxy `linkerd-proxy` vào mỗi pod. Proxy này hiểu gRPC (HTTP/2) và thực hiện **L7 per-request load balancing**. Linkerd dùng lựa chọn endpoint thích nghi (P2C/EWMA), ưu tiên endpoint có latency thấp hơn tại thời điểm đó; vì vậy mục tiêu là cả replica đều nhận request và tail latency ổn định.
 
@@ -283,6 +284,122 @@ Hai trace sau thay đổi xác nhận các lời gọi `CurrencyService/Convert`
 
 Benchmark sau thay đổi vẫn dùng **9 EC2 nodes** và có 69 workload pods. CPU sử dụng toàn cluster trung bình 1.23 cores (max 1.28); RAM working set trung bình 12.5 GiB (max 12.9 GiB). Vì node count và instance type không tăng, kết quả không đạt được bằng cách scale hạ tầng mà bằng cách loại bỏ gRPC connection pinning.
 
+### 4.5 Các tối ưu khác
+
+Khi nâng thử nghiệm lên **700 users**, frontend bị CPU throttling và bắt đầu tạo hàng chờ. Hai trace dưới đây cho thấy request dành phần lớn thời gian ở frontend/frontend-proxy, trong khi các dependency phía sau vẫn xử lý nhanh.
+
+![Jaeger checkout qua frontend dưới tải cao](../adr/image/mandate16/before/1.png)
+
+*Trace `user_checkout_multi` (`356d811`), tổng 3.53s: frontend-proxy mất khoảng 1.21s, handler frontend 805.5ms và RPC từ frontend sang Checkout 691.0ms; Checkout server chỉ xử lý khoảng 400.2ms. Phần thời gian thừa nằm ở frontend trước khi Checkout hoàn thành.*
+
+![Jaeger browse và cart qua frontend dưới tải cao](../adr/image/mandate16/before/2.png)
+
+*Trace `user_add_to_cart` (`9d782db`), tổng 1.35s: nhánh đọc product qua frontend-proxy mất khoảng 276ms nhưng handler chỉ 7.97ms. Nhánh thêm cart có handler frontend 574.1ms và RPC Cart `AddItem` 480.1ms, trong khi Valkey chỉ vài trăm microsecond. Frontend là nơi request phải chờ; Valkey không phải điểm nghẽn.*
+
+#### Nguyên nhân
+
+`pages/_app.tsx` khai báo `MyApp.getInitialProps` nhưng không bổ sung dữ liệu cho page. Với Next.js, một trang không cần dữ liệu động có thể được static optimization: HTML được tạo sẵn từ build time và request chỉ việc trả file HTML.
+
+```text
+User request /
+      |
+      v
+File HTML có sẵn
+```
+
+Nhưng khi custom App có `MyApp.getInitialProps()`, Next.js phải giả định app cần chạy server mỗi request, kể cả homepage `/` không cần dữ liệu động:
+
+```text
+User request /
+      |
+      v
+Next server render HTML
+      |
+      v
+Response
+```
+
+Kết quả là frontend tốn CPU hơn và chậm hơn khi nhiều người cùng truy cập.
+
+```tsx
+// Trước: custom App có getInitialProps nhưng không trả page props bổ sung.
+MyApp.getInitialProps = async (appContext: AppContext) => {
+  const appProps = await App.getInitialProps(appContext);
+
+  return { ...appProps };
+};
+```
+
+#### Giải pháp
+
+Xóa hoàn toàn `MyApp.getInitialProps`; không thay bằng hook tương đương. Các page đủ điều kiện trở lại cho static optimization của Next.js, thay vì bị ép vào server-rendering path bởi custom App.
+
+```tsx
+// Sau: custom App chỉ giữ provider tree; không còn getInitialProps.
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <ThemeProvider theme={Theme}>
+      <OpenFeatureProvider>
+        <QueryClientProvider client={queryClient}>
+          <CurrencyProvider>
+            <CartProvider>
+              <Component {...pageProps} />
+            </CartProvider>
+          </CurrencyProvider>
+        </QueryClientProvider>
+      </OpenFeatureProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+`InstrumentationMiddleware` cũng dùng toàn bộ URL động làm label `target` của metric. Với mỗi product ID, Prometheus nhận một time series riêng, ví dụ `/api/products/OLJCESPC7Z/index` và `/api/products/0PUK6V6EV0/index`. Cardinality tăng theo số sản phẩm/request làm tăng allocation, scrape/ingest và memory pressure không cần thiết ở đường observability của frontend.
+
+```ts
+// Trước: URL động trở thành một metric label riêng cho mỗi product ID.
+const { method, url = '' } = request;
+const [target] = url.split('?');
+
+// ...
+requestCounter.add(1, { method, target, status: httpStatus });
+```
+
+Giải pháp là chuẩn hóa dynamic URL trước khi ghi metric. Product ID không còn là label value, nhưng operation vẫn phân biệt được endpoint product, review, average-score và AI assistant.
+
+```ts
+// Sau: giữ số lượng series có giới hạn thay vì một series/product ID.
+export const normalizeMetricTarget = (target: string): string => {
+  if (/^\/api\/products\/[^/]+\/index$/.test(target)) {
+    return '/api/products/{productId}/index';
+  }
+  if (/^\/api\/product-reviews\/[^/]+\/index$/.test(target)) {
+    return '/api/product-reviews/{productId}/index';
+  }
+  return target;
+};
+
+const { method, url = '' } = request;
+const [rawTarget] = url.split('?');
+const target = normalizeMetricTarget(rawTarget);
+requestCounter.add(1, { method, target, status: httpStatus });
+```
+
+Phần normalize thực tế cũng bao phủ `product-reviews-avg-score` và `product-ask-ai-assistant`. Đây không phải thay đổi nghiệp vụ hay bỏ metric: frontend vẫn ghi request counter, nhưng metric bounded-cardinality hơn nên giảm chi phí telemetry dưới tải dài.
+
+```ts
+// Các route product còn lại cũng được chuẩn hóa trong implementation.
+if (/^\/api\/product-reviews-avg-score\/[^/]+\/index$/.test(target)) {
+  return '/api/product-reviews-avg-score/{productId}/index';
+}
+if (/^\/api\/product-ask-ai-assistant\/[^/]+\/index$/.test(target)) {
+  return '/api/product-ask-ai-assistant/{productId}/index';
+}
+```
+
+#### Bằng chứng sau cải thiện
+
+> **Placeholder:** Chạy lại 400-user sustained load sau khi image frontend mới được deploy. Bổ sung dashboard CPU/throttling, p95/p99 Browse và Checkout, cùng trace Jaeger Browse/Checkout tương ứng. Tiêu chí xác nhận là giảm thời gian chờ trước frontend handler và không tăng node/replica chỉ để đạt latency.
+
 ---
 
 ## 5. Các lựa chọn thay thế đã xem xét và lý do từ chối
@@ -338,12 +455,15 @@ Tăng replica để "pha loãng" tải vào pod bị ghim.
 | `gitops/linkerd/applications/linkerd-control-plane.yaml` | NEW | ArgoCD Application cài control plane (sync-wave 1) |
 | `gitops/clusters/prod/linkerd-application.yaml` | NEW | Đăng ký vào root app-of-apps prod |
 | `templates/linkerd-namespace-inject.yaml` | NEW | Namespace resource với `linkerd.io/inject: enabled` |
+| `values.yaml` | MODIFY | Tăng CPU limit recommendation 100m → 200m để loại bỏ CFS throttling; thay đổi tách biệt, không dùng làm bằng chứng M16 |
 
 ### `tf2-corp-platform`
 
 | File | Loại | Mô tả |
 | ---- | ---- | ----- |
 | `src/checkout/main.go` | MODIFY | Revert `dns:///` và `round_robin`; thêm errgroup parallelization |
+| `src/frontend/pages/_app.tsx` | MODIFY | Xóa custom `getInitialProps` không mang dữ liệu page, khôi phục static optimization của Next.js |
+| `src/frontend/utils/telemetry/InstrumentationMiddleware.ts` | MODIFY | Chuẩn hóa metric target có product ID động để chặn cardinality không cần thiết |
 
 ---
 
