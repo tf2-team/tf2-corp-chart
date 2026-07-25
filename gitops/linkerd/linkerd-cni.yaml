@@ -27,7 +27,7 @@ spec:
         # Custom image refreshes the projected CNI API token on every node.
         # Tag is immutable; CI signs and attests the corresponding digest.
         image:
-          name: /linkerd-cni
+          name: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/linkerd-cni
           version: "sha-8c209c6"
 
         # Linkerd documents this controller for the node-join race where an
