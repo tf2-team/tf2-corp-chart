@@ -3301,13 +3301,15 @@ prometheus-adapter:
           as: "http_requests_per_second"
         metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (service_name) or (sum(<<.Series>>{<<.LabelMatchers>>} * 0) by (service_name))'
   resources:
-    # Guaranteed QoS (request = limit) for critical External Metrics API stability
+    # Keep enough headroom to serve HPA queries while Prometheus is under the
+    # 1,000-user scrape/query load. Two replicas avoid a single API endpoint
+    # becoming unavailable during a slow query or pod restart.
     requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 256Mi
-  replicas: 1
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  replicas: 2
 
 # Change trail: @hungxqt - 2026-07-24 - Raise otel-collector agent memory after OTLP refuse/checkout latency.
