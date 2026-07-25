@@ -175,6 +175,51 @@ gRPC dùng **HTTP/2 multiplexing** — nhiều request chia sẻ 1 TCP connectio
 
 Linkerd inject sidecar proxy `linkerd-proxy` vào mỗi pod. Proxy này hiểu gRPC (HTTP/2) và thực hiện **L7 per-request load balancing**. Linkerd dùng lựa chọn endpoint thích nghi (P2C/EWMA), ưu tiên endpoint có latency thấp hơn tại thời điểm đó; vì vậy mục tiêu là cả replica đều nhận request và tail latency ổn định.
 
+### 3.2 Song song hóa hai nhánh chuẩn bị checkout độc lập
+
+Code gốc thực hiện tuần tự hai công việc độc lập sau khi lấy cart: chuẩn bị order item, rồi mới lấy shipping quote.
+
+```go
+// Trước: tuần tự.
+orderItems, err := cs.prepOrderItems(ctx, cartItems, userCurrency)
+shippingUSD, err := cs.quoteShipping(ctx, address, cartItems)
+```
+
+`prepOrderItems` chỉ cần `cartItems` và `userCurrency`; `quoteShipping` chỉ cần `address` và `cartItems`. Hai lời gọi không có dependency dữ liệu, nên được chuyển sang chạy đồng thời bằng `errgroup`.
+
+```go
+// Sau: chạy đồng thời.
+var (
+    orderItems  []*pb.OrderItem
+    shippingUSD *pb.Money
+)
+
+g, gctx := errgroup.WithContext(ctx)
+g.Go(func() error {
+    var err error
+    orderItems, err = cs.prepOrderItems(gctx, cartItems, userCurrency)
+    if err != nil {
+        return fmt.Errorf("failed to prepare order: %+v", err)
+    }
+    return nil
+})
+g.Go(func() error {
+    var err error
+    shippingUSD, err = cs.quoteShipping(gctx, address, cartItems)
+    if err != nil {
+        return fmt.Errorf("shipping quote failure: %+v", err)
+    }
+    return nil
+})
+if err := g.Wait(); err != nil {
+    return out, err
+}
+
+shippingPrice, err := cs.convertCurrency(ctx, shippingUSD, userCurrency)
+```
+
+`g.Wait()` đồng bộ hai kết quả trước khi quy đổi `shippingUSD`; `convertShipping` vẫn chạy sau đó vì phụ thuộc shipping quote. Critical path vì vậy đổi từ `prepOrderItems + quoteShipping` thành `max(prepOrderItems, quoteShipping)`. Khi một nhánh lỗi, `errgroup` hủy context của nhánh còn lại. Thay đổi giữ nguyên kết quả nghiệp vụ nhưng giảm thời gian chờ không cần thiết trên checkout path.
+
 ---
 
 ## 4. Kết quả xác nhận trên production
