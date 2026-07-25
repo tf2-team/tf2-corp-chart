@@ -60,7 +60,9 @@ foreach ($required in @('cniEnabled: true', 'disableHeartBeat: true')) {
 }
 foreach ($required in @(
     'chart: linkerd2-cni',
-    'targetRevision: 30.12.2',
+    # EKS is v1.36; Linkerd stable is not compatible. The CNI Application
+    # therefore tracks the validated edge release used by control-plane GitOps.
+    'targetRevision: 2026.7.2',
     'namespace: linkerd-cni',
     'priorityClassName: system-node-critical',
     'repairController:',
