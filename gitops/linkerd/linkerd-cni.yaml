@@ -23,6 +23,11 @@ spec:
       valuesObject:
         # Schedule the node networking prerequisite ahead of application Pods.
         priorityClassName: system-node-critical
+        # Custom image refreshes the projected CNI API token on every node.
+        # Tag is immutable; CI signs and attests the corresponding digest.
+        image:
+          name: /linkerd-cni
+          version: "sha-8c209c6"
 
         # Linkerd documents this controller for the node-join race where an
         # application Pod is created before the CNI chain is installed. It
