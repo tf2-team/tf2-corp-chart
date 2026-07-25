@@ -3010,6 +3010,10 @@ prometheus:
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
+      # Required by prometheus-config-reloader, which POSTs /-/reload whenever
+      # Argo CD updates the mounted ConfigMap. Without this flag the endpoint
+      # returns 403 and Prometheus keeps scraping with stale runtime config.
+      - "web.enable-lifecycle"
     # emptyDir TSDB: keep retention short so WAL/replay stays bounded on restart.
     retention: 2d
     tsdb:
