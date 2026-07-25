@@ -1034,15 +1034,19 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
     resources:
-      # Burstable QoS: cpu limit set to 200m for admission policy compliance
+      # Burstable QoS. Under the 700–800-user M16 run, all 20 replicas were
+      # reachable and received balanced Linkerd traffic, but 200m caused CFS
+      # throttling and inflated tail latency. Keep the small request so the
+      # CPU HPA still reacts early; allow one Node.js BFF to burst to 500m.
       requests:
         cpu: 64m
         memory: 160Mi
       limits:
-        cpu: 200m
+        cpu: 500m
         memory: 256Mi
     # BFF/SSR: RPS primary (often I/O-wait on backends); CPU safety valve.
-    # maxReplicas 20: load-test pin at 14 with CPU ~100%/80% → desired ~18; +headroom.
+    # maxReplicas 20: controlled M16 ceiling; actual capacity is validated by
+    # sustained-load SLO results, not by replica count alone.
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -1170,22 +1174,26 @@ components:
         value: "4318"
     resources:
       # Guaranteed QoS (request = limit) for critical path stability.
-      # 48Mi OOMKilled under real routes/load (Envoy + OTEL); raised 2026-07-23.
+      # 48Mi OOMKilled under real routes/load (Envoy + OTEL) required 128Mi.
+      # At 700–800 users, 50m CPU was CFS-throttled although traffic was
+      # balanced across proxy pods; reserve 100m so Envoy is not the artificial
+      # gateway bottleneck ahead of the Next.js BFF.
       requests:
-        cpu: 50m
+        cpu: 100m
         memory: 128Mi
       limits:
-        cpu: 50m
+        cpu: 100m
         memory: 128Mi
     # Edge / ALB target on Critical MNG (small floor). maxReplicas 10 needs MNG headroom.
     # RPS primary; CPU safety valve. If pods Pending: free Critical capacity in infra.
     # OTel service.name may differ for Envoy — set autoscaling.serviceName after metric inventory.
-    # maxReplicas 10: load-test pin at 6 with CPU ~110%/80% → desired ~8; +headroom.
+    # The M16 bottleneck overlay may raise maxReplicas to 20 for controlled tests.
     autoscaling:
       enabled: true
       minReplicas: 2
       maxReplicas: 10
-      targetCPUUtilizationPercentage: 70
+      # Scale before a 100m Envoy cgroup becomes saturated.
+      targetCPUUtilizationPercentage: 60
       # Envoy edge: raised from 200 → 300 RPS/pod (delay Critical MNG scale-out).
       targetRequestsPerSecond: 300
       behavior: *hpa-behavior-default
@@ -2839,7 +2847,7 @@ jaeger:
         memory: 512Mi
       limits:
         cpu: 100m
-        memory: 2Gi
+        memory: 1Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]

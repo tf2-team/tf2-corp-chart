@@ -44,13 +44,13 @@ The following resource configurations were applied to `values.yaml`:
 - **`checkout` (Go):** `requests: 10m / 32Mi`, `limits: 10m / 32Mi` (P99: 5.1m CPU, 27.47Mi Memory - Guaranteed QoS).
 - **`cart` (.NET):** `requests: 15m / 96Mi`, `limits: 15m / 96Mi` (P99: 8.3m CPU, 75.96Mi Memory - Guaranteed QoS).
 - **`payment` (Node.js):** `requests: 10m / 160Mi`, `limits: 100m / 160Mi` (P99: 5.3m CPU, 122.78Mi Memory - limits.cpu raised to 100m for Node.js V8 boot probe safety).
-- **`frontend-proxy` (Envoy):** `requests: 50m / 128Mi`, `limits: 50m / 128Mi` (historical P99 ~30Mi was too tight under production routes/load; raised 2026-07-23 after OOMKilled CrashLoop — Guaranteed QoS).
+- **`frontend-proxy` (Envoy):** `requests: 100m / 128Mi`, `limits: 100m / 128Mi` (Guaranteed QoS). During the M16 700–800-user validation, traffic was evenly distributed across five proxy pods but the 50m cgroup was throttled (up to ~48% of wall time for an established pod). The CPU budget was therefore doubled and the CPU HPA target lowered to 60% so the gateway scales before saturation.
 - **`product-catalog` (Go):** `requests: 20m / 32Mi`, `limits: 20m / 32Mi` (P99: 9.2m CPU, 19.51Mi Memory - Guaranteed QoS).
 - **`currency` (C++):** `requests: 50m / 64Mi`, `limits: 50m / 64Mi` (P99: 2.8m CPU, 12.98Mi Memory - Guaranteed QoS, resized during 200-user load tests to prevent OOMKills).
 - **`quote` (PHP):** `requests: 10m / 32Mi`, `limits: 10m / 32Mi` (P99: 1.0m CPU, 25.57Mi Memory - Guaranteed QoS).
 - **`shipping` (Rust):** `requests: 10m / 16Mi`, `limits: 10m / 16Mi` (P99: 0.8m CPU, 6.94Mi Memory - Guaranteed QoS).
 - **`flagd` (OpenFeature daemon):** `requests: 10m / 64Mi`, `limits: 100m / 128Mi` (P99: 9.2m CPU, 46.92Mi Memory - Memory limit set to 128Mi for GOMEMLIMIT 100MiB safety and limits.cpu raised to 100m for gRPC probe safety under load).
-- **`frontend` (Next.js SSR):** `requests: 64m / 160Mi`, `limits: 200m / 256Mi` (P99: 37.2m CPU, 117.21Mi Memory).
+- **`frontend` (Next.js BFF/SSR):** `requests: 64m / 160Mi`, `limits: 500m / 256Mi`. In the M16 700–800-user run, all 20 ready endpoints received comparable Linkerd inbound RPS (about 1.08–1.71 RPS/pod), ruling out the previous single-endpoint traffic pinning pattern. The 200m limit instead caused CFS throttling and tail-latency inflation. The request remains 64m so CPU HPA retains its early scale signal; the higher limit is burst headroom for Node.js request handling, gRPC fan-out, serialization, and telemetry.
 - **`product-reviews` (Python AI):** `requests: 32m / 1920Mi`, `limits: 200m / 2560Mi` (P99: 12.3m CPU, 1824.49Mi Memory - Model loading protection).
 - **`shopping-copilot` (Python AI):** `requests: 20m / 1920Mi`, `limits: 200m / 2560Mi` (P99: 0.7m CPU, 1759.50Mi Memory - Model loading protection).
 - **`ad` (JVM):** `requests: 10m / 288Mi`, `limits: 200m / 384Mi` (P99: 2.8m CPU, 260.47Mi Memory - limits.cpu raised to 200m for JVM/OTel probe safety).
@@ -86,4 +86,5 @@ The following resource configurations were applied to `values.yaml`:
 
 ### Negative / Trade-offs
 - **Cold-Start Burst Overhead:** Heavy JVM (`ad`), Node.js (`payment`), and Go (`flagd`) pods require slightly higher CPU limits (`100m-200m`) during startup, but their steady-state CPU footprint remains minimal (`10m`).
+- **Higher peak CPU consumption:** `frontend` may now burst to 500m and each `frontend-proxy` reserves 100m. This is intentional for the M16 high-load ceiling and must be validated against the weekly budget and node headroom after the sustained test; it does not increase a pod's CPU usage while idle.
 <!-- Change trail: @hungxqt - 2026-07-23 - Raise frontend-proxy Guaranteed budget after OOMKilled 503. -->
