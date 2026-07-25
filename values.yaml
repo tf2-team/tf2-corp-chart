@@ -3036,32 +3036,36 @@ prometheus:
       size: 8Gi
     service:
       servicePort: 9090
-    # PVC + OTLP + exemplars: a 4m07s WAL replay followed by compaction exceeded
-    # 1792Mi on 2026-07-24 (OOMKilled exit 137). 2560Mi adds bounded recovery
-    # headroom while preserving Guaranteed QoS and Critical-node capacity.
+    # PVC + OTLP + exemplars: WAL replay/compaction exceeded both 1792Mi and
+    # 2560Mi (OOMKilled exit 137 on 2026-07-25). 4Gi covers the observed
+    # 2258Mi steady-state footprint plus replay/compaction headroom. Prometheus
+    # also saturated its former 200m CPU limit, delaying health and HPA queries.
     resources:
       # Guaranteed QoS (request = limit) for observability platform core
       requests:
-        cpu: 200m
-        memory: 2560Mi
+        cpu: 500m
+        memory: 4Gi
       limits:
-        cpu: 200m
-        memory: 2560Mi
-    # WAL/config load observed ~50s under load; block liveness until ready.
+        cpu: 500m
+        memory: 4Gi
+    # A damaged WAL needed repair/replay before the server became ready. Keep
+    # liveness gated for up to ten minutes so recovery is not interrupted.
     startupProbe:
       enabled: true
       periodSeconds: 10
-      failureThreshold: 36
+      failureThreshold: 60
       timeoutSeconds: 10
     readinessProbeInitialDelay: 10
     readinessProbePeriodSeconds: 10
     readinessProbeTimeout: 10
-    readinessProbeFailureThreshold: 3
+    # Keep the Service endpoint during short compaction/ingestion stalls so the
+    # adapter does not immediately fail every external-metric HPA query.
+    readinessProbeFailureThreshold: 6
     readinessProbeSuccessThreshold: 1
     livenessProbeInitialDelay: 30
     livenessProbePeriodSeconds: 20
     livenessProbeTimeout: 10
-    livenessProbeFailureThreshold: 3
+    livenessProbeFailureThreshold: 6
     livenessProbeSuccessThreshold: 1
     securityContext:
       runAsUser: 65534
