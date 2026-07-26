@@ -419,7 +419,6 @@ aiops:
   image:
     repository: ""
     tag: ""
-    digest: ""
     pullPolicy: IfNotPresent
   existingSecret: ""
   service:
@@ -486,7 +485,7 @@ components:
     serviceAccount:
       create: true
       name: yace
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
 
   # demoService:
   ## Enable the component (service)

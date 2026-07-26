@@ -140,7 +140,7 @@ components:
     serviceAccount:
       create: true
       name: yace
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-yace-cloudwatch-read
     imageOverride:
