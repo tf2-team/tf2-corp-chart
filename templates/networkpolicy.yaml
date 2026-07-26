@@ -1919,6 +1919,14 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
+    {{- range .Values.networkPolicy.albIngressCidrs }}
+    - from:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        - protocol: TCP
+          port: 9090
+    {{- end }}
 {{- if $enforceEgress }}
   egress:
     # Prometheus may scrape only chart-managed workload endpoints.

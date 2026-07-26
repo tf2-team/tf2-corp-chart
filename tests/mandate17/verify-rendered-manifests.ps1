@@ -136,6 +136,17 @@ foreach ($albCidr in @('10.0.10.0/24', '10.0.11.0/24')) {
 if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
     throw "frontend ingress must not allow the entire VPC CIDR"
 }
+$prometheusIngressPolicy = $ingress | Where-Object { $_ -match '(?m)^  name: prometheus$' }
+if ($prometheusIngressPolicy.Count -ne 1) { throw "ingress state must render one prometheus policy" }
+foreach ($albCidr in @('10.0.10.0/24', '10.0.11.0/24')) {
+    $prometheusLensProxyRule = '(?ms)cidr: "?' + [regex]::Escape($albCidr) + '"?\s+ports:\s+- protocol: TCP\s+port: 9090'
+    if ($prometheusIngressPolicy -notmatch $prometheusLensProxyRule) {
+        throw "Prometheus policy must allow Lens/Kubernetes API proxy ingress from verified subnet on TCP 9090: $albCidr"
+    }
+}
+if ($prometheusIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
+    throw "Prometheus ingress must not allow the entire VPC CIDR"
+}
 
 $fullRendered = Render $true $true $true
 $cartDeployment = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
