@@ -33,8 +33,8 @@ groups, which Cluster Autoscaler may grow up to their configured limits.
 
 ## Observability changes
 
-- Prometheus scrapes and evaluates every second, keeps 24 hours of data, and
-  receives 1 CPU / 6GiB plus a 48Gi PVC.
+- Prometheus scrapes and evaluates every second with a 900ms timeout, keeps 24
+  hours of data, and receives 1 CPU / 6GiB plus a 48Gi PVC.
 - The OTel Collector flushes spanmetrics and collects Kafka metrics every
   second. Each agent receives 1–2GiB memory so its soft limiter cannot erase
   metrics/traces while logs are exporting.
