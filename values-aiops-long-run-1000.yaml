@@ -10,9 +10,16 @@ aiopsLongRun:
 
 components:
   frontend:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 192Mi
+      limits:
+        cpu: "1"
+        memory: 384Mi
     autoscaling:
-      minReplicas: 12
-      maxReplicas: 24
+      minReplicas: 24
+      maxReplicas: 36
       behavior:
         scaleUp:
           stabilizationWindowSeconds: 0
@@ -31,45 +38,91 @@ components:
               value: 50
               periodSeconds: 60
   frontend-proxy:
-    autoscaling:
-      minReplicas: 6
-      maxReplicas: 12
-  checkout:
-    autoscaling:
-      minReplicas: 6
-      maxReplicas: 18
-  cart:
+    resources:
+      requests:
+        cpu: 150m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 192Mi
     autoscaling:
       minReplicas: 8
       maxReplicas: 16
+  checkout:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 192Mi
+    autoscaling:
+      minReplicas: 10
+      maxReplicas: 20
+  cart:
+    resources:
+      requests:
+        cpu: 75m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 384Mi
+    autoscaling:
+      minReplicas: 16
+      maxReplicas: 24
   currency:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 250m
+        memory: 96Mi
     autoscaling:
-      minReplicas: 6
-      maxReplicas: 12
-  product-catalog:
-    autoscaling:
-      minReplicas: 6
+      minReplicas: 8
       maxReplicas: 16
+  product-catalog:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 192Mi
+    autoscaling:
+      minReplicas: 10
+      maxReplicas: 20
   product-reviews:
     resources:
       requests:
-        cpu: 250m
+        cpu: 500m
+        memory: 1920Mi
       limits:
-        cpu: "1"
+        cpu: "2"
+        memory: 3072Mi
     autoscaling:
-      minReplicas: 4
+      minReplicas: 6
       maxReplicas: 12
   recommendation:
     resources:
       requests:
-        cpu: 100m
+        cpu: 150m
+        memory: 128Mi
       limits:
-        cpu: 500m
+        cpu: "1"
+        memory: 256Mi
     autoscaling:
-      minReplicas: 6
-      maxReplicas: 12
+      minReplicas: 8
+      maxReplicas: 16
   shopping-copilot:
-    replicas: 2
+    replicas: 4
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1920Mi
+      limits:
+        cpu: "2"
+        memory: 3072Mi
   quote:
     autoscaling:
       minReplicas: 4
