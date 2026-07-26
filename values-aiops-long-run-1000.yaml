@@ -38,16 +38,9 @@ components:
               value: 50
               periodSeconds: 60
   frontend-proxy:
-    resources:
-      requests:
-        cpu: 150m
-        memory: 96Mi
-      limits:
-        cpu: 500m
-        memory: 192Mi
     autoscaling:
-      minReplicas: 8
-      maxReplicas: 16
+      minReplicas: 4
+      maxReplicas: 8
   checkout:
     resources:
       requests:
