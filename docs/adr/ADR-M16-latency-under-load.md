@@ -478,7 +478,7 @@ RDS Proxy phù hợp để bảo vệ RDS khi số pod và số kết nối tăn
 
 ![Grafana load test 700 users với HPA giới hạn 2 replica](../adr/image/mandate16/after/grafana-last.png)
 
-*Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-25*
+*Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-26*
 
 <!-- Change trail: @chinhgithub04 - 2026-07-24 - M16: Rewrite as proper ADR with root cause analysis and Linkerd solution. -->
 <!-- Change trail: @chinhgithub04 - 2026-07-25 - M16: Record successful 200-user, 30-minute production benchmark; add Linkerd per-pod RPS, traffic-share, tail-latency and CPU evidence. -->
