@@ -135,7 +135,9 @@ opentelemetry-collector:
           key: VALKEY_PASSWORD
   resources:
     requests:
-      cpu: 250m
+      # The agent is a DaemonSet and must fit even on the packed critical
+      # control-plane nodes. Keep its one-core burst limit below.
+      cpu: 100m
       # The agent is a DaemonSet. A 1Gi request cannot fit on several
       # existing 4Gi Karpenter nodes, leaving those nodes without telemetry.
       # Keep the 2Gi ceiling/GOMEMLIMIT for bursts, but reserve 512Mi.

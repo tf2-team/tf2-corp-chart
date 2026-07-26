@@ -36,9 +36,9 @@ groups, which Cluster Autoscaler may grow up to their configured limits.
 - Prometheus scrapes and evaluates every second with a 900ms timeout, keeps 24
   hours of data, and receives 1 CPU / 6GiB plus a 48Gi PVC.
 - The OTel Collector flushes spanmetrics and collects Kafka metrics every
-  second. Each agent reserves 512MiB and may use up to 2GiB, so the DaemonSet
-  can run on existing 4GiB Karpenter nodes while retaining burst headroom for
-  metrics/traces while logs are exporting.
+  second. Each agent reserves 100m CPU and 512MiB, while retaining a one-core
+  and 2GiB limit for export bursts. This lets the DaemonSet run on packed
+  critical nodes as well as stateless workers, so no node loses telemetry.
 - Jaeger remains memory-backed but is bounded at 50,000 recent traces with a
   6GiB limit. It preserves a useful recent investigation window instead of
   growing until OOMKilled.
