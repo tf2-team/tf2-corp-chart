@@ -67,7 +67,9 @@ function Assert-MinimumReplicaFloor {
 }
 
 # Money-path / storefront stateless floor: two Ready replicas + PDB. Zone
-# spread is soft so workloads can recover in one AZ; hostname remains hard.
+# spread is soft so workloads can recover in one AZ. Hostname spread remains
+# hard except for frontend, where incident recovery keeps it soft so HPA
+# scale-out cannot strand pods while Karpenter capacity is tight.
 $criticalServices = @(
     "ad", "cart", "checkout", "currency", "email", "frontend",
     "frontend-proxy", "image-provider", "payment", "product-catalog",
@@ -96,7 +98,15 @@ foreach ($name in $criticalServices) {
     Assert-Match $deployment[0] "(?ms)^  strategy:\s+rollingUpdate:\s+maxSurge: 1\s+maxUnavailable: 0\s+type: RollingUpdate" "${name}: unsafe rolling update strategy"
     Assert-Match $deployment[0] "(?m)^      terminationGracePeriodSeconds: 30$" "${name}: termination grace must be 30 seconds"
     Assert-Match $deployment[0] "(?ms)^          readinessProbe:.*?          lifecycle:\s+preStop:\s+sleep:\s+seconds: 10" "${name}: readiness and native preStop drain hook are required"
-    Assert-Match $deployment[0] "(?ms)^      topologySpreadConstraints:.*?topologyKey: topology.kubernetes.io/zone\s+whenUnsatisfiable: ScheduleAnyway.*?topologyKey: kubernetes.io/hostname\s+whenUnsatisfiable: DoNotSchedule\s+minDomains: 2" "${name}: zone spread must be soft and hostname spread must remain hard"
+    if ($name -eq "frontend") {
+        Assert-Match $deployment[0] "(?ms)^      topologySpreadConstraints:.*?topologyKey: topology.kubernetes.io/zone\s+whenUnsatisfiable: ScheduleAnyway.*?topologyKey: kubernetes.io/hostname\s+whenUnsatisfiable: ScheduleAnyway" "${name}: frontend recovery requires soft zone and hostname spread"
+        if ($deployment[0] -match "(?ms)topologyKey: kubernetes.io/hostname\s+whenUnsatisfiable: ScheduleAnyway\s+minDomains:") {
+            throw "${name}: soft hostname spread must not set minDomains"
+        }
+    }
+    else {
+        Assert-Match $deployment[0] "(?ms)^      topologySpreadConstraints:.*?topologyKey: topology.kubernetes.io/zone\s+whenUnsatisfiable: ScheduleAnyway.*?topologyKey: kubernetes.io/hostname\s+whenUnsatisfiable: DoNotSchedule\s+minDomains: 2" "${name}: zone spread must be soft and hostname spread must remain hard"
+    }
 
     Write-Host "PASS $name"
 }
