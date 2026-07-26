@@ -204,6 +204,9 @@ prometheus:
   server:
     global:
       scrape_interval: 1s
+      # Prometheus requires scrape_timeout < scrape_interval. Keep a small
+      # margin while preserving the one-second AIOps sample cadence.
+      scrape_timeout: 900ms
       evaluation_interval: 1s
     retention: 24h
     persistentVolume:
