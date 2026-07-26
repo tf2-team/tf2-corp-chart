@@ -9,6 +9,7 @@ Docs: docs/operations/network-policy.md
 {{- $vpcCidr := .Values.networkPolicy.vpcCidr }}
 {{- $kubernetesApiCidr := .Values.networkPolicy.kubernetesApiCidr }}
 {{- $ns := .Release.Namespace }}
+{{- $aiopsLongRun := .Values.aiopsLongRun | default (dict) }}
 {{- if and $enforceEgress (not .Values.egressProxy.enabled) }}
 {{- fail "networkPolicy.enforceEgress=true requires egressProxy.enabled=true" }}
 {{- end }}
@@ -1858,6 +1859,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+    {{- if $aiopsLongRun.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: aiops-opensearch-retention
+      ports:
+        - protocol: TCP
+          port: 9200
+    {{- end }}
     - from:
         - podSelector:
             matchLabels:

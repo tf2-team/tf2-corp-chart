@@ -1,0 +1,185 @@
+# Temporary AIOps profile for multi-hour collection at approximately 1,000
+# virtual users. It is separate from values-prod.yaml and must be removed after
+# the approved collection window.
+
+aiopsLongRun:
+  enabled: true
+  retentionDays: 2
+  retentionSchedule: "17 * * * *"
+  bootstrapImage: public.ecr.aws/docker/library/python:3.13.5-alpine3.22
+
+components:
+  frontend:
+    autoscaling:
+      minReplicas: 6
+      maxReplicas: 40
+  frontend-proxy:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  checkout:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 30
+  cart:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 24
+  currency:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  product-catalog:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 24
+  product-reviews:
+    resources:
+      requests:
+        cpu: 250m
+      limits:
+        cpu: "1"
+    autoscaling:
+      minReplicas: 2
+      maxReplicas: 12
+  recommendation:
+    resources:
+      requests:
+        cpu: 100m
+      limits:
+        cpu: 500m
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  quote:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  shipping:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  payment:
+    replicas: 4
+  email:
+    replicas: 3
+  opensearch:
+    # Keep half of the pod memory for Lucene and the kernel page cache.
+    env:
+      - name: OPENSEARCH_JAVA_OPTS
+        value: "-Xms2g -Xmx2g"
+      - name: discovery.type
+        value: single-node
+      - name: bootstrap.memory_lock
+        value: "false"
+      - name: DISABLE_INSTALL_DEMO_CONFIG
+        value: "false"
+      - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: techx-corp-opensearch
+            key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      - name: cluster.name
+        value: demo-cluster
+      - name: network.host
+        value: "0.0.0.0"
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+
+opentelemetry-collector:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  config:
+    receivers:
+      kafkametrics:
+        collection_interval: 1s
+    exporters:
+      otlp/jaeger:
+        retry_on_failure:
+          max_elapsed_time: 60s
+        sending_queue:
+          num_consumers: 8
+          queue_size: 4096
+      otlphttp/prometheus:
+        retry_on_failure:
+          max_elapsed_time: 60s
+        sending_queue:
+          num_consumers: 8
+          queue_size: 4096
+      opensearch:
+        retry_on_failure:
+          max_elapsed_time: 60s
+        sending_queue:
+          num_consumers: 4
+          queue_size: 1024
+    connectors:
+      spanmetrics:
+        metrics_flush_interval: 1s
+
+jaeger:
+  jaeger:
+    # Memory storage keeps a bounded recent trace window, not a multi-hour archive.
+    extraEnv:
+      - name: MEMORY_MAX_TRACES
+        value: "50000"
+      - name: PROMETHEUS_ADDR
+        value: prometheus:9090
+      - name: OTEL_COLLECTOR_HOST
+        value: otel-collector
+      - name: OTEL_COLLECTOR_PORT_HTTP
+        value: "4318"
+      - name: JAEGER_HOST
+        value: "0.0.0.0"
+      - name: JAEGER_GRPC_PORT
+        value: "4317"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: "1"
+        memory: 6Gi
+
+prometheus:
+  server:
+    global:
+      scrape_interval: 1s
+      evaluation_interval: 1s
+    retention: 24h
+    persistentVolume:
+      # EBS expansion is one-way; see the runbook before enabling this profile.
+      size: 48Gi
+    resources:
+      requests:
+        cpu: "1"
+        memory: 6Gi
+      limits:
+        cpu: "1"
+        memory: 6Gi
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi
+
+metrics-server:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

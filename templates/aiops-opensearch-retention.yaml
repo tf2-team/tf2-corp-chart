@@ -1,0 +1,231 @@
+{{- $aiops := .Values.aiopsLongRun | default dict -}}
+{{- if $aiops.enabled }}
+{{- $name := "aiops-opensearch-retention" -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: aiops-opensearch-retention
+data:
+  apply-retention.py: |
+    import base64
+    import json
+    import os
+    import ssl
+    import urllib.error
+    import urllib.request
+
+    endpoint = "https://opensearch:9200"
+    policy_id = "aiops-otel-logs-retention"
+    retention_days = int(os.environ["RETENTION_DAYS"])
+    credentials = base64.b64encode(
+        f"{os.environ['OPENSEARCH_USERNAME']}:{os.environ['OPENSEARCH_PASSWORD']}".encode()
+    ).decode()
+    context = ssl._create_unverified_context()
+
+    def request(method, path, payload=None):
+        body = json.dumps(payload).encode() if payload is not None else None
+        req = urllib.request.Request(
+            endpoint + path,
+            data=body,
+            method=method,
+            headers={"Authorization": "Basic " + credentials, "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, context=context, timeout=20) as response:
+            return response.read().decode()
+
+    policy = {
+        "policy": {
+            "description": "Temporary AIOps long-run retention for OpenTelemetry logs",
+            "default_state": "hot",
+            "states": [
+                {"name": "hot", "actions": [], "transitions": [
+                    {"state_name": "delete", "conditions": {"min_index_age": f"{retention_days}d"}}
+                ]},
+                {"name": "delete", "actions": [{"delete": {}}], "transitions": []},
+            ],
+            "ism_template": [{"index_patterns": ["otel-logs-*"], "priority": 110}],
+        }
+    }
+    try:
+        request("GET", f"/_plugins/_ism/policies/{policy_id}")
+        print("retention policy already exists")
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        print(request("PUT", f"/_plugins/_ism/policies/{policy_id}", policy))
+
+    if os.environ.get("APPLY_EXISTING", "false").lower() == "true":
+        try:
+            print(request("POST", "/_plugins/_ism/add/otel-logs-*", {"policy_id": policy_id}))
+        except urllib.error.HTTPError as error:
+            if error.code not in (404, 409):
+                raise
+            print(f"existing-index attachment skipped: HTTP {error.code}")
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-bootstrap
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: aiops-opensearch-retention
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        {{- include "techx-corp.labels" . | nindent 8 }}
+        app.kubernetes.io/component: aiops-opensearch-retention
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: apply-retention
+          image: {{ $aiops.bootstrapImage | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/scripts/apply-retention.py"]
+          env:
+            - name: RETENTION_DAYS
+              value: {{ $aiops.retentionDays | quote }}
+            - name: APPLY_EXISTING
+              value: "true"
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: techx-corp-opensearch
+                  key: username
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: techx-corp-opensearch
+                  key: password
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: script
+          configMap:
+            name: {{ $name }}
+            defaultMode: 0444
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: aiops-opensearch-retention
+spec:
+  schedule: {{ $aiops.retentionSchedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          annotations:
+            linkerd.io/inject: disabled
+          labels:
+            {{- include "techx-corp.labels" . | nindent 12 }}
+            app.kubernetes.io/component: aiops-opensearch-retention
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: apply-retention
+              image: {{ $aiops.bootstrapImage | quote }}
+              imagePullPolicy: IfNotPresent
+              command: ["python", "/scripts/apply-retention.py"]
+              env:
+                - name: RETENTION_DAYS
+                  value: {{ $aiops.retentionDays | quote }}
+                - name: APPLY_EXISTING
+                  value: "false"
+                - name: OPENSEARCH_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: techx-corp-opensearch
+                      key: username
+                - name: OPENSEARCH_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: techx-corp-opensearch
+                      key: password
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 65532
+                runAsGroup: 65532
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: script
+              configMap:
+                name: {{ $name }}
+                defaultMode: 0444
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: aiops-opensearch-retention
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+{{- end }}
