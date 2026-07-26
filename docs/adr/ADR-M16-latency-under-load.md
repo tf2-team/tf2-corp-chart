@@ -3,9 +3,9 @@
 | Trường            | Nội dung                                                                                        |
 | ----------------- | ----------------------------------------------------------------------------------------------- |
 | **Mandate**       | MANDATE-16 — Latency Under Load                                                                 |
-| **Trạng thái**    | **Đã hoàn thành**                             |
-| **Tác giả**       | Nguyễn Đức Chinh ([@chinhgithub04](https://github.com/chinhgithub04)) — CDO-03 / TF 2 |
-| **Ngày**          | 2026-07-25                                                                                      |
+| **Trạng thái**    | **Đã chấp nhận**                             |
+| **Team**          | CDO-03 / TF 2 |
+| **Ngày**          | 2026-07-26                                                                                      |
 
 ---
 
@@ -398,7 +398,15 @@ if (/^\/api\/product-ask-ai-assistant\/[^/]+\/index$/.test(target)) {
 
 #### Bằng chứng sau cải thiện
 
-> **Placeholder:** Chạy lại 400-user sustained load sau khi image frontend mới được deploy. Bổ sung dashboard CPU/throttling, p95/p99 Browse và Checkout, cùng trace Jaeger Browse/Checkout tương ứng. Tiêu chí xác nhận là giảm thời gian chờ trước frontend handler và không tăng node/replica chỉ để đạt latency.
+Sau khi deploy frontend mới, hai flow tương ứng đều giảm thời gian xử lý rõ rệt.
+
+![Jaeger checkout qua frontend sau cải thiện](../adr/image/mandate16/after/1.png)
+
+*Trace `user_checkout_multi` (`62f8cd3`), tổng 650.07ms. frontend-proxy còn 191.02ms, handler frontend 184.48ms và Checkout RPC 163.29ms; so với trace trước là 3.53s, 1.21s và 805.5ms tương ứng.*
+
+![Jaeger browse và cart qua frontend sau cải thiện](../adr/image/mandate16/after/2.png)
+
+*Trace `user_add_to_cart` (`23d595f`), tổng 111.02ms. Nhánh đọc product qua frontend-proxy 23.88ms; nhánh thêm cart qua frontend-proxy 71.01ms, handler frontend 15.25ms và Cart `AddItem` 12.53ms. Trace trước cùng flow mất 1.35s, với frontend handler 574.1ms và Cart `AddItem` 480.1ms.*
 
 ---
 
@@ -434,48 +442,41 @@ Tăng replica để "pha loãng" tải vào pod bị ghim.
 
 ## 6. Ảnh hưởng và rủi ro
 
-| Rủi ro                                    | Mức độ   | Biện pháp giảm thiểu                                                   |
-| ----------------------------------------- | -------- | ---------------------------------------------------------------------- |
-| Rolling restart toàn bộ pod khi inject    | Trung bình | Thực hiện khi không có load test; PodDisruptionBudget hiện có đảm bảo rolling |
-| Linkerd proxy tạm thời không available    | Thấp     | `failurePolicy: Ignore` — pod vẫn tạo được nếu injector down           |
-| Resource overhead ~10m CPU / 20Mi / pod  | Thấp     | Đã tính toán phù hợp với BUDGET.md; cluster hiện không bị CPU pressure |
-| Xung đột với runtime-hardening policy    | Thấp     | Linkerd proxy chạy với UID 2102 (non-root); tuân thủ runAsNonRoot policy |
+Linkerd nhẹ hơn và đơn giản hơn Istio, nhưng cũng không có cùng mức độ tính năng. Istio phù hợp hơn nếu sau này cần traffic management phức tạp, gateway/API management, policy phong phú hoặc nhiều kiểu routing/canary. Trong Mandate 16, các khả năng đó chưa cần thiết; Linkerd được dùng cho mTLS, observability và cân bằng tải gRPC nên đổi lại được footprint thấp hơn trong ngân sách hiện tại.
+
+Linkerd vẫn thêm proxy vào mỗi pod và phụ thuộc vào CNI hoạt động bình thường khi tạo pod mới. Lưu lượng giữa các pod cũng không bắt buộc phải đúng 50/50 ở từng thời điểm; tiêu chí theo dõi là RPS, p95/p99 theo pod và SLO chung. Khi hệ thống phát triển đến mức cần các tính năng mesh nâng cao hoặc Linkerd trở thành giới hạn vận hành, team sẽ đánh giá lại Istio.
 
 ---
 
-## 7. Files thay đổi
+## 7. Công việc theo dõi sau Mandate 16
 
-### `tf2-corp-chart`
+Các hạng mục dưới đây có giá trị khi hệ thống lớn hơn, nhưng chưa phải thay đổi hợp lý ở thời điểm hiện tại.
 
-| File | Loại | Mô tả |
-| ---- | ---- | ----- |
-| `gitops/linkerd/README.md` | NEW | Hướng dẫn Linkerd GitOps, cert generation, rollback |
-| `gitops/linkerd/appproject.yaml` | NEW | AppProject "linkerd" với whitelist CRDs và webhooks |
-| `gitops/linkerd/applications/linkerd-crds.yaml` | NEW | ArgoCD Application cài Linkerd CRDs (sync-wave 0) |
-| `gitops/linkerd/applications/linkerd-control-plane.yaml` | NEW | ArgoCD Application cài control plane (sync-wave 1) |
-| `gitops/clusters/prod/linkerd-application.yaml` | NEW | Đăng ký vào root app-of-apps prod |
-| `templates/linkerd-namespace-inject.yaml` | NEW | Namespace resource với `linkerd.io/inject: enabled` |
-| `values.yaml` | MODIFY | Tăng CPU limit recommendation 100m → 200m để loại bỏ CFS throttling; thay đổi tách biệt, không dùng làm bằng chứng M16 |
+### 7.1 Cache product-catalog bằng ElastiCache
 
-### `tf2-corp-platform`
+`product-catalog` hiện chỉ mất vài trăm mili-giây ngay cả dưới tải thử nghiệm; đây chưa phải điểm nghẽn chính. Thêm ElastiCache cho product cache lúc này vừa tăng chi phí vận hành, vừa tăng độ phức tạp về TTL, cache invalidation và xử lý dữ liệu cũ. Với ngân sách **$300/tuần**, chưa triển khai hạng mục này.
 
-| File | Loại | Mô tả |
-| ---- | ---- | ----- |
-| `src/checkout/main.go` | MODIFY | Revert `dns:///` và `round_robin`; thêm errgroup parallelization |
-| `src/frontend/pages/_app.tsx` | MODIFY | Xóa custom `getInitialProps` không mang dữ liệu page, khôi phục static optimization của Next.js |
-| `src/frontend/utils/telemetry/InstrumentationMiddleware.ts` | MODIFY | Chuẩn hóa metric target có product ID động để chặn cardinality không cần thiết |
+Khi traffic tăng và latency của `product-catalog` bắt đầu chiếm phần đáng kể trong trace Browse hoặc Checkout, sẽ đánh giá lại cache-aside với TTL phù hợp và benchmark lại trước/sau.
 
----
+### 7.2 Đưa xoá cart và gửi email thành consumer MSK
 
-## 8. Tham chiếu
+Sau khi checkout thành công, luồng xoá cart và gửi email nên được xử lý bất đồng bộ bởi các consumer MSK độc lập, tương tự accounting và fraud-detection. Cách này sẽ rút ngắn critical path của Checkout và cho phép retry riêng từng tác vụ.
 
-- [gitops/linkerd/README.md](../../gitops/linkerd/README.md) — Hướng dẫn đầy đủ về Linkerd GitOps
-- [Linkerd gRPC Load Balancing](https://linkerd.io/2.17/features/load-balancing/)
-- [Linkerd GitOps with ArgoCD](https://linkerd.io/2.17/tasks/gitops/)
-- [BUDGET.md](../../../onboarding/BUDGET.md)
-- [SLO.md](../../../onboarding/SLO.md)
+Chưa thực hiện vì latency hiện tại của hai tác vụ này thấp, trong khi cấu trúc dữ liệu checkout/cart hiện không đủ để chuyển an toàn sang event-driven flow. Thay đổi đúng cách sẽ cần migration database, thiết kế event/outbox và cơ chế idempotency; chi phí và rủi ro của migration chưa tương xứng với lợi ích hiện tại.
+
+### 7.3 RDS Proxy và connection pool
+
+Hiện tại các service kết nối **trực tiếp** tới RDS; hệ thống chưa có RDS Proxy. `product-catalog` đã giới hạn pool ở 5 kết nối mở và 2 kết nối idle cho mỗi pod, nhưng đây là pool trong ứng dụng, không phải RDS Proxy. `product-reviews` hiện còn mở một kết nối PostgreSQL cho mỗi thao tác đọc rồi đóng lại.
+
+RDS Proxy phù hợp để bảo vệ RDS khi số pod và số kết nối tăng cao, giảm connection storm khi HPA scale hoặc khi pod restart, và giúp ứng dụng dùng ít connection backend hơn. Tuy nhiên nó tạo thêm chi phí theo giờ và theo vCPU, nên chưa thêm trong phạm vi ngân sách **$300/tuần** khi RDS chưa là bottleneck. Khi tăng replica hoặc dashboard cho thấy connection count/connection wait trên RDS tăng, sẽ benchmark hai bước: chuẩn hoá pool cho từng service trước, sau đó đánh giá RDS Proxy bằng tải thực tế.
 
 ---
+
+## 8. Bonus — thử tải 700 users với HPA giới hạn 2 replica
+
+*Sau khi giới hạn `maxReplicas: 2` cho mọi HPA application, hệ thống được chạy load test 700 users trong 15 phút. Dù không cho scale-out vượt 2 replica, throughput duy trì 642 req/s và Browse, Cart, Checkout đều đạt 100% success rate. Tail latency vẫn dưới SLO: Browse p95/p99 tối đa 64.5/126ms, Cart 46.5/82.8ms và Checkout 375/624ms (budget tương ứng 300/700ms, 300/700ms, 500/1000ms).*
+
+![Grafana load test 700 users với HPA giới hạn 2 replica](../adr/image/mandate16/after/grafana-last.png)
 
 *Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-25*
 
