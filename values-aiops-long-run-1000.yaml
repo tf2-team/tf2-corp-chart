@@ -53,6 +53,12 @@ components:
       minReplicas: 10
       maxReplicas: 20
   cart:
+    rollout:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 0
     resources:
       requests:
         cpu: 75m
