@@ -39,6 +39,7 @@ egressProxy:
     - grafana
     - product-reviews
     - shopping-copilot
+    - yace
   noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana"
   allowedDomains:
     # Envoy matches the CONNECT target, which includes the destination port.
@@ -436,6 +437,13 @@ mem0:
 
 components:
   ## Demo Components are named objects (services) with several properties
+  yace:
+    enabled: false
+    serviceAccount:
+      create: true
+      name: yace
+      automountServiceAccountToken: true
+
   # demoService:
   ## Enable the component (service)
   #   enabled: true

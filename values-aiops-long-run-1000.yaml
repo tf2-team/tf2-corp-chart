@@ -212,6 +212,21 @@ opentelemetry-collector:
         secretKeyRef:
           name: techx-corp-valkey-cart
           key: VALKEY_PASSWORD
+    - name: POSTGRES_MON_USER
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: username
+    - name: POSTGRES_MON_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: password
+    - name: POSTGRES_MON_DB
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: database
   resources:
     requests:
       # The agent is a DaemonSet and must fit even on the packed critical
@@ -228,8 +243,8 @@ opentelemetry-collector:
     receivers:
       kafkametrics:
         collection_interval: 1s
-      # Production Valkey is ElastiCache, not the disabled in-cluster pod;
-      # annotation discovery therefore cannot collect its INFO metrics.
+      # Tighten the production-managed Valkey receiver from 30s to 1s for
+      # the bounded AIOps long-run profile.
       redis/valkey-cart:
         endpoint: master.techx-prod-tf2-cart.2bnsjq.use1.cache.amazonaws.com:6379
         password: ${env:VALKEY_PASSWORD}
@@ -261,7 +276,7 @@ opentelemetry-collector:
     service:
       pipelines:
         metrics:
-          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart]
+          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds]
 
 jaeger:
   jaeger:

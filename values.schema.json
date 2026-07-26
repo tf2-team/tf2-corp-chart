@@ -628,6 +628,9 @@
         },
         "opensearch": {
           "$ref": "#/definitions/Component"
+        },
+        "yace": {
+          "$ref": "#/definitions/Component"
         }
       },
       "title": "Components"
@@ -654,8 +657,7 @@
               "type": "string"
             },
             "automountServiceAccountToken": {
-              "type": "boolean",
-              "const": false
+              "type": "boolean"
             }
           },
           "required": [
