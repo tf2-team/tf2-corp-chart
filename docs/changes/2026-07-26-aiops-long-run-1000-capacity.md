@@ -36,13 +36,16 @@ groups, which Cluster Autoscaler may grow up to their configured limits.
 - Prometheus scrapes and evaluates every second with a 900ms timeout, keeps 24
   hours of data, and receives 1 CPU / 6GiB plus a 48Gi PVC.
 - The OTel Collector flushes spanmetrics and collects Kafka metrics every
-  second. Each agent receives 1–2GiB memory so its soft limiter cannot erase
+  second. Each agent reserves 512MiB and may use up to 2GiB, so the DaemonSet
+  can run on existing 4GiB Karpenter nodes while retaining burst headroom for
   metrics/traces while logs are exporting.
 - Jaeger remains memory-backed but is bounded at 50,000 recent traces with a
   6GiB limit. It preserves a useful recent investigation window instead of
   growing until OOMKilled.
-- OpenSearch receives 2 CPU / 4GiB with a 2GiB JVM heap. The AIOps ISM policy
-  keeps `otel-logs-*` for two days and removes older daily indices.
+- OpenSearch reserves 1.5 CPU / 4GiB and may use up to 2 CPU / 4GiB, with a
+  2GiB JVM heap. A `t4g.large` has only 1930m allocatable CPU, so a 2-core
+  request would never schedule. The AIOps ISM policy keeps `otel-logs-*` for
+  two days and removes older daily indices.
 - Logs have a bounded 1,024-item, 60-second exporter backlog. A failed log
   store can drop logs after that bounded period, but cannot consume all
   Collector memory and create gaps in metrics or traces.

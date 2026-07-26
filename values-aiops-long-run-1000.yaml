@@ -85,7 +85,10 @@ components:
         value: "0.0.0.0"
     resources:
       requests:
-        cpu: "2"
+        # A t4g.large exposes 1930m allocatable CPU, not a full 2 cores.
+        # A 2-core request can never schedule, even onto an empty critical
+        # node; retain the 2-core limit while leaving scheduler headroom.
+        cpu: 1500m
         memory: 4Gi
       limits:
         cpu: "2"
@@ -133,7 +136,10 @@ opentelemetry-collector:
   resources:
     requests:
       cpu: 250m
-      memory: 1Gi
+      # The agent is a DaemonSet. A 1Gi request cannot fit on several
+      # existing 4Gi Karpenter nodes, leaving those nodes without telemetry.
+      # Keep the 2Gi ceiling/GOMEMLIMIT for bursts, but reserve 512Mi.
+      memory: 512Mi
     limits:
       cpu: "1"
       memory: 2Gi
