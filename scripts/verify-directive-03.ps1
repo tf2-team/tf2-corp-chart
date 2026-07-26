@@ -128,7 +128,7 @@ Assert-Match $flagdDeployment[0] "(?ms)^  strategy:\s+rollingUpdate:\s+maxSurge:
 Assert-Match $flagdDeployment[0] "(?m)^      terminationGracePeriodSeconds: 30$" "flagd: termination grace must be 30 seconds"
 Assert-Match $flagdDeployment[0] "(?ms)^          readinessProbe:.*?          lifecycle:\s+preStop:\s+sleep:\s+seconds: 10" "flagd: readiness and native preStop drain hook are required"
 Assert-Match $flagdDeployment[0] "(?ms)^          env:.*?- name: FLAGD_SYNC_TOKEN\s+valueFrom:\s+secretKeyRef:\s+key: FLAGD_SYNC_TOKEN\s+name: techx-corp-flagd-ui" "flagd: FLAGD_SYNC_TOKEN must come from techx-corp-flagd-ui/FLAGD_SYNC_TOKEN"
-Assert-Match $flagdDeployment[0] '(?ms)^          command:\s+- /flagd-build\s+- start\s+- --port\s+- "8013"\s+- --ofrep-port\s+- "8016"\s+- --sources\s+- ''\[\{"uri":"/etc/flagd","provider":"file"\},\{"uri":"https://122\.248\.223\.194\.sslip\.io/flags\.json","provider":"http","authHeader":"Bearer\s+\$\(FLAGD_SYNC_TOKEN\)"\}\]''$' "flagd: rendered command must use the exact secret-backed --sources value"
+Assert-Match $flagdDeployment[0] '(?ms)^          command:\s+- /flagd-build\s+- start\s+- --port\s+- "8013"\s+- --ofrep-port\s+- "8016"\s+- --sources\s+- ''\[\{"uri":"/etc/flagd/demo\.flagd\.json","provider":"file"\},\{"uri":"https://122\.248\.223\.194\.sslip\.io/flags\.json","provider":"http","authHeader":"Bearer\s+\$\(FLAGD_SYNC_TOKEN\)"\}\]''$' "flagd: rendered command must use the exact secret-backed --sources value"
 Write-Host "PASS flagd (singleton on critical)"
 
 foreach ($name in @("kafka", "postgresql", "opensearch")) {

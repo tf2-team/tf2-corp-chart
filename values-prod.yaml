@@ -564,7 +564,7 @@ components:
       - "--ofrep-port"
       - "8016"
       - "--sources"
-      - '[{"uri":"/etc/flagd","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer $(FLAGD_SYNC_TOKEN)"}]'
+      - '[{"uri":"/etc/flagd/demo.flagd.json","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer $(FLAGD_SYNC_TOKEN)"}]'
     # Pin Critical MNG only; clear spreads (singleton does not need multi-host HA).
     schedulingRules:
       nodeSelector:
