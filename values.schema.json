@@ -183,7 +183,7 @@
     "opentelemetry-collector": {
       "type": "object"
     },
-    "m16ObservabilityLoad": {
+    "aiopsLongRun": {
       "type": "object",
       "additionalProperties": false,
       "properties": {

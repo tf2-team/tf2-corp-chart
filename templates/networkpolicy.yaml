@@ -9,7 +9,7 @@ Docs: docs/operations/network-policy.md
 {{- $vpcCidr := .Values.networkPolicy.vpcCidr }}
 {{- $kubernetesApiCidr := .Values.networkPolicy.kubernetesApiCidr }}
 {{- $ns := .Release.Namespace }}
-{{- $m16ObservabilityLoad := .Values.m16ObservabilityLoad | default (dict) }}
+{{- $aiopsLongRun := .Values.aiopsLongRun | default (dict) }}
 {{- if and $enforceEgress (not .Values.egressProxy.enabled) }}
 {{- fail "networkPolicy.enforceEgress=true requires egressProxy.enabled=true" }}
 {{- end }}
@@ -196,6 +196,8 @@ spec:
       ports:
         - { protocol: TCP, port: 10250 }
         - { protocol: TCP, port: 9096 } # Amazon MSK SASL/SCRAM
+        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals. Delete after test done.
+        - { protocol: TCP, port: 6379 }
 {{- end }}
 
 {{- if (index .Values "metrics-server" "enabled") }}
@@ -1859,13 +1861,11 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
-    {{- if $m16ObservabilityLoad.enabled }}
-    # Temporary M16 retention bootstrap/cronjob. It needs only the OpenSearch
-    # HTTPS API and is deliberately excluded from the Linkerd data plane.
+    {{- if $aiopsLongRun.enabled }}
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: opensearch-retention
+              app.kubernetes.io/component: aiops-opensearch-retention
       ports:
         - protocol: TCP
           port: 9200

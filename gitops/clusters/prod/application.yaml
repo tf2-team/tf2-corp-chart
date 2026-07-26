@@ -49,14 +49,10 @@ spec:
         - service-digest/values-recommendation.yaml
         - service-digest/values-shipping.yaml
         - service-digest/values-shopping-copilot.yaml
-        # M16 temporary experiment: cap the synchronous path at two replicas
-        # to expose code/dependency bottlenecks at 200 users. Remove after the
-        # discovery run; values-prod remains the steady-state capacity policy.
-        - values-m16-bottleneck-200.yaml
-        # M16 temporary observability profile: retain logs during the extended
-        # AI load test without allowing OpenSearch backpressure to erase SLO
-        # telemetry. Remove after the experiment; see docs/changes entry.
-        - values-m16-observability-load.yaml
+        # Temporary AIOps capacity profile for multi-hour, 1,000-user data
+        # collection. Remove after the approved collection window; see
+        # docs/changes/2026-07-26-aiops-long-run-1000-capacity.md.
+        - values-aiops-long-run-1000.yaml
       releaseName: techx-corp
 
   destination:
