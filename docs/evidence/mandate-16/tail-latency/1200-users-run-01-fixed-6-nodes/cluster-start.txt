@@ -1,0 +1,587 @@
+Captured: 2026-07-21T09:14:29+07:00
+Context: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+
+=== Karpenter ===
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+karpenter   0/0     0            0           8d
+
+=== Nodes ===
+NAME                          STATUS   ROLES    AGE     VERSION               NODEPOOL         CAPACITY-TYPE   INSTANCE-TYPE
+ip-10-0-22-227.ec2.internal   Ready    <none>   21h     v1.36.2-eks-8f14419   stateless-spot   spot            c7g.large
+ip-10-0-27-114.ec2.internal   Ready    <none>   2d      v1.36.2-eks-8f14419                                    t4g.large
+ip-10-0-28-96.ec2.internal    Ready    <none>   14h     v1.36.2-eks-8f14419   stateless-spot   spot            c7g.large
+ip-10-0-36-4.ec2.internal     Ready    <none>   2d11h   v1.36.2-eks-8f14419                                    t4g.large
+ip-10-0-39-210.ec2.internal   Ready    <none>   14h     v1.36.2-eks-8f14419   stateless-spot   spot            c8g.large
+ip-10-0-45-85.ec2.internal    Ready    <none>   12h     v1.36.2-eks-8f14419   stateless-spot   spot            c9g.large
+
+=== Node usage ===
+NAME                          CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+ip-10-0-22-227.ec2.internal   1024m        53%      1651Mi          52%         
+ip-10-0-27-114.ec2.internal   1204m        62%      3607Mi          51%         
+ip-10-0-28-96.ec2.internal    830m         43%      2975Mi          94%         
+ip-10-0-36-4.ec2.internal     402m         20%      4169Mi          58%         
+ip-10-0-39-210.ec2.internal   995m         51%      3240Mi          103%        
+ip-10-0-45-85.ec2.internal    400m         20%      2690Mi          97%         
+
+=== Deployments ===
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+accounting                      1/1     1            1           7d23h
+ad                              2/2     2            2           7d23h
+cart                            3/8     8            3           7d23h
+checkout                        3/13    13           3           7d23h
+currency                        3/3     3            3           7d23h
+email                           2/2     2            2           7d23h
+flagd                           1/1     1            1           7d23h
+fraud-detection                 1/1     1            1           7d23h
+frontend                        3/15    15           3           7d23h
+frontend-proxy                  5/5     5            5           7d23h
+grafana                         1/1     1            1           7d23h
+image-provider                  2/2     2            2           7d23h
+jaeger                          1/1     1            1           7d23h
+llm                             1/1     1            1           7d23h
+load-generator                  1/1     1            1           7d23h
+load-generator-worker           3/3     3            3           7d7h
+metrics-server                  1/1     1            1           7d23h
+payment                         2/2     2            2           7d23h
+product-catalog                 3/4     4            3           7d23h
+product-reviews                 2/2     2            2           7d23h
+prometheus                      1/1     1            1           7d23h
+prometheus-adapter              1/1     1            1           7d23h
+quote                           2/2     2            2           7d23h
+recommendation                  3/3     3            3           7d23h
+shipping                        2/2     2            2           7d23h
+shopping-copilot                1/1     1            1           35h
+techx-corp-kube-state-metrics   1/1     1            1           7d23h
+
+=== HPA ===
+NAME                    REFERENCE                          TARGETS                           MINPODS   MAXPODS   REPLICAS   AGE
+cart                    Deployment/cart                    cpu: 197%/70%, 50147m/150 (avg)   2         12        8          7d23h
+checkout                Deployment/checkout                cpu: 330%/70%, 13483m/50 (avg)    2         16        13         7d23h
+currency                Deployment/currency                cpu: 70%/70%, 12892m/250 (avg)    2         72        3          7d23h
+frontend                Deployment/frontend                cpu: 226%/65%, 78669m/80 (avg)    3         20        15         7d23h
+frontend-proxy          Deployment/frontend-proxy          cpu: 76%/80%, 107894m/300 (avg)   2         10        5          7d23h
+load-generator-worker   Deployment/load-generator-worker   cpu: 107%/70%                     3         3         3          7d1h
+product-catalog         Deployment/product-catalog         cpu: 82%/70%, 131466m/150 (avg)   2         12        4          7d23h
+product-reviews         Deployment/product-reviews         cpu: 45%/70%, 20411m/20 (avg)     2         6         2          6d10h
+quote                   Deployment/quote                   cpu: 23%/70%                      2         4         2          6d17h
+recommendation          Deployment/recommendation          cpu: 58%/70%, 18924m/25 (avg)     2         6         3          7d23h
+shipping                Deployment/shipping                cpu: 14%/70%                      2         4         2          6d17h
+
+=== Pods ===
+NAME                                             READY   STATUS      RESTARTS        AGE     IP            NODE                          NOMINATED NODE   READINESS GATES
+accounting-8549c77f9b-br8c2                      1/1     Running     0               14h     10.0.31.66    ip-10-0-22-227.ec2.internal   <none>           <none>
+ad-6598f89967-7fsnx                              1/1     Running     0               14h     10.0.17.88    ip-10-0-28-96.ec2.internal    <none>           <none>
+ad-6598f89967-gh5cr                              1/1     Running     0               14h     10.0.42.124   ip-10-0-39-210.ec2.internal   <none>           <none>
+cart-74cdbd6b84-4xqq6                            0/1     Pending     0               5m23s   <none>        <none>                        <none>           <none>
+cart-74cdbd6b84-94tls                            1/1     Running     0               14h     10.0.17.86    ip-10-0-28-96.ec2.internal    <none>           <none>
+cart-74cdbd6b84-dxllg                            0/1     Pending     0               5m38s   <none>        <none>                        <none>           <none>
+cart-74cdbd6b84-gljfm                            0/1     Pending     0               4m53s   <none>        <none>                        <none>           <none>
+cart-74cdbd6b84-grt2w                            0/1     Pending     0               4m53s   <none>        <none>                        <none>           <none>
+cart-74cdbd6b84-jb7dv                            1/1     Running     0               5m54s   10.0.19.145   ip-10-0-22-227.ec2.internal   <none>           <none>
+cart-74cdbd6b84-wcqhj                            0/1     Pending     0               5m8s    <none>        <none>                        <none>           <none>
+cart-74cdbd6b84-znv7d                            1/1     Running     0               14h     10.0.42.115   ip-10-0-39-210.ec2.internal   <none>           <none>
+checkout-779b6768bf-24wvs                        1/1     Running     0               5m52s   10.0.17.89    ip-10-0-28-96.ec2.internal    <none>           <none>
+checkout-779b6768bf-2zjrq                        0/1     Pending     0               4m22s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-96zch                        0/1     Pending     0               5m22s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-cfqth                        0/1     Pending     0               4m52s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-d52ln                        0/1     Pending     0               5m52s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-dm2j9                        0/1     Pending     0               4m52s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-hwmgp                        1/1     Running     0               14h     10.0.42.117   ip-10-0-39-210.ec2.internal   <none>           <none>
+checkout-779b6768bf-hxb8c                        0/1     Pending     0               3m52s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-krhgk                        0/1     Pending     0               4m52s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-n9cm4                        0/1     Pending     0               3m52s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-nmw4p                        0/1     Pending     0               4m22s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-nrdfx                        0/1     Pending     0               5m22s   <none>        <none>                        <none>           <none>
+checkout-779b6768bf-nvpbr                        1/1     Running     0               14h     10.0.19.158   ip-10-0-22-227.ec2.internal   <none>           <none>
+currency-fb4886889-4zbg2                         1/1     Running     0               14h     10.0.42.125   ip-10-0-39-210.ec2.internal   <none>           <none>
+currency-fb4886889-5h552                         1/1     Running     0               14h     10.0.20.146   ip-10-0-22-227.ec2.internal   <none>           <none>
+currency-fb4886889-p9l4v                         1/1     Running     0               5m23s   10.0.17.91    ip-10-0-28-96.ec2.internal    <none>           <none>
+email-7d54476678-42hm2                           1/1     Running     0               14h     10.0.31.65    ip-10-0-22-227.ec2.internal   <none>           <none>
+email-7d54476678-6b8fn                           1/1     Running     0               14h     10.0.42.121   ip-10-0-39-210.ec2.internal   <none>           <none>
+flagd-686fdc9476-fwzcg                           2/2     Running     0               14h     10.0.46.97    ip-10-0-36-4.ec2.internal     <none>           <none>
+fraud-detection-795bc546d8-44fg4                 1/1     Running     0               14h     10.0.19.149   ip-10-0-22-227.ec2.internal   <none>           <none>
+frontend-7cb46658f5-5zrrl                        0/1     Pending     0               4m50s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-6z49h                        1/1     Running     0               14h     10.0.42.118   ip-10-0-39-210.ec2.internal   <none>           <none>
+frontend-7cb46658f5-8l4td                        0/1     Pending     0               4m50s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-bz4fc                        0/1     Pending     0               4m50s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-cvh8b                        0/1     Pending     0               5m20s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-cwz7h                        0/1     Pending     0               4m20s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-czsq8                        1/1     Running     0               14h     10.0.17.84    ip-10-0-28-96.ec2.internal    <none>           <none>
+frontend-7cb46658f5-f8nkt                        0/1     Pending     0               5m50s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-h2vlq                        0/1     Pending     0               5m20s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-js6jg                        0/1     Pending     0               5m50s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-p885k                        1/1     Running     0               14h     10.0.31.67    ip-10-0-22-227.ec2.internal   <none>           <none>
+frontend-7cb46658f5-qrf2l                        0/1     Pending     0               5m20s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-tsdjr                        0/1     Pending     0               4m20s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-w4tp9                        0/1     Pending     0               4m50s   <none>        <none>                        <none>           <none>
+frontend-7cb46658f5-wm4cw                        0/1     Pending     0               4m20s   <none>        <none>                        <none>           <none>
+frontend-proxy-7cd9df478f-6v8hk                  1/1     Running     0               14h     10.0.22.112   ip-10-0-27-114.ec2.internal   <none>           <none>
+frontend-proxy-7cd9df478f-7pzv8                  1/1     Running     0               4m45s   10.0.46.99    ip-10-0-36-4.ec2.internal     <none>           <none>
+frontend-proxy-7cd9df478f-bqxsh                  1/1     Running     0               79m     10.0.26.128   ip-10-0-27-114.ec2.internal   <none>           <none>
+frontend-proxy-7cd9df478f-n2j6j                  1/1     Running     0               6m      10.0.40.13    ip-10-0-36-4.ec2.internal     <none>           <none>
+frontend-proxy-7cd9df478f-rhp5b                  1/1     Running     0               5m45s   10.0.46.107   ip-10-0-36-4.ec2.internal     <none>           <none>
+grafana-5fcc4699dc-9cpcw                         2/2     Running     0               12h     10.0.40.15    ip-10-0-36-4.ec2.internal     <none>           <none>
+image-provider-dcfc476f5-h289s                   1/1     Running     0               14h     10.0.43.32    ip-10-0-39-210.ec2.internal   <none>           <none>
+image-provider-dcfc476f5-kq4g2                   1/1     Running     0               14h     10.0.31.64    ip-10-0-22-227.ec2.internal   <none>           <none>
+jaeger-7d5bbc694-5q9xj                           1/1     Running     0               27h     10.0.26.134   ip-10-0-27-114.ec2.internal   <none>           <none>
+llm-849f7dcff-fhm66                              1/1     Running     0               13h     10.0.19.156   ip-10-0-22-227.ec2.internal   <none>           <none>
+load-generator-69f8d69c79-2ptht                  1/1     Running     0               14h     10.0.46.110   ip-10-0-36-4.ec2.internal     <none>           <none>
+load-generator-worker-7f886bf966-clwb6           1/1     Running     1 (4h39m ago)   12h     10.0.33.16    ip-10-0-45-85.ec2.internal    <none>           <none>
+load-generator-worker-7f886bf966-cmr92           1/1     Running     1 (6h52m ago)   12h     10.0.45.20    ip-10-0-45-85.ec2.internal    <none>           <none>
+load-generator-worker-7f886bf966-d8txh           1/1     Running     0               12h     10.0.45.22    ip-10-0-45-85.ec2.internal    <none>           <none>
+metrics-server-56f6f67555-zcd64                  1/1     Running     1 (27h ago)     27h     10.0.40.1     ip-10-0-36-4.ec2.internal     <none>           <none>
+opensearch-0                                     1/1     Running     0               14h     10.0.46.111   ip-10-0-36-4.ec2.internal     <none>           <none>
+otel-collector-agent-4xbkd                       1/1     Running     0               2d11h   10.0.40.0     ip-10-0-36-4.ec2.internal     <none>           <none>
+otel-collector-agent-5fg64                       1/1     Running     0               14h     10.0.17.81    ip-10-0-28-96.ec2.internal    <none>           <none>
+otel-collector-agent-5w9pk                       1/1     Running     0               21h     10.0.19.146   ip-10-0-22-227.ec2.internal   <none>           <none>
+otel-collector-agent-cjcnz                       1/1     Running     0               14h     10.0.42.114   ip-10-0-39-210.ec2.internal   <none>           <none>
+otel-collector-agent-n4q5b                       1/1     Running     0               12h     10.0.45.17    ip-10-0-45-85.ec2.internal    <none>           <none>
+otel-collector-agent-x7l6h                       1/1     Running     0               47h     10.0.26.132   ip-10-0-27-114.ec2.internal   <none>           <none>
+payment-7645946976-dddll                         1/1     Running     0               14h     10.0.17.85    ip-10-0-28-96.ec2.internal    <none>           <none>
+payment-7645946976-jpb84                         1/1     Running     0               14h     10.0.42.116   ip-10-0-39-210.ec2.internal   <none>           <none>
+product-catalog-84656579df-22d55                 0/1     Pending     0               4m22s   <none>        <none>                        <none>           <none>
+product-catalog-84656579df-92hm7                 1/1     Running     0               5m37s   10.0.17.90    ip-10-0-28-96.ec2.internal    <none>           <none>
+product-catalog-84656579df-k85pj                 1/1     Running     0               14h     10.0.42.119   ip-10-0-39-210.ec2.internal   <none>           <none>
+product-catalog-84656579df-pbfh9                 1/1     Running     0               14h     10.0.20.147   ip-10-0-22-227.ec2.internal   <none>           <none>
+product-reviews-7cd8dcb9cd-6tvqx                 1/1     Running     0               14h     10.0.17.80    ip-10-0-28-96.ec2.internal    <none>           <none>
+product-reviews-7cd8dcb9cd-pghnv                 1/1     Running     0               14h     10.0.42.112   ip-10-0-39-210.ec2.internal   <none>           <none>
+prometheus-795bcb887b-vt6xv                      1/1     Running     0               27h     10.0.26.142   ip-10-0-27-114.ec2.internal   <none>           <none>
+prometheus-adapter-cfff85f69-mbr8q               1/1     Running     0               27h     10.0.46.101   ip-10-0-36-4.ec2.internal     <none>           <none>
+quote-5d6d58db66-7dj7s                           1/1     Running     0               14h     10.0.42.123   ip-10-0-39-210.ec2.internal   <none>           <none>
+quote-5d6d58db66-mx7jz                           1/1     Running     0               14h     10.0.17.83    ip-10-0-28-96.ec2.internal    <none>           <none>
+recommendation-76f7f6dc45-9tr7w                  1/1     Running     0               14h     10.0.42.122   ip-10-0-39-210.ec2.internal   <none>           <none>
+recommendation-76f7f6dc45-czb7t                  1/1     Running     0               5m22s   10.0.19.147   ip-10-0-22-227.ec2.internal   <none>           <none>
+recommendation-76f7f6dc45-xrlp4                  1/1     Running     0               14h     10.0.17.87    ip-10-0-28-96.ec2.internal    <none>           <none>
+runtime-hardening-inventory-29743325-9tmst       0/1     Completed   0               9m52s   10.0.46.107   ip-10-0-36-4.ec2.internal     <none>           <none>
+runtime-hardening-inventory-29743330-8c5r5       0/1     Completed   0               4m52s   10.0.40.5     ip-10-0-36-4.ec2.internal     <none>           <none>
+shipping-f98b9d576-pfd96                         1/1     Running     0               14h     10.0.19.159   ip-10-0-22-227.ec2.internal   <none>           <none>
+shipping-f98b9d576-qgtkg                         1/1     Running     0               14h     10.0.42.120   ip-10-0-39-210.ec2.internal   <none>           <none>
+shopping-copilot-75cf4dc6d8-xqz4r                1/1     Running     0               12h     10.0.45.21    ip-10-0-45-85.ec2.internal    <none>           <none>
+techx-corp-kube-state-metrics-56c7fd85b9-dvx4r   1/1     Running     0               27h     10.0.26.131   ip-10-0-27-114.ec2.internal   <none>           <none>
+
+=== Pod usage ===
+POD                                              NAME                      CPU(cores)   MEMORY(bytes)   
+accounting-8549c77f9b-br8c2                      accounting                98m          217Mi           
+ad-6598f89967-7fsnx                              ad                        8m           249Mi           
+ad-6598f89967-gh5cr                              ad                        9m           269Mi           
+cart-74cdbd6b84-94tls                            cart                      90m          76Mi            
+cart-74cdbd6b84-jb7dv                            cart                      2m           49Mi            
+cart-74cdbd6b84-znv7d                            cart                      63m          83Mi            
+checkout-779b6768bf-24wvs                        checkout                  7m           18Mi            
+checkout-779b6768bf-hwmgp                        checkout                  36m          32Mi            
+checkout-779b6768bf-nvpbr                        checkout                  62m          25Mi            
+currency-fb4886889-4zbg2                         currency                  32m          13Mi            
+currency-fb4886889-5h552                         currency                  25m          13Mi            
+currency-fb4886889-p9l4v                         currency                  1m           6Mi             
+email-7d54476678-42hm2                           email                     38m          61Mi            
+email-7d54476678-6b8fn                           email                     44m          59Mi            
+flagd-686fdc9476-fwzcg                           flagd                     77m          44Mi            
+flagd-686fdc9476-fwzcg                           flagd-ui                  1m           139Mi           
+fraud-detection-795bc546d8-44fg4                 fraud-detection           35m          309Mi           
+frontend-7cb46658f5-6z49h                        frontend                  259m         125Mi           
+frontend-7cb46658f5-czsq8                        frontend                  423m         117Mi           
+frontend-7cb46658f5-p885k                        frontend                  406m         128Mi           
+frontend-proxy-7cd9df478f-6v8hk                  frontend-proxy            102m         34Mi            
+frontend-proxy-7cd9df478f-7pzv8                  frontend-proxy            7m           16Mi            
+frontend-proxy-7cd9df478f-bqxsh                  frontend-proxy            96m          30Mi            
+frontend-proxy-7cd9df478f-n2j6j                  frontend-proxy            8m           16Mi            
+frontend-proxy-7cd9df478f-rhp5b                  frontend-proxy            8m           16Mi            
+grafana-5fcc4699dc-9cpcw                         grafana                   13m          423Mi           
+grafana-5fcc4699dc-9cpcw                         grafana-sc-dashboard      1m           76Mi            
+image-provider-dcfc476f5-h289s                   image-provider            1m           8Mi             
+image-provider-dcfc476f5-kq4g2                   image-provider            1m           10Mi            
+jaeger-7d5bbc694-5q9xj                           jaeger                    74m          418Mi           
+llm-849f7dcff-fhm66                              llm                       12m          79Mi            
+load-generator-69f8d69c79-2ptht                  load-generator            8m           80Mi            
+load-generator-worker-7f886bf966-clwb6           load-generator-worker     132m         86Mi            
+load-generator-worker-7f886bf966-cmr92           load-generator-worker     136m         92Mi            
+load-generator-worker-7f886bf966-d8txh           load-generator-worker     135m         98Mi            
+metrics-server-56f6f67555-zcd64                  metrics-server            5m           26Mi            
+opensearch-0                                     opensearch                66m          942Mi           
+otel-collector-agent-4xbkd                       opentelemetry-collector   14m          113Mi           
+otel-collector-agent-5fg64                       opentelemetry-collector   19m          109Mi           
+otel-collector-agent-5w9pk                       opentelemetry-collector   43m          106Mi           
+otel-collector-agent-cjcnz                       opentelemetry-collector   47m          122Mi           
+otel-collector-agent-n4q5b                       opentelemetry-collector   9m           90Mi            
+otel-collector-agent-x7l6h                       opentelemetry-collector   88m          98Mi            
+payment-7645946976-dddll                         payment                   23m          117Mi           
+payment-7645946976-jpb84                         payment                   24m          117Mi           
+product-catalog-84656579df-92hm7                 product-catalog           1m           10Mi            
+product-catalog-84656579df-k85pj                 product-catalog           147m         19Mi            
+product-catalog-84656579df-pbfh9                 product-catalog           110m         16Mi            
+product-reviews-7cd8dcb9cd-6tvqx                 product-reviews           60m          1737Mi          
+product-reviews-7cd8dcb9cd-pghnv                 product-reviews           142m         1833Mi          
+prometheus-795bcb887b-vt6xv                      prometheus-server         72m          1172Mi          
+prometheus-adapter-cfff85f69-mbr8q               prometheus-adapter        5m           39Mi            
+quote-5d6d58db66-7dj7s                           quote                     9m           23Mi            
+quote-5d6d58db66-mx7jz                           quote                     11m          22Mi            
+recommendation-76f7f6dc45-9tr7w                  recommendation            167m         70Mi            
+recommendation-76f7f6dc45-czb7t                  recommendation            9m           39Mi            
+recommendation-76f7f6dc45-xrlp4                  recommendation            33m          57Mi            
+shipping-f98b9d576-pfd96                         shipping                  4m           5Mi             
+shipping-f98b9d576-qgtkg                         shipping                  9m           8Mi             
+shopping-copilot-75cf4dc6d8-xqz4r                shopping-copilot          1m           1759Mi          
+techx-corp-kube-state-metrics-56c7fd85b9-dvx4r   kube-state-metrics        2m           28Mi            
+
+=== Recent events ===
+LAST SEEN   TYPE      REASON                   OBJECT                                                MESSAGE
+60m         Normal    Scheduled                pod/runtime-hardening-inventory-29743275-psg9j        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743275-psg9j to ip-10-0-36-4.ec2.internal
+60m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743275              Created pod: runtime-hardening-inventory-29743275-psg9j
+59m         Normal    Pulled                   pod/runtime-hardening-inventory-29743275-psg9j        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+59m         Normal    Created                  pod/runtime-hardening-inventory-29743275-psg9j        Container created
+59m         Normal    Started                  pod/runtime-hardening-inventory-29743275-psg9j        Container started
+59m         Normal    Completed                job/runtime-hardening-inventory-29743275              Job completed
+55m         Normal    Scheduled                pod/runtime-hardening-inventory-29743280-b8qzp        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743280-b8qzp to ip-10-0-36-4.ec2.internal
+55m         Normal    Pulled                   pod/runtime-hardening-inventory-29743280-b8qzp        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+55m         Normal    Created                  pod/runtime-hardening-inventory-29743280-b8qzp        Container created
+55m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743280              Created pod: runtime-hardening-inventory-29743280-b8qzp
+54m         Normal    Started                  pod/runtime-hardening-inventory-29743280-b8qzp        Container started
+54m         Normal    Completed                job/runtime-hardening-inventory-29743280              Job completed
+50m         Normal    Scheduled                pod/runtime-hardening-inventory-29743285-txzgj        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743285-txzgj to ip-10-0-36-4.ec2.internal
+50m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743285              Created pod: runtime-hardening-inventory-29743285-txzgj
+49m         Normal    Created                  pod/runtime-hardening-inventory-29743285-txzgj        Container created
+49m         Normal    Pulled                   pod/runtime-hardening-inventory-29743285-txzgj        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+49m         Normal    Started                  pod/runtime-hardening-inventory-29743285-txzgj        Container started
+49m         Normal    Completed                job/runtime-hardening-inventory-29743285              Job completed
+47m         Normal    SuccessfulCreate         replicaset/recommendation-76f7f6dc45                  Created pod: recommendation-76f7f6dc45-4p298
+47m         Normal    Pulling                  pod/recommendation-76f7f6dc45-4p298                   Pulling image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/recommendation:sha-aabb8be"
+47m         Normal    Scheduled                pod/recommendation-76f7f6dc45-4p298                   Successfully assigned techx-corp-prod/recommendation-76f7f6dc45-4p298 to ip-10-0-22-227.ec2.internal
+47m         Normal    Pulled                   pod/recommendation-76f7f6dc45-4p298                   Successfully pulled image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/recommendation:sha-aabb8be" in 1.402s (1.402s including waiting). Image size: 34960978 bytes.
+47m         Normal    Created                  pod/recommendation-76f7f6dc45-4p298                   Container created
+47m         Normal    Started                  pod/recommendation-76f7f6dc45-4p298                   Container started
+46m         Warning   Unhealthy                pod/recommendation-76f7f6dc45-4p298                   Readiness probe failed: timeout: failed to connect service "10.0.20.144:8080" within 5s: context deadline exceeded
+45m         Normal    Created                  pod/runtime-hardening-inventory-29743290-vkq5c        Container created
+45m         Normal    Scheduled                pod/runtime-hardening-inventory-29743290-vkq5c        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743290-vkq5c to ip-10-0-36-4.ec2.internal
+45m         Normal    Pulled                   pod/runtime-hardening-inventory-29743290-vkq5c        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+45m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743290              Created pod: runtime-hardening-inventory-29743290-vkq5c
+44m         Normal    Started                  pod/runtime-hardening-inventory-29743290-vkq5c        Container started
+44m         Normal    Completed                job/runtime-hardening-inventory-29743290              Job completed
+44m         Warning   FailedScheduling         pod/checkout-779b6768bf-nlsff                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/cart-74cdbd6b84-zdvtc                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/cart-74cdbd6b84-wf5fn                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/checkout-779b6768bf-lvt72                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-zdvtc                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-lvt72                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-nlsff                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-wf5fn                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Warning   FailedScheduling         pod/checkout-779b6768bf-r9pq2                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/frontend-7cb46658f5-p4z45                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/checkout-779b6768bf-jqr45                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/frontend-7cb46658f5-pb9qr                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/frontend-7cb46658f5-htv2l                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Warning   FailedScheduling         pod/cart-74cdbd6b84-lcbwr                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+44m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-jqr45                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-htv2l                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-p4z45                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-pb9qr                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-lcbwr                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+44m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-r9pq2                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+43m         Warning   FailedScheduling         pod/frontend-7cb46658f5-4vfcw                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+43m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-4vfcw                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+43m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-s5txt                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+43m         Warning   FailedScheduling         pod/frontend-7cb46658f5-9sx5d                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+42m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-rc8k7                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+42m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-9sx5d                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+42m         Warning   FailedScheduling         pod/frontend-7cb46658f5-rc8k7                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Warning   FailedScheduling         pod/frontend-7cb46658f5-jzzm4                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-jzzm4                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+40m         Warning   FailedScheduling         pod/frontend-7cb46658f5-jdflz                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Warning   FailedScheduling         pod/checkout-779b6768bf-2xfkw                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Warning   FailedScheduling         pod/checkout-779b6768bf-ktht7                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Warning   FailedScheduling         pod/cart-74cdbd6b84-5mq86                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Warning   FailedScheduling         pod/frontend-7cb46658f5-47j9p                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+40m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-ktht7                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+40m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-47j9p                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+40m         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-5mq86                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+40m         Normal    SuccessfulDelete         replicaset/frontend-proxy-7cd9df478f                  Deleted pod: frontend-proxy-7cd9df478f-v4wl2
+40m         Normal    Killing                  pod/frontend-proxy-7cd9df478f-9ztn8                   Stopping container frontend-proxy
+40m         Normal    Killing                  pod/frontend-proxy-7cd9df478f-v4wl2                   Stopping container frontend-proxy
+40m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend-proxy                New size: 2; reason: All metrics below target
+40m         Normal    ScalingReplicaSet        deployment/frontend-proxy                             Scaled down replica set frontend-proxy-7cd9df478f from 5 to 2
+40m         Normal    SuccessfulDelete         replicaset/frontend-proxy-7cd9df478f                  Deleted pod: frontend-proxy-7cd9df478f-9ztn8
+40m         Normal    Killing                  pod/frontend-proxy-7cd9df478f-dglcl                   Stopping container frontend-proxy
+40m         Normal    SuccessfulDelete         replicaset/frontend-proxy-7cd9df478f                  Deleted pod: frontend-proxy-7cd9df478f-dglcl
+40m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-2xfkw                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+40m         Normal    SuccessfulDelete         replicaset/cart-74cdbd6b84                            Deleted pod: cart-74cdbd6b84-5mq86
+40m         Normal    SuccessfulDelete         replicaset/cart-74cdbd6b84                            Deleted pod: cart-74cdbd6b84-wf5fn
+40m         Normal    SuccessfulDelete         replicaset/cart-74cdbd6b84                            Deleted pod: cart-74cdbd6b84-zdvtc
+40m         Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 4; reason: All metrics below target
+40m         Normal    ScalingReplicaSet        deployment/cart                                       Scaled down replica set cart-74cdbd6b84 from 8 to 4
+40m         Normal    SuccessfulDelete         replicaset/cart-74cdbd6b84                            Deleted pod: cart-74cdbd6b84-lcbwr
+40m         Normal    Killing                  pod/recommendation-76f7f6dc45-4p298                   Stopping container recommendation
+40m         Normal    ScalingReplicaSet        deployment/recommendation                             Scaled down replica set recommendation-76f7f6dc45 from 3 to 2
+40m         Normal    SuccessfulRescale        horizontalpodautoscaler/recommendation                New size: 2; reason: All metrics below target
+40m         Normal    SuccessfulDelete         replicaset/recommendation-76f7f6dc45                  Deleted pod: recommendation-76f7f6dc45-4p298
+40m         Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 5; reason: All metrics below target
+40m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-nlsff
+40m         Normal    ScalingReplicaSet        deployment/checkout                                   Scaled down replica set checkout-779b6768bf from 10 to 5
+40m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-jqr45
+40m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-lvt72
+40m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-2xfkw
+40m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-r9pq2
+40m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-47j9p
+40m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-9sx5d
+40m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 10; reason: All metrics below target
+40m         Normal    ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-7cb46658f5 from 13 to 10
+40m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-4vfcw
+40m         Normal    Scheduled                pod/runtime-hardening-inventory-29743295-dg6tb        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743295-dg6tb to ip-10-0-36-4.ec2.internal
+40m         Normal    Pulled                   pod/runtime-hardening-inventory-29743295-dg6tb        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+40m         Normal    Created                  pod/runtime-hardening-inventory-29743295-dg6tb        Container created
+40m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743295              Created pod: runtime-hardening-inventory-29743295-dg6tb
+39m         Normal    Started                  pod/runtime-hardening-inventory-29743295-dg6tb        Container started
+39m         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-jdflz                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+39m         Normal    Completed                job/runtime-hardening-inventory-29743295              Job completed
+39m         Warning   FailedScheduling         pod/checkout-779b6768bf-djcll                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+39m         Normal    SuccessfulRescale        horizontalpodautoscaler/product-catalog               New size: 2; reason: All metrics below target
+39m         Normal    ScalingReplicaSet        deployment/product-catalog                            Scaled down replica set product-catalog-84656579df from 3 to 2
+39m         Normal    Killing                  pod/product-catalog-84656579df-lvm24                  Stopping container product-catalog
+39m         Normal    SuccessfulDelete         replicaset/product-catalog-84656579df                 Deleted pod: product-catalog-84656579df-lvm24
+39m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-p4z45
+39m         Normal    ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-7cb46658f5 from 10 to 8
+39m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 8; reason: All metrics below target
+39m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-htv2l
+39m         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-djcll                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+39m         Normal    ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-7cb46658f5 from 8 to 6
+39m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-pb9qr
+39m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-jdflz
+39m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 6; reason: All metrics below target
+39m         Warning   FailedScheduling         pod/cart-74cdbd6b84-hwdsz                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+39m         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-hwdsz                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+39m         Normal    Killing                  pod/cart-74cdbd6b84-z479v                             Stopping container cart
+39m         Normal    ScalingReplicaSet        deployment/cart                                       Scaled down replica set cart-74cdbd6b84 from 4 to 2
+39m         Normal    SuccessfulDelete         replicaset/cart-74cdbd6b84                            Deleted pod: cart-74cdbd6b84-hwdsz
+39m         Normal    SuccessfulDelete         replicaset/cart-74cdbd6b84                            Deleted pod: cart-74cdbd6b84-z479v
+39m         Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 2; reason: All metrics below target
+39m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-lsd2l
+39m         Normal    ScalingReplicaSet        deployment/checkout                                   Scaled down replica set checkout-779b6768bf from 5 to 2
+39m         Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 2; reason: All metrics below target
+39m         Normal    Killing                  pod/checkout-779b6768bf-lsd2l                         Stopping container checkout
+39m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-djcll
+39m         Normal    SuccessfulDelete         replicaset/checkout-779b6768bf                        Deleted pod: checkout-779b6768bf-ktht7
+39m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 5; reason: All metrics below target
+39m         Normal    ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-7cb46658f5 from 6 to 5
+39m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-jzzm4
+38m         Warning   FailedScheduling         pod/frontend-7cb46658f5-s5txt                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+38m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        Deleted pod: frontend-7cb46658f5-s5txt
+38m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 4; reason: All metrics below target
+38m         Normal    ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-7cb46658f5 from 5 to 4
+38m         Normal    SuccessfulDelete         replicaset/frontend-7cb46658f5                        (combined from similar events): Deleted pod: frontend-7cb46658f5-rc8k7
+38m         Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 3; reason: All metrics below target
+38m         Normal    ScalingReplicaSet        deployment/frontend                                   Scaled down replica set frontend-7cb46658f5 from 4 to 3
+35m         Normal    Pulled                   pod/runtime-hardening-inventory-29743300-kqsdm        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+35m         Normal    Scheduled                pod/runtime-hardening-inventory-29743300-kqsdm        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743300-kqsdm to ip-10-0-36-4.ec2.internal
+35m         Normal    Created                  pod/runtime-hardening-inventory-29743300-kqsdm        Container created
+35m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743300              Created pod: runtime-hardening-inventory-29743300-kqsdm
+34m         Normal    Started                  pod/runtime-hardening-inventory-29743300-kqsdm        Container started
+34m         Normal    Completed                job/runtime-hardening-inventory-29743300              Job completed
+30m         Normal    Scheduled                pod/runtime-hardening-inventory-29743305-w79kv        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743305-w79kv to ip-10-0-36-4.ec2.internal
+30m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743305              Created pod: runtime-hardening-inventory-29743305-w79kv
+29m         Normal    Started                  pod/runtime-hardening-inventory-29743305-w79kv        Container started
+29m         Normal    Created                  pod/runtime-hardening-inventory-29743305-w79kv        Container created
+29m         Normal    Pulled                   pod/runtime-hardening-inventory-29743305-w79kv        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+29m         Normal    Completed                job/runtime-hardening-inventory-29743305              Job completed
+25m         Normal    Scheduled                pod/runtime-hardening-inventory-29743310-2jxd7        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743310-2jxd7 to ip-10-0-36-4.ec2.internal
+25m         Normal    Pulled                   pod/runtime-hardening-inventory-29743310-2jxd7        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+25m         Normal    Created                  pod/runtime-hardening-inventory-29743310-2jxd7        Container created
+25m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743310              Created pod: runtime-hardening-inventory-29743310-2jxd7
+24m         Normal    Started                  pod/runtime-hardening-inventory-29743310-2jxd7        Container started
+24m         Normal    Completed                job/runtime-hardening-inventory-29743310              Job completed
+20m         Normal    Pulled                   pod/runtime-hardening-inventory-29743315-bwql2        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+20m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743315              Created pod: runtime-hardening-inventory-29743315-bwql2
+20m         Normal    Created                  pod/runtime-hardening-inventory-29743315-bwql2        Container created
+20m         Normal    Scheduled                pod/runtime-hardening-inventory-29743315-bwql2        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743315-bwql2 to ip-10-0-36-4.ec2.internal
+19m         Normal    Started                  pod/runtime-hardening-inventory-29743315-bwql2        Container started
+19m         Normal    Completed                job/runtime-hardening-inventory-29743315              Job completed
+15m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743320              Created pod: runtime-hardening-inventory-29743320-6r8zq
+15m         Normal    Scheduled                pod/runtime-hardening-inventory-29743320-6r8zq        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743320-6r8zq to ip-10-0-36-4.ec2.internal
+14m         Normal    Created                  pod/runtime-hardening-inventory-29743320-6r8zq        Container created
+14m         Normal    Pulled                   pod/runtime-hardening-inventory-29743320-6r8zq        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+14m         Normal    Started                  pod/runtime-hardening-inventory-29743320-6r8zq        Container started
+14m         Normal    Completed                job/runtime-hardening-inventory-29743320              Job completed
+10m         Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743325              Created pod: runtime-hardening-inventory-29743325-9tmst
+10m         Normal    Created                  pod/runtime-hardening-inventory-29743325-9tmst        Container created
+10m         Normal    Scheduled                pod/runtime-hardening-inventory-29743325-9tmst        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743325-9tmst to ip-10-0-36-4.ec2.internal
+10m         Normal    Pulled                   pod/runtime-hardening-inventory-29743325-9tmst        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+9m59s       Normal    Started                  pod/runtime-hardening-inventory-29743325-9tmst        Container started
+9m51s       Normal    Completed                job/runtime-hardening-inventory-29743325              Job completed
+6m8s        Normal    Scheduled                pod/frontend-proxy-7cd9df478f-n2j6j                   Successfully assigned techx-corp-prod/frontend-proxy-7cd9df478f-n2j6j to ip-10-0-36-4.ec2.internal
+6m8s        Normal    ScalingReplicaSet        deployment/frontend-proxy                             Scaled up replica set frontend-proxy-7cd9df478f from 2 to 3
+6m8s        Normal    SuccessfulRescale        horizontalpodautoscaler/frontend-proxy                New size: 3; reason: cpu resource utilization (percentage of request) above target
+6m8s        Normal    SuccessfulCreate         replicaset/frontend-proxy-7cd9df478f                  Created pod: frontend-proxy-7cd9df478f-n2j6j
+6m7s        Warning   Unhealthy                pod/frontend-proxy-7cd9df478f-n2j6j                   Readiness probe failed: Get "http://10.0.40.13:10000/ready": dial tcp 10.0.40.13:10000: connect: connection refused
+6m7s        Normal    Started                  pod/frontend-proxy-7cd9df478f-n2j6j                   Container started
+6m7s        Normal    Created                  pod/frontend-proxy-7cd9df478f-n2j6j                   Container created
+6m7s        Normal    Pulled                   pod/frontend-proxy-7cd9df478f-n2j6j                   Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend-proxy:sha-aabb8be" already present on machine and can be accessed by the pod
+6m2s        Normal    Scheduled                pod/cart-74cdbd6b84-jb7dv                             Successfully assigned techx-corp-prod/cart-74cdbd6b84-jb7dv to ip-10-0-22-227.ec2.internal
+6m2s        Normal    SuccessfulCreate         replicaset/cart-74cdbd6b84                            Created pod: cart-74cdbd6b84-jb7dv
+6m2s        Normal    ScalingReplicaSet        deployment/cart                                       Scaled up replica set cart-74cdbd6b84 from 2 to 3
+6m2s        Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 3; reason: cpu resource utilization (percentage of request) above target
+6m1s        Normal    Pulled                   pod/cart-74cdbd6b84-jb7dv                             Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/cart:sha-aabb8be" already present on machine and can be accessed by the pod
+6m1s        Normal    Pulling                  pod/cart-74cdbd6b84-jb7dv                             Pulling image "busybox:1.37.0"
+6m1s        Normal    Pulled                   pod/cart-74cdbd6b84-jb7dv                             Successfully pulled image "busybox:1.37.0" in 133ms (133ms including waiting). Image size: 1911349 bytes.
+6m1s        Normal    Created                  pod/cart-74cdbd6b84-jb7dv                             Container created
+6m1s        Normal    Created                  pod/cart-74cdbd6b84-jb7dv                             Container created
+6m1s        Normal    Started                  pod/cart-74cdbd6b84-jb7dv                             Container started
+6m1s        Normal    Started                  pod/cart-74cdbd6b84-jb7dv                             Container started
+6m          Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 4; reason: cpu resource utilization (percentage of request) above target
+6m          Normal    ScalingReplicaSet        deployment/checkout                                   Scaled up replica set checkout-779b6768bf from 2 to 4
+6m          Normal    Started                  pod/checkout-779b6768bf-24wvs                         Container started
+6m          Normal    Created                  pod/checkout-779b6768bf-24wvs                         Container created
+6m          Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-d52ln
+6m          Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-24wvs
+6m          Normal    Pulled                   pod/checkout-779b6768bf-24wvs                         Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/checkout:sha-aabb8be" already present on machine and can be accessed by the pod
+6m          Normal    Scheduled                pod/checkout-779b6768bf-24wvs                         Successfully assigned techx-corp-prod/checkout-779b6768bf-24wvs to ip-10-0-28-96.ec2.internal
+5m58s       Warning   Unhealthy                pod/cart-74cdbd6b84-jb7dv                             Readiness probe failed: timeout: failed to connect service "10.0.19.145:8080" within 3s: context deadline exceeded
+5m58s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-f8nkt
+5m58s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-js6jg
+5m58s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 5; reason: cpu resource utilization (percentage of request) above target
+5m58s       Normal    ScalingReplicaSet        deployment/frontend                                   Scaled up replica set frontend-7cb46658f5 from 3 to 5
+5m53s       Normal    ScalingReplicaSet        deployment/frontend-proxy                             Scaled up replica set frontend-proxy-7cd9df478f from 3 to 4
+5m53s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend-proxy                New size: 4; reason: cpu resource utilization (percentage of request) above target
+5m53s       Normal    Scheduled                pod/frontend-proxy-7cd9df478f-rhp5b                   Successfully assigned techx-corp-prod/frontend-proxy-7cd9df478f-rhp5b to ip-10-0-36-4.ec2.internal
+5m53s       Normal    SuccessfulCreate         replicaset/frontend-proxy-7cd9df478f                  Created pod: frontend-proxy-7cd9df478f-rhp5b
+5m52s       Normal    Created                  pod/frontend-proxy-7cd9df478f-rhp5b                   Container created
+5m52s       Normal    Started                  pod/frontend-proxy-7cd9df478f-rhp5b                   Container started
+5m52s       Warning   Unhealthy                pod/frontend-proxy-7cd9df478f-rhp5b                   Readiness probe failed: Get "http://10.0.46.107:10000/ready": dial tcp 10.0.46.107:10000: connect: connection refused
+5m52s       Normal    Pulled                   pod/frontend-proxy-7cd9df478f-rhp5b                   Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend-proxy:sha-aabb8be" already present on machine and can be accessed by the pod
+5m47s       Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 4; reason: cpu resource utilization (percentage of request) above target
+5m46s       Normal    SuccessfulCreate         replicaset/cart-74cdbd6b84                            Created pod: cart-74cdbd6b84-dxllg
+5m46s       Normal    ScalingReplicaSet        deployment/cart                                       Scaled up replica set cart-74cdbd6b84 from 3 to 4
+5m45s       Normal    SuccessfulCreate         replicaset/product-catalog-84656579df                 Created pod: product-catalog-84656579df-92hm7
+5m45s       Normal    ScalingReplicaSet        deployment/product-catalog                            Scaled up replica set product-catalog-84656579df from 2 to 3
+5m45s       Normal    Started                  pod/product-catalog-84656579df-92hm7                  Container started
+5m45s       Normal    Scheduled                pod/product-catalog-84656579df-92hm7                  Successfully assigned techx-corp-prod/product-catalog-84656579df-92hm7 to ip-10-0-28-96.ec2.internal
+5m45s       Normal    Created                  pod/product-catalog-84656579df-92hm7                  Container created
+5m45s       Normal    Pulled                   pod/product-catalog-84656579df-92hm7                  Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/product-catalog:sha-aabb8be" already present on machine and can be accessed by the pod
+5m45s       Normal    SuccessfulRescale        horizontalpodautoscaler/product-catalog               New size: 3; reason: cpu resource utilization (percentage of request) above target
+5m31s       Normal    SuccessfulRescale        horizontalpodautoscaler/currency                      New size: 3; reason: cpu resource utilization (percentage of request) above target
+5m31s       Normal    Scheduled                pod/currency-fb4886889-p9l4v                          Successfully assigned techx-corp-prod/currency-fb4886889-p9l4v to ip-10-0-28-96.ec2.internal
+5m31s       Normal    SuccessfulCreate         replicaset/cart-74cdbd6b84                            Created pod: cart-74cdbd6b84-4xqq6
+5m31s       Normal    SuccessfulCreate         replicaset/currency-fb4886889                         Created pod: currency-fb4886889-p9l4v
+5m31s       Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 5; reason: cpu resource utilization (percentage of request) above target
+5m31s       Normal    ScalingReplicaSet        deployment/cart                                       Scaled up replica set cart-74cdbd6b84 from 4 to 5
+5m31s       Normal    ScalingReplicaSet        deployment/currency                                   Scaled up replica set currency-fb4886889 from 2 to 3
+5m30s       Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-96zch
+5m30s       Normal    Pulling                  pod/currency-fb4886889-p9l4v                          Pulling image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/currency:sha-aabb8be"
+5m30s       Normal    Started                  pod/recommendation-76f7f6dc45-czb7t                   Container started
+5m30s       Normal    Created                  pod/recommendation-76f7f6dc45-czb7t                   Container created
+5m30s       Normal    Pulled                   pod/recommendation-76f7f6dc45-czb7t                   Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/recommendation:sha-aabb8be" already present on machine and can be accessed by the pod
+5m30s       Normal    Scheduled                pod/recommendation-76f7f6dc45-czb7t                   Successfully assigned techx-corp-prod/recommendation-76f7f6dc45-czb7t to ip-10-0-22-227.ec2.internal
+5m30s       Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 6; reason: cpu resource utilization (percentage of request) above target
+5m30s       Normal    SuccessfulCreate         replicaset/recommendation-76f7f6dc45                  Created pod: recommendation-76f7f6dc45-czb7t
+5m30s       Normal    SuccessfulRescale        horizontalpodautoscaler/recommendation                New size: 3; reason: cpu resource utilization (percentage of request) above target
+5m30s       Normal    ScalingReplicaSet        deployment/recommendation                             Scaled up replica set recommendation-76f7f6dc45 from 2 to 3
+5m30s       Normal    ScalingReplicaSet        deployment/checkout                                   Scaled up replica set checkout-779b6768bf from 4 to 6
+5m30s       Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-nrdfx
+5m28s       Normal    ScalingReplicaSet        deployment/frontend                                   Scaled up replica set frontend-7cb46658f5 from 5 to 8
+5m28s       Normal    Started                  pod/currency-fb4886889-p9l4v                          Container started
+5m28s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-qrf2l
+5m28s       Normal    Pulled                   pod/currency-fb4886889-p9l4v                          Successfully pulled image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/currency:sha-aabb8be" in 2.108s (2.108s including waiting). Image size: 30388946 bytes.
+5m28s       Normal    Created                  pod/currency-fb4886889-p9l4v                          Container created
+5m28s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-h2vlq
+5m28s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-cvh8b
+5m28s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 8; reason: external metric http_requests_per_second(&LabelSelector{MatchLabels:map[string]string{service_name: frontend,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+5m25s       Warning   Unhealthy                pod/recommendation-76f7f6dc45-czb7t                   Readiness probe failed: timeout: failed to connect service "10.0.19.147:8080" within 5s: context deadline exceeded
+5m16s       Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 6; reason: cpu resource utilization (percentage of request) above target
+5m16s       Warning   FailedScheduling         pod/cart-74cdbd6b84-wcqhj                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5m16s       Normal    ScalingReplicaSet        deployment/cart                                       Scaled up replica set cart-74cdbd6b84 from 5 to 6
+5m16s       Normal    SuccessfulCreate         replicaset/cart-74cdbd6b84                            Created pod: cart-74cdbd6b84-wcqhj
+5m1s        Warning   FailedScheduling         pod/cart-74cdbd6b84-gljfm                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5m1s        Warning   FailedScheduling         pod/cart-74cdbd6b84-grt2w                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5m1s        Normal    ScalingReplicaSet        deployment/cart                                       Scaled up replica set cart-74cdbd6b84 from 6 to 8
+5m1s        Normal    SuccessfulCreate         replicaset/cart-74cdbd6b84                            Created pod: cart-74cdbd6b84-grt2w
+5m1s        Normal    SuccessfulCreate         replicaset/cart-74cdbd6b84                            Created pod: cart-74cdbd6b84-gljfm
+5m1s        Normal    SuccessfulRescale        horizontalpodautoscaler/cart                          New size: 8; reason: cpu resource utilization (percentage of request) above target
+5m          Normal    Pulled                   pod/runtime-hardening-inventory-29743330-8c5r5        Container image "public.ecr.aws/docker/library/python:3.13.5-alpine3.22" already present on machine and can be accessed by the pod
+5m          Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 9; reason: cpu resource utilization (percentage of request) above target
+5m          Normal    ScalingReplicaSet        deployment/checkout                                   Scaled up replica set checkout-779b6768bf from 6 to 9
+5m          Normal    SuccessfulCreate         job/runtime-hardening-inventory-29743330              Created pod: runtime-hardening-inventory-29743330-8c5r5
+5m          Warning   FailedScheduling         pod/checkout-779b6768bf-dm2j9                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5m          Normal    Created                  pod/runtime-hardening-inventory-29743330-8c5r5        Container created
+5m          Warning   FailedScheduling         pod/checkout-779b6768bf-krhgk                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5m          Warning   FailedScheduling         pod/checkout-779b6768bf-cfqth                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5m          Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-krhgk
+5m          Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-dm2j9
+5m          Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-cfqth
+5m          Normal    Scheduled                pod/runtime-hardening-inventory-29743330-8c5r5        Successfully assigned techx-corp-prod/runtime-hardening-inventory-29743330-8c5r5 to ip-10-0-36-4.ec2.internal
+4m59s       Normal    Started                  pod/runtime-hardening-inventory-29743330-8c5r5        Container started
+4m58s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-5zrrl
+4m58s       Warning   FailedScheduling         pod/frontend-7cb46658f5-bz4fc                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m58s       Warning   FailedScheduling         pod/frontend-7cb46658f5-8l4td                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m58s       Warning   FailedScheduling         pod/frontend-7cb46658f5-5zrrl                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m58s       Normal    ScalingReplicaSet        deployment/frontend                                   Scaled up replica set frontend-7cb46658f5 from 8 to 12
+4m58s       Warning   FailedScheduling         pod/frontend-7cb46658f5-w4tp9                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m58s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 12; reason: external metric http_requests_per_second(&LabelSelector{MatchLabels:map[string]string{service_name: frontend,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+4m58s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-8l4td
+4m58s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-bz4fc
+4m58s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        Created pod: frontend-7cb46658f5-w4tp9
+4m57s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-w4tp9                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-bz4fc                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-dm2j9                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-8l4td                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-5zrrl                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-gljfm                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-cfqth                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-grt2w                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m57s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-krhgk                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m53s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend-proxy                New size: 5; reason: cpu resource utilization (percentage of request) above target
+4m53s       Normal    ScalingReplicaSet        deployment/frontend-proxy                             Scaled up replica set frontend-proxy-7cd9df478f from 4 to 5
+4m53s       Normal    SuccessfulCreate         replicaset/frontend-proxy-7cd9df478f                  Created pod: frontend-proxy-7cd9df478f-7pzv8
+4m53s       Normal    Scheduled                pod/frontend-proxy-7cd9df478f-7pzv8                   Successfully assigned techx-corp-prod/frontend-proxy-7cd9df478f-7pzv8 to ip-10-0-36-4.ec2.internal
+4m52s       Warning   Unhealthy                pod/frontend-proxy-7cd9df478f-7pzv8                   Readiness probe failed: Get "http://10.0.46.99:10000/ready": dial tcp 10.0.46.99:10000: connect: connection refused
+4m52s       Normal    Pulled                   pod/frontend-proxy-7cd9df478f-7pzv8                   Container image "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend-proxy:sha-aabb8be" already present on machine and can be accessed by the pod
+4m52s       Normal    Created                  pod/frontend-proxy-7cd9df478f-7pzv8                   Container created
+4m52s       Normal    Started                  pod/frontend-proxy-7cd9df478f-7pzv8                   Container started
+4m51s       Normal    SuccessfullyReconciled   targetgroupbinding/k8s-techxcor-frontend-a8455610b8   Successfully reconciled
+4m51s       Normal    Completed                job/runtime-hardening-inventory-29743330              Job completed
+4m51s       Normal    SuccessfulDelete         cronjob/runtime-hardening-inventory                   (combined from similar events): Deleted job runtime-hardening-inventory-29743320
+4m30s       Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-2zjrq
+4m30s       Normal    ScalingReplicaSet        deployment/checkout                                   Scaled up replica set checkout-779b6768bf from 9 to 11
+4m30s       Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 11; reason: cpu resource utilization (percentage of request) above target
+4m30s       Warning   FailedScheduling         pod/product-catalog-84656579df-22d55                  0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m30s       Warning   FailedScheduling         pod/checkout-779b6768bf-2zjrq                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m30s       Normal    SuccessfulCreate         replicaset/product-catalog-84656579df                 Created pod: product-catalog-84656579df-22d55
+4m30s       Warning   FailedScheduling         pod/checkout-779b6768bf-nmw4p                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m30s       Normal    ScalingReplicaSet        deployment/product-catalog                            Scaled up replica set product-catalog-84656579df from 3 to 4
+4m30s       Normal    SuccessfulRescale        horizontalpodautoscaler/product-catalog               New size: 4; reason: external metric http_requests_per_second(&LabelSelector{MatchLabels:map[string]string{service_name: product-catalog,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+4m30s       Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        Created pod: checkout-779b6768bf-nmw4p
+4m28s       Normal    SuccessfulRescale        horizontalpodautoscaler/frontend                      New size: 15; reason: external metric http_requests_per_second(&LabelSelector{MatchLabels:map[string]string{service_name: frontend,},MatchExpressions:[]LabelSelectorRequirement{},}) above target
+4m28s       Normal    SuccessfulCreate         replicaset/frontend-7cb46658f5                        (combined from similar events): Created pod: frontend-7cb46658f5-cwz7h
+4m28s       Warning   FailedScheduling         pod/frontend-7cb46658f5-tsdjr                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m28s       Warning   FailedScheduling         pod/frontend-7cb46658f5-wm4cw                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m28s       Warning   FailedScheduling         pod/frontend-7cb46658f5-cwz7h                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m28s       Normal    ScalingReplicaSet        deployment/frontend                                   Scaled up replica set frontend-7cb46658f5 from 12 to 15
+4m26s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-tsdjr                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m26s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-cwz7h                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m26s       Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-wm4cw                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m26s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-nmw4p                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m26s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-2zjrq                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m26s       Normal    NotTriggerScaleUp        pod/product-catalog-84656579df-22d55                  pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+4m          Normal    ScalingReplicaSet        deployment/checkout                                   Scaled up replica set checkout-779b6768bf from 11 to 13
+4m          Warning   FailedScheduling         pod/checkout-779b6768bf-hxb8c                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m          Normal    SuccessfulRescale        horizontalpodautoscaler/checkout                      New size: 13; reason: cpu resource utilization (percentage of request) above target
+4m          Warning   FailedScheduling         pod/checkout-779b6768bf-n9cm4                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+4m          Normal    SuccessfulCreate         replicaset/checkout-779b6768bf                        (combined from similar events): Created pod: checkout-779b6768bf-n9cm4
+3m56s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-hxb8c                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+3m56s       Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-n9cm4                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+55s         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-f8nkt                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+55s         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-d52ln                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+55s         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-js6jg                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+50s         Warning   FailedScheduling         pod/frontend-7cb46658f5-f8nkt                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+50s         Warning   FailedScheduling         pod/checkout-779b6768bf-d52ln                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+50s         Warning   FailedScheduling         pod/frontend-7cb46658f5-js6jg                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+35s         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-dxllg                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+25s         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-h2vlq                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+25s         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-qrf2l                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+25s         Normal    NotTriggerScaleUp        pod/frontend-7cb46658f5-cvh8b                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+25s         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-nrdfx                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+25s         Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-4xqq6                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+25s         Normal    NotTriggerScaleUp        pod/checkout-779b6768bf-96zch                         pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector
+20s         Warning   FailedScheduling         pod/cart-74cdbd6b84-dxllg                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+20s         Warning   FailedScheduling         pod/frontend-7cb46658f5-h2vlq                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+20s         Warning   FailedScheduling         pod/checkout-779b6768bf-nrdfx                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+20s         Warning   FailedScheduling         pod/checkout-779b6768bf-96zch                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+20s         Warning   FailedScheduling         pod/frontend-7cb46658f5-qrf2l                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+20s         Warning   FailedScheduling         pod/frontend-7cb46658f5-cvh8b                         0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+20s         Warning   FailedScheduling         pod/cart-74cdbd6b84-4xqq6                             0/6 nodes are available: 1 node(s) didn't satisfy existing pods anti-affinity rules, 2 node(s) didn't match Pod's node affinity/selector, 3 node(s) didn't match pod topology spread constraints. no new claims to deallocate, preemption: 0/6 nodes are available: 2 Preemption is not helpful for scheduling, 4 No preemption victims found for incoming pod.
+5s          Normal    NotTriggerScaleUp        pod/cart-74cdbd6b84-wcqhj                             pod didn't trigger scale-up: 2 node(s) didn't match Pod's node affinity/selector

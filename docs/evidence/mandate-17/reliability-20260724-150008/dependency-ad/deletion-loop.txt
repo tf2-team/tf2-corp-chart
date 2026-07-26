@@ -1,0 +1,12 @@
+pod "ad-7df9776d9-gkxqp" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-wh649" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-48bhh" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-j5s2s" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-fdn88" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-qmvsb" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-49p8b" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-55bzr" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-bf6vn" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-lmcb7" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-nf4g6" deleted from techx-corp-prod namespace
+pod "ad-7df9776d9-vdqz4" deleted from techx-corp-prod namespace

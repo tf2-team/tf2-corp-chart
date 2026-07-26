@@ -1,8 +1,0 @@
-NAME                          STATUS   ROLES    AGE     VERSION               INSTANCE-TYPE   CAPACITY-TYPE
-ip-10-0-24-114.ec2.internal   Ready    <none>   14h     v1.36.2-eks-8f14419   t4g.large       
-ip-10-0-25-86.ec2.internal    Ready    <none>   3h54m   v1.36.2-eks-8f14419   c8g.large       spot
-ip-10-0-27-114.ec2.internal   Ready    <none>   179m    v1.36.2-eks-8f14419   t4g.large       
-ip-10-0-27-251.ec2.internal   Ready    <none>   3h      v1.36.2-eks-8f14419   c9g.large       spot
-ip-10-0-28-116.ec2.internal   Ready    <none>   3h45m   v1.36.2-eks-8f14419   c6g.large       spot
-ip-10-0-32-149.ec2.internal   Ready    <none>   156m    v1.36.2-eks-8f14419   c8g.large       spot
-ip-10-0-36-4.ec2.internal     Ready    <none>   14h     v1.36.2-eks-8f14419   t4g.large       

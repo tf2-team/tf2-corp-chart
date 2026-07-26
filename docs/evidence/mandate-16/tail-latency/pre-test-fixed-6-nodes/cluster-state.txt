@@ -1,0 +1,35 @@
+Captured: 2026-07-20T21:30:27+07:00
+Cluster: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+Namespace: techx-corp-prod
+
+Karpenter deployment:
+NAME        READY   UP-TO-DATE   AVAILABLE
+karpenter   0/0     0            0
+
+Nodes:
+NAME                          STATUS   NODEPOOL         CAPACITY   INSTANCE
+ip-10-0-22-227.ec2.internal   Ready    stateless-spot   spot       c7g.large
+ip-10-0-27-114.ec2.internal   Ready    -                -          t4g.large
+ip-10-0-28-96.ec2.internal    Ready    stateless-spot   spot       c7g.large
+ip-10-0-36-4.ec2.internal     Ready    -                -          t4g.large
+ip-10-0-39-210.ec2.internal   Ready    stateless-spot   spot       c8g.large
+ip-10-0-45-85.ec2.internal    Ready    stateless-spot   spot       c9g.large
+
+Node usage:
+NAME                          CPU       CPU%   MEMORY   MEMORY%
+ip-10-0-22-227.ec2.internal   37m       1%     1472Mi   46%
+ip-10-0-27-114.ec2.internal   744m      38%    4152Mi   58%
+ip-10-0-28-96.ec2.internal    58m       3%     2900Mi   92%
+ip-10-0-36-4.ec2.internal     147m      7%     4068Mi   57%
+ip-10-0-39-210.ec2.internal   44m       2%     3036Mi   96%
+ip-10-0-45-85.ec2.internal    19m       0%     2570Mi   92%
+
+Load generator deployments:
+NAME                    READY
+load-generator          1/1
+load-generator-worker   3/3
+
+Workload health:
+- Application workloads were Running.
+- No application pod was Pending or in CrashLoopBackOff.
+- Existing metrics-server restart happened approximately 16 hours before this snapshot and was not part of this test.

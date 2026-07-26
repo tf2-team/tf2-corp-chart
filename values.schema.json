@@ -37,6 +37,11 @@
             },
             "tag": {
               "type": "string"
+            },
+            "digest": {
+              "type": "string",
+              "description": "Immutable mem0 image digest pin from service-digest promote.",
+              "pattern": "^sha256:[0-9a-f]{64}$"
             }
           }
         },
@@ -162,6 +167,10 @@
         },
         "name": {
           "type": "string"
+        },
+        "automountServiceAccountToken": {
+          "type": "boolean",
+          "const": false
         }
       },
       "required": [
@@ -176,6 +185,25 @@
     },
     "opentelemetry-collector": {
       "type": "object"
+    },
+    "aiopsLongRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "retentionDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retentionSchedule": {
+          "type": "string"
+        },
+        "bootstrapImage": {
+          "type": "string"
+        }
+      }
     },
     "jaeger": {
       "type": "object"
@@ -192,10 +220,61 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "enforceEgress": {
+          "type": "boolean"
+        },
+        "vpcCidr": {
+          "type": "string"
+        },
+        "kubernetesApiCidr": {
+          "type": "string",
+          "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/32$"
+        },
+        "albIngressCidrs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "flagdSyncCidrs": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "required": [
-        "enabled"
+        "enabled",
+        "enforceEgress",
+        "vpcCidr",
+        "kubernetesApiCidr",
+        "albIngressCidrs",
+        "flagdSyncCidrs"
+      ]
+    },
+    "egressProxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "replicas": { "type": "integer", "minimum": 2 },
+        "image": { "$ref": "#/definitions/Image" },
+        "port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+        "adminPort": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+        "callers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "noProxy": { "type": "string" },
+        "allowedDomains": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "resources": { "type": "object" }
+      },
+      "required": [
+        "enabled", "replicas", "image", "port", "adminPort", "callers",
+        "noProxy", "allowedDomains", "resources"
       ]
     },
     "externalSecrets": {
@@ -345,6 +424,133 @@
   "required": [
     "components",
     "serviceAccount"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "required": ["networkPolicy"],
+        "properties": {
+          "networkPolicy": {
+            "required": ["enforceEgress"],
+            "properties": {
+              "enforceEgress": { "const": true }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "networkPolicy": {
+            "required": ["enabled"],
+            "properties": {
+              "enabled": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["networkPolicy"],
+        "properties": {
+          "networkPolicy": {
+            "required": ["enforceEgress"],
+            "properties": {
+              "enforceEgress": { "const": true }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["egressProxy"],
+        "properties": {
+          "egressProxy": {
+            "required": ["enabled"],
+            "properties": {
+              "enabled": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["networkPolicy"],
+        "properties": {
+          "networkPolicy": {
+            "required": ["enforceEgress"],
+            "properties": {
+              "enforceEgress": { "const": true }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["egressProxy"],
+        "properties": {
+          "egressProxy": {
+            "required": ["image"],
+            "properties": {
+              "image": {
+                "required": ["digest"],
+                "properties": {
+                  "digest": { "pattern": "^sha256:[0-9a-f]{64}$" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["networkPolicy"],
+        "properties": {
+          "networkPolicy": {
+            "required": ["enforceEgress"],
+            "properties": {
+              "enforceEgress": { "const": true }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["egressProxy", "grafana"],
+        "properties": {
+          "egressProxy": {
+            "required": ["callers", "allowedDomains"],
+            "properties": {
+              "callers": { "contains": { "const": "grafana" } },
+              "allowedDomains": {
+                "allOf": [
+                  { "contains": { "const": "athena.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "glue.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "sts.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "s3.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "*.s3.ap-southeast-1.amazonaws.com:443" } },
+                  { "contains": { "const": "discord.com:443" } }
+                ]
+              }
+            }
+          },
+          "grafana": {
+            "required": ["env"],
+            "properties": {
+              "env": {
+                "type": "object",
+                "required": ["HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy"],
+                "properties": {
+                  "HTTPS_PROXY": { "const": "http://egress-proxy:10000" },
+                  "https_proxy": { "const": "http://egress-proxy:10000" },
+                  "NO_PROXY": { "type": "string", "minLength": 1 },
+                  "no_proxy": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   ],
   "definitions": {
     "Aiops": {
@@ -591,7 +797,7 @@
           "type": "boolean"
         },
         "serviceAccount": {
-          "description": "SEC-03: per-component ServiceAccount for least-privilege identity. When omitted, the component falls back to the global serviceAccount.",
+          "description": "SEC-03: per-component ServiceAccount for least-privilege identity. When omitted, the chart creates an identity named after the component.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -603,6 +809,10 @@
             },
             "name": {
               "type": "string"
+            },
+            "automountServiceAccountToken": {
+              "type": "boolean",
+              "const": false
             }
           },
           "required": [
@@ -627,6 +837,10 @@
         },
         "replicas": {
           "type": "integer"
+        },
+        "optionalDependencyTimeoutMs": {
+          "type": "integer",
+          "minimum": 1
         },
         "stateful": {
           "type": "boolean"
@@ -689,14 +903,31 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
-            "awsRegion": { "type": "string" },
-            "fetcherImage": { "type": "string" },
-            "extractorImage": { "type": "string" },
-            "s3Uri": { "type": "string", "pattern": "^s3://" },
-            "mountPath": { "type": "string" },
-            "cacheSizeLimit": { "type": "string" },
-            "resources": { "$ref": "#/definitions/ContainerResources" }
+            "enabled": {
+              "type": "boolean"
+            },
+            "awsRegion": {
+              "type": "string"
+            },
+            "fetcherImage": {
+              "type": "string"
+            },
+            "extractorImage": {
+              "type": "string"
+            },
+            "s3Uri": {
+              "type": "string",
+              "pattern": "^s3://"
+            },
+            "mountPath": {
+              "type": "string"
+            },
+            "cacheSizeLimit": {
+              "type": "string"
+            },
+            "resources": {
+              "$ref": "#/definitions/ContainerResources"
+            }
           }
         },
         "livenessProbe": {
@@ -786,18 +1017,6 @@
         "additionalVolumes": {
           "type": "array"
         },
-        "stateful": {
-          "type": "boolean"
-        },
-        "terminationGracePeriodSeconds": {
-          "type": "integer"
-        },
-        "volumeClaimTemplates": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        },
         "pdb": {
           "type": "object",
           "additionalProperties": false,
@@ -818,6 +1037,14 @@
         },
         "autoscaling": {
           "$ref": "#/definitions/Autoscaling"
+        },
+        "sidecarImageDigests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "description": "Map of sidecar container name to image digest. Used for flagd-ui without replacing sidecarContainers."
         }
       },
       "required": [
@@ -1043,12 +1270,9 @@
         },
         "name": {
           "type": "string",
-          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames …/<component> to …/<name>."
+          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames \u2026/<component> to \u2026/<name>."
         },
         "tag": {
-          "type": "string"
-        },
-        "digest": {
           "type": "string"
         },
         "pullPolicy": {
@@ -1057,6 +1281,11 @@
         "pullSecrets": {
           "type": "array",
           "items": {}
+        },
+        "digest": {
+          "type": "string",
+          "description": "Immutable image digest pin (sha256:\u2026). When set, templates render image@digest instead of :tag. Written under service-digest/ by platform CI.",
+          "pattern": "^sha256:[0-9a-f]{64}$"
         }
       },
       "title": "Image"
@@ -1315,7 +1544,10 @@
               }
             },
             "port": {
-              "type": ["integer", "string"]
+              "type": [
+                "integer",
+                "string"
+              ]
             }
           }
         },
@@ -1327,7 +1559,10 @@
           "additionalProperties": false,
           "properties": {
             "port": {
-              "type": ["integer", "string"]
+              "type": [
+                "integer",
+                "string"
+              ]
             },
             "service": {
               "type": "string"
@@ -1345,7 +1580,10 @@
               "type": "string"
             },
             "port": {
-              "type": ["integer", "string"]
+              "type": [
+                "integer",
+                "string"
+              ]
             }
           }
         },
@@ -1391,17 +1629,26 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["RollingUpdate", "Recreate"]
+              "enum": [
+                "RollingUpdate",
+                "Recreate"
+              ]
             },
             "rollingUpdate": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
                 "maxUnavailable": {
-                  "type": ["integer", "string"]
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
                 },
                 "maxSurge": {
-                  "type": ["integer", "string"]
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
                 }
               }
             }
@@ -1489,8 +1736,12 @@
         },
         "targetRequestsPerSecond": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Target average requests/second per pod (HPA External metric AverageValue). Requires prometheus-adapter."
         },
@@ -1535,13 +1786,19 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+              "enum": [
+                "Localhost",
+                "RuntimeDefault",
+                "Unconfined"
+              ]
             },
             "localhostProfile": {
               "type": "string"
             }
           },
-          "required": ["type"]
+          "required": [
+            "type"
+          ]
         }
       }
     },
@@ -1591,13 +1848,19 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["Localhost", "RuntimeDefault", "Unconfined"]
+              "enum": [
+                "Localhost",
+                "RuntimeDefault",
+                "Unconfined"
+              ]
             },
             "localhostProfile": {
               "type": "string"
             }
           },
-          "required": ["type"]
+          "required": [
+            "type"
+          ]
         }
       }
     }

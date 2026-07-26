@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-07-24T06:48:13.8714708Z",
+  "deployment": "kube-system/coredns",
+  "desiredReplicas": 2,
+  "availableReplicas": 2,
+  "distinctNodes": 2,
+  "distinctZones": 2,
+  "readyForAzChaos": true,
+  "placements": [
+    {
+      "pod": "coredns-5656b4cd55-4jvn8",
+      "node": "ip-10-0-16-62.ec2.internal",
+      "zone": "us-east-1a",
+      "ready": true,
+      "deleting": false,
+      "created": "2026-07-22T09:56:18Z"
+    },
+    {
+      "pod": "coredns-5656b4cd55-twgrh",
+      "node": "ip-10-0-43-187.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": true,
+      "deleting": false,
+      "created": "2026-07-22T09:57:19Z"
+    }
+  ]
+}

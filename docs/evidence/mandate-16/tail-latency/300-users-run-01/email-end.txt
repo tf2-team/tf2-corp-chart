@@ -1,3 +1,0 @@
-NAME                                             READY   STATUS        RESTARTS     AGE
-email-746cdfc565-59xwn                           1/1     Running       0            17m
-email-746cdfc565-ptpxd                           1/1     Running       0            75m

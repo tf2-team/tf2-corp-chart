@@ -16,7 +16,7 @@ auth_args=""
 kafka-topics.sh --bootstrap-server "$brokers" $auth_args --describe \
   | LC_ALL=C sort > "kafka-${label}-topics.txt"
 
-for topic in orders orders-approved orders-cancelled orders-shipped; do
+for topic in orders orders-approved orders-cancelled orders-shipped orders-persisted; do
   # shellcheck disable=SC2086
   kafka-get-offsets.sh --bootstrap-server "$brokers" $auth_args --topic "$topic" \
     | LC_ALL=C sort >> "kafka-${label}-offsets.txt"

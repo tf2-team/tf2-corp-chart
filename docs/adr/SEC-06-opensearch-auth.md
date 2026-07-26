@@ -133,9 +133,24 @@ Kết hợp với việc không có NetworkPolicy trong chart, OpenSearch port 9
 
 ---
 
+## Platform image contract (required)
+
+The first-party OpenSearch image (`techx-corp-platform/src/opensearch/Dockerfile`) **must retain** the vendor `opensearch-security` plugin.
+
+- Chart clients (OTel Collector exporter, Grafana datasource) use `https://opensearch:9200` with basic auth and skip-verify.
+- If the image strips `opensearch-security`, the node serves plain HTTP on `:9200`. Collectors then fail with `tls: first record does not look like a TLS handshake`, drop all logs, and Grafana traces→logs drilldown stays empty.
+- Slimming other plugins (ML, k-NN, alerting, etc.) remains allowed; security is not optional while this chart contract is in force.
+
+Local Compose may still set `DISABLE_SECURITY_PLUGIN=true` for lightweight dev; cluster GitOps must not.
+
+---
+
 ## Tham chiếu
 
 - `docs/adr/SEC-05-remove-hardcoded-credentials.md` — ESO pattern
 - `docs/operations/external-secrets.md` — bootstrap runbook
 - `secrets-chart/templates/externalsecrets.yaml` — ExternalSecret opensearch
+- `techx-corp-platform/src/opensearch/Dockerfile` — must keep `opensearch-security`
 - OpenSearch Security Plugin docs: https://opensearch.org/docs/latest/security/
+
+<!-- Change trail: @hungxqt - 2026-07-22 - Document image must retain security plugin for HTTPS. -->

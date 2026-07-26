@@ -1,0 +1,326 @@
+{
+  "capturedAt": "2026-07-24T19:42:56.5889782+07:00",
+  "applications": [
+    {
+      "namespace": "argocd",
+      "name": "linkerd",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "namespace": "argocd",
+      "name": "linkerd-cni",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "30.12.2"
+    },
+    {
+      "namespace": "argocd",
+      "name": "linkerd-control-plane",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "1.16.11"
+    },
+    {
+      "namespace": "argocd",
+      "name": "linkerd-crds",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "1.8.0"
+    },
+    {
+      "namespace": "argocd",
+      "name": "root-prod",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "namespace": "argocd",
+      "name": "runtime-hardening",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "namespace": "argocd",
+      "name": "supply-chain",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": null
+    },
+    {
+      "namespace": "argocd",
+      "name": "techx-corp",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "namespace": "argocd",
+      "name": "techx-corp-secrets",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    }
+  ],
+  "deployments": [
+    {
+      "name": "accounting",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "ad",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "cart",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "checkout",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "currency",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "egress-proxy",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "email",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "flagd",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "fraud-detection",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "frontend",
+      "desired": 3,
+      "available": 3,
+      "updated": 3
+    },
+    {
+      "name": "frontend-proxy",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "grafana",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "image-provider",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "jaeger",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "llm",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "load-generator",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "load-generator-worker",
+      "desired": 10,
+      "available": 10,
+      "updated": 10
+    },
+    {
+      "name": "metrics-server",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "payment",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "product-catalog",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "product-reviews",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "prometheus",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "prometheus-adapter",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "quote",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "recommendation",
+      "desired": 3,
+      "available": 3,
+      "updated": 3
+    },
+    {
+      "name": "shipping",
+      "desired": 2,
+      "available": 2,
+      "updated": 2
+    },
+    {
+      "name": "shopping-copilot",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    },
+    {
+      "name": "techx-corp-kube-state-metrics",
+      "desired": 1,
+      "available": 1,
+      "updated": 1
+    }
+  ],
+  "nodes": [
+    {
+      "name": "ip-10-0-16-62.ec2.internal",
+      "zone": "us-east-1a",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-35-150.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-37-8.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-38-51.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-43-187.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-46-179.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-47-201.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    },
+    {
+      "name": "ip-10-0-47-85.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": "True",
+      "unschedulable": false
+    }
+  ],
+  "nodePools": [
+    {
+      "name": "stateless-on-demand",
+      "zones": [
+        "us-east-1a",
+        "us-east-1b"
+      ],
+      "ready": "True"
+    },
+    {
+      "name": "stateless-spot",
+      "zones": [
+        "us-east-1a",
+        "us-east-1b"
+      ],
+      "ready": "True"
+    }
+  ],
+  "failedJobs": 0,
+  "coreDns": [
+    {
+      "name": "coredns-5656b4cd55-4jvn8",
+      "node": "ip-10-0-16-62.ec2.internal",
+      "zone": "us-east-1a",
+      "ready": true
+    },
+    {
+      "name": "coredns-5656b4cd55-twgrh",
+      "node": "ip-10-0-43-187.ec2.internal",
+      "zone": "us-east-1b",
+      "ready": true
+    }
+  ],
+  "flagd": {
+    "desired": 1,
+    "available": 1
+  },
+  "locust": null
+}

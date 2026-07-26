@@ -248,6 +248,10 @@ spec:
       activeDeadlineSeconds: {{ $inventory.activeDeadlineSeconds }}
       template:
         metadata:
+          annotations:
+            # A short-lived scanner Job must terminate with its scanner container.
+            # A Linkerd sidecar would keep the Pod active until activeDeadlineSeconds.
+            linkerd.io/inject: disabled
           labels:
             {{- include "techx-corp.labels" . | nindent 12 }}
             app.kubernetes.io/component: runtime-hardening-inventory

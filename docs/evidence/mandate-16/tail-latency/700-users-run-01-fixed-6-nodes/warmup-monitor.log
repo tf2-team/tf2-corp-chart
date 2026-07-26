@@ -1,0 +1,68 @@
+
+=== WARM-UP 1/5 - 2026-07-21T01:43:57+07:00 ===
+NAME                                             READY   STATUS      RESTARTS      AGE
+cart-74cdbd6b84-4s848                            0/1     Pending     0             3s
+cart-74cdbd6b84-xtz6t                            0/1     Pending     0             49s
+checkout-779b6768bf-9fcsm                        0/1     Pending     0             65s
+checkout-779b6768bf-fr56f                        0/1     Pending     0             35s
+checkout-779b6768bf-nsgh7                        0/1     Pending     0             35s
+frontend-7cb46658f5-6qjzj                        0/1     Pending     0             5s
+frontend-7cb46658f5-8gmwx                        0/1     Pending     0             50s
+frontend-7cb46658f5-sddkg                        0/1     Pending     0             5s
+frontend-7cb46658f5-zr7cx                        0/1     Pending     0             65s
+
+=== WARM-UP 2/5 - 2026-07-21T01:45:05+07:00 ===
+NAME                                             READY   STATUS      RESTARTS      AGE
+cart-74cdbd6b84-4s848                            0/1     Pending     0             71s
+cart-74cdbd6b84-xtz6t                            0/1     Pending     0             117s
+checkout-779b6768bf-9fcsm                        0/1     Pending     0             2m13s
+checkout-779b6768bf-fr56f                        0/1     Pending     0             103s
+checkout-779b6768bf-nsgh7                        0/1     Pending     0             103s
+frontend-7cb46658f5-6qjzj                        0/1     Pending     0             73s
+frontend-7cb46658f5-8gmwx                        0/1     Pending     0             118s
+frontend-7cb46658f5-bjd5g                        0/1     Pending     0             58s
+frontend-7cb46658f5-sddkg                        0/1     Pending     0             73s
+frontend-7cb46658f5-zr7cx                        0/1     Pending     0             2m13s
+
+=== WARM-UP 3/5 - 2026-07-21T01:46:13+07:00 ===
+NAME                                             READY   STATUS      RESTARTS      AGE
+cart-74cdbd6b84-4s848                            0/1     Pending     0             2m19s
+cart-74cdbd6b84-xtz6t                            0/1     Pending     0             3m5s
+checkout-779b6768bf-9fcsm                        0/1     Pending     0             3m21s
+checkout-779b6768bf-fr56f                        0/1     Pending     0             2m51s
+checkout-779b6768bf-nsgh7                        0/1     Pending     0             2m51s
+frontend-7cb46658f5-6qjzj                        0/1     Pending     0             2m21s
+frontend-7cb46658f5-8gmwx                        0/1     Pending     0             3m6s
+frontend-7cb46658f5-bjd5g                        0/1     Pending     0             2m6s
+frontend-7cb46658f5-sddkg                        0/1     Pending     0             2m21s
+frontend-7cb46658f5-zr7cx                        0/1     Pending     0             3m21s
+
+=== WARM-UP 4/5 - 2026-07-21T01:47:21+07:00 ===
+NAME                                             READY   STATUS      RESTARTS      AGE
+cart-74cdbd6b84-4s848                            0/1     Pending     0             3m27s
+cart-74cdbd6b84-xtz6t                            0/1     Pending     0             4m13s
+checkout-779b6768bf-46p7w                        0/1     Pending     0             59s
+checkout-779b6768bf-9fcsm                        0/1     Pending     0             4m29s
+checkout-779b6768bf-fr56f                        0/1     Pending     0             3m59s
+checkout-779b6768bf-nsgh7                        0/1     Pending     0             3m59s
+frontend-7cb46658f5-6qjzj                        0/1     Pending     0             3m29s
+frontend-7cb46658f5-7fw5r                        0/1     Pending     0             13s
+frontend-7cb46658f5-8gmwx                        0/1     Pending     0             4m14s
+frontend-7cb46658f5-bjd5g                        0/1     Pending     0             3m14s
+frontend-7cb46658f5-sddkg                        0/1     Pending     0             3m29s
+frontend-7cb46658f5-zr7cx                        0/1     Pending     0             4m29s
+
+=== WARM-UP 5/5 - 2026-07-21T01:48:30+07:00 ===
+NAME                                             READY   STATUS      RESTARTS      AGE
+cart-74cdbd6b84-4s848                            0/1     Pending     0             4m36s
+cart-74cdbd6b84-xtz6t                            0/1     Pending     0             5m22s
+checkout-779b6768bf-46p7w                        0/1     Pending     0             2m8s
+checkout-779b6768bf-9fcsm                        0/1     Pending     0             5m38s
+checkout-779b6768bf-fr56f                        0/1     Pending     0             5m8s
+checkout-779b6768bf-nsgh7                        0/1     Pending     0             5m8s
+frontend-7cb46658f5-6qjzj                        0/1     Pending     0             4m38s
+frontend-7cb46658f5-7fw5r                        0/1     Pending     0             82s
+frontend-7cb46658f5-8gmwx                        0/1     Pending     0             5m23s
+frontend-7cb46658f5-bjd5g                        0/1     Pending     0             4m23s
+frontend-7cb46658f5-sddkg                        0/1     Pending     0             4m38s
+frontend-7cb46658f5-zr7cx                        0/1     Pending     0             5m38s

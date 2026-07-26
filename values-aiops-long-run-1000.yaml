@@ -1,0 +1,326 @@
+# Temporary AIOps profile for multi-hour collection at approximately 1,000
+# virtual users. It is separate from values-prod.yaml and must be removed after
+# the approved collection window.
+
+aiopsLongRun:
+  enabled: true
+  retentionDays: 2
+  retentionSchedule: "17 * * * *"
+  bootstrapImage: public.ecr.aws/docker/library/python:3.13.5-alpine3.22
+
+components:
+  frontend:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 192Mi
+      limits:
+        cpu: "1"
+        memory: 384Mi
+    autoscaling:
+      minReplicas: 24
+      maxReplicas: 36
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Pods
+              value: 4
+              periodSeconds: 30
+            - type: Percent
+              value: 100
+              periodSeconds: 30
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 60
+  frontend-proxy:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 8
+  checkout:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 96Mi
+      limits:
+        cpu: 500m
+        memory: 192Mi
+    autoscaling:
+      minReplicas: 10
+      maxReplicas: 20
+  cart:
+    rollout:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 0
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+    resources:
+      requests:
+        cpu: 75m
+        memory: 192Mi
+      limits:
+        cpu: 500m
+        memory: 384Mi
+    autoscaling:
+      minReplicas: 16
+      maxReplicas: 24
+  currency:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 250m
+        memory: 96Mi
+    autoscaling:
+      minReplicas: 8
+      maxReplicas: 16
+  product-catalog:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 192Mi
+    autoscaling:
+      minReplicas: 10
+      maxReplicas: 20
+  product-reviews:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1920Mi
+      limits:
+        cpu: "2"
+        memory: 3072Mi
+    autoscaling:
+      minReplicas: 6
+      maxReplicas: 12
+  recommendation:
+    resources:
+      requests:
+        cpu: 150m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 256Mi
+    autoscaling:
+      minReplicas: 8
+      maxReplicas: 16
+  shopping-copilot:
+    replicas: 4
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1920Mi
+      limits:
+        cpu: "2"
+        memory: 3072Mi
+  quote:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  shipping:
+    autoscaling:
+      minReplicas: 4
+      maxReplicas: 20
+  payment:
+    replicas: 4
+  email:
+    replicas: 3
+  opensearch:
+    # Keep half of the pod memory for Lucene and the kernel page cache.
+    env:
+      - name: OPENSEARCH_JAVA_OPTS
+        value: "-Xms2g -Xmx2g"
+      - name: discovery.type
+        value: single-node
+      - name: bootstrap.memory_lock
+        value: "false"
+      - name: DISABLE_INSTALL_DEMO_CONFIG
+        value: "false"
+      - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: techx-corp-opensearch
+            key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+      - name: cluster.name
+        value: demo-cluster
+      - name: network.host
+        value: "0.0.0.0"
+    resources:
+      requests:
+        # A t4g.large exposes 1930m allocatable CPU, not a full 2 cores.
+        # A 2-core request can never schedule, even onto an empty critical
+        # node; retain the 2-core limit while leaving scheduler headroom.
+        cpu: 1500m
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+
+opentelemetry-collector:
+  # Helm replaces arrays in overlays, so retain the production collector
+  # credentials while adding the managed ElastiCache receiver credential.
+  extraEnvs:
+    - name: OPENSEARCH_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-opensearch
+          key: username
+    - name: OPENSEARCH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-opensearch
+          key: password
+    - name: KAFKA_BROKER_0
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-msk
+          key: KAFKA_BROKER_0
+    - name: KAFKA_BROKER_1
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-msk
+          key: KAFKA_BROKER_1
+    - name: KAFKA_SASL_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-msk
+          key: KAFKA_SASL_USERNAME
+    - name: KAFKA_SASL_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-msk
+          key: KAFKA_SASL_PASSWORD
+    - name: VALKEY_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-valkey-cart
+          key: VALKEY_PASSWORD
+  resources:
+    requests:
+      # The agent is a DaemonSet and must fit even on the packed critical
+      # control-plane nodes. Keep its one-core burst limit below.
+      cpu: 100m
+      # The agent is a DaemonSet. A 1Gi request cannot fit on several
+      # existing 4Gi Karpenter nodes, leaving those nodes without telemetry.
+      # Keep the 2Gi ceiling/GOMEMLIMIT for bursts, but reserve 512Mi.
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  config:
+    receivers:
+      kafkametrics:
+        collection_interval: 1s
+      # Production Valkey is ElastiCache, not the disabled in-cluster pod;
+      # annotation discovery therefore cannot collect its INFO metrics.
+      redis/valkey-cart:
+        endpoint: master.techx-prod-tf2-cart.2bnsjq.use1.cache.amazonaws.com:6379
+        password: ${env:VALKEY_PASSWORD}
+        collection_interval: 1s
+        tls:
+          insecure: false
+    exporters:
+      otlp/jaeger:
+        retry_on_failure:
+          max_elapsed_time: 60s
+        sending_queue:
+          num_consumers: 8
+          queue_size: 4096
+      otlphttp/prometheus:
+        retry_on_failure:
+          max_elapsed_time: 60s
+        sending_queue:
+          num_consumers: 8
+          queue_size: 4096
+      opensearch:
+        retry_on_failure:
+          max_elapsed_time: 60s
+        sending_queue:
+          num_consumers: 4
+          queue_size: 1024
+    connectors:
+      spanmetrics:
+        metrics_flush_interval: 1s
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart]
+
+jaeger:
+  jaeger:
+    # Memory storage keeps a bounded recent trace window, not a multi-hour archive.
+    extraEnv:
+      - name: MEMORY_MAX_TRACES
+        value: "50000"
+      - name: PROMETHEUS_ADDR
+        value: prometheus:9090
+      - name: OTEL_COLLECTOR_HOST
+        value: otel-collector
+      - name: OTEL_COLLECTOR_PORT_HTTP
+        value: "4318"
+      - name: JAEGER_HOST
+        value: "0.0.0.0"
+      - name: JAEGER_GRPC_PORT
+        value: "4317"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: "1"
+        memory: 6Gi
+
+prometheus:
+  server:
+    global:
+      # Keep the long-run profile aligned with the production monitoring
+      # cadence. One-second scraping overloaded the in-cluster Prometheus TSDB
+      # during AIOps collection and caused no-data incidents.
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      evaluation_interval: 30s
+    retention: 24h
+    persistentVolume:
+      # EBS expansion is one-way; see the runbook before enabling this profile.
+      size: 48Gi
+    resources:
+      requests:
+        cpu: "1"
+        memory: 6Gi
+      limits:
+        cpu: "1"
+        memory: 6Gi
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi
+
+metrics-server:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

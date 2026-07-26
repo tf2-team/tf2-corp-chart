@@ -1,4 +1,7 @@
 # Managed by tf2-corp-platform secure delivery pipeline.
-# Populated under service-digest/ after a successful platform rebuild of this service.
-# Until a digest is written, the chart uses default.image.tag (or component overrides).
-# Change trail: @hungxqt - 2026-07-20 - Bootstrap service-digest overlay for selective image promote.
+# Change trail: @hungxqt - 2026-07-20 - Selective service digest promote into service-digest/.
+components:
+  shipping:
+    imageOverride:
+      # sha-2928c9b is the latest retained multi-arch production image.
+      digest: "sha256:c93d219007ffb22e43ba4edab863b76990e3d0ddfe34ef042778353a9f1ca699"

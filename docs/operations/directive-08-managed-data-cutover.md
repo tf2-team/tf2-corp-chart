@@ -55,7 +55,7 @@ The Redis/Valkey cache layer is migrated to AWS ElastiCache Valkey (Engine 7.2) 
 ## 4. Kafka Topic and MSK Cutover
 
 Migrated the event messaging bus from in-cluster Kafka to AWS MSK (Managed Streaming for Apache Kafka) configured with 2-brokers in private subnets.
-1. Created core topics (`orders`, `orders-approved`, `orders-cancelled`) on the MSK cluster with 3 partitions and a replication factor of 2.
+1. The existing core topics (`orders`, `orders-approved`, `orders-cancelled`, `orders-shipped`) use 3 partitions and a replication factor of 2. Before deploying the persistence-ACK flow, create `orders-persisted` with the same policy; it carries the accounting RDS commit acknowledgement used to remove the matching checkout DynamoDB outbox item.
 2. Enabled transit encryption using TLS (port `9096`) combined with SASL/SCRAM-SHA-512 authentication.
 3. Updated the `checkout` producer, as well as `accounting` and `fraud-detection` consumers, to bind to the MSK brokers via Helm chart modifications.
 4. Confirmed event consumption with zero lag.

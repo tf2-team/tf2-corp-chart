@@ -1,0 +1,72 @@
+Fault zone: us-east-1a
+Nodes to cordon: ip-10-0-16-62.ec2.internal, ip-10-0-29-227.ec2.internal
+Surviving Ready nodes: 5
+Provisioning fence: NodePool stateless-spot zones [us-east-1a, us-east-1b] -> [us-east-1b]
+Provisioning fence: NodePool stateless-on-demand zones [us-east-1a, us-east-1b] -> [us-east-1b]
+First-party Deployment pod targets (load-generator, flagd, platform/observability, Jobs and StatefulSets excluded):
+
+pod                              deployment      node                        zone
+---                              ----------      ----                        ----
+ad-7df9776d9-j247z               ad              ip-10-0-29-227.ec2.internal us-east-1a
+cart-57b6bb695c-zwlxl            cart            ip-10-0-29-227.ec2.internal us-east-1a
+checkout-dff9cd57b-98s6z         checkout        ip-10-0-29-227.ec2.internal us-east-1a
+currency-fb78f676d-h6prm         currency        ip-10-0-29-227.ec2.internal us-east-1a
+email-846dc874cb-584gl           email           ip-10-0-29-227.ec2.internal us-east-1a
+frontend-c88f786f8-dkg5m         frontend        ip-10-0-29-227.ec2.internal us-east-1a
+image-provider-ffb99b8bc-t6w48   image-provider  ip-10-0-29-227.ec2.internal us-east-1a
+llm-7659dbf7c6-mtsb6             llm             ip-10-0-29-227.ec2.internal us-east-1a
+payment-6cbf6456-pr5qr           payment         ip-10-0-29-227.ec2.internal us-east-1a
+product-catalog-5944c56b56-bssb7 product-catalog ip-10-0-29-227.ec2.internal us-east-1a
+quote-696b6b9dfc-nhq47           quote           ip-10-0-29-227.ec2.internal us-east-1a
+recommendation-6bd768bcd7-c7jns  recommendation  ip-10-0-29-227.ec2.internal us-east-1a
+shipping-59c9487779-hqrc9        shipping        ip-10-0-29-227.ec2.internal us-east-1a
+
+nodepool.karpenter.sh/stateless-spot patched
+nodepool.karpenter.sh/stateless-on-demand patched
+node/ip-10-0-16-62.ec2.internal cordoned
+node/ip-10-0-29-227.ec2.internal cordoned
+pod "ad-7df9776d9-j247z" deleted from techx-corp-prod namespace
+pod "cart-57b6bb695c-zwlxl" deleted from techx-corp-prod namespace
+pod "checkout-dff9cd57b-98s6z" deleted from techx-corp-prod namespace
+pod "currency-fb78f676d-h6prm" deleted from techx-corp-prod namespace
+pod "email-846dc874cb-584gl" deleted from techx-corp-prod namespace
+pod "frontend-c88f786f8-dkg5m" deleted from techx-corp-prod namespace
+pod "image-provider-ffb99b8bc-t6w48" deleted from techx-corp-prod namespace
+pod "llm-7659dbf7c6-mtsb6" deleted from techx-corp-prod namespace
+pod "payment-6cbf6456-pr5qr" deleted from techx-corp-prod namespace
+pod "product-catalog-5944c56b56-bssb7" deleted from techx-corp-prod namespace
+pod "quote-696b6b9dfc-nhq47" deleted from techx-corp-prod namespace
+pod "recommendation-6bd768bcd7-c7jns" deleted from techx-corp-prod namespace
+pod "shipping-59c9487779-hqrc9" deleted from techx-corp-prod namespace
+Fault boundary established: zero first-party Deployment pods Ready in us-east-1a
+nodepool.karpenter.sh/stateless-spot patched
+nodepool.karpenter.sh/stateless-on-demand patched
+node/ip-10-0-16-62.ec2.internal uncordoned
+deployment.apps/accounting condition met
+deployment.apps/ad condition met
+deployment.apps/cart condition met
+deployment.apps/checkout condition met
+deployment.apps/currency condition met
+deployment.apps/egress-proxy condition met
+deployment.apps/email condition met
+deployment.apps/flagd condition met
+deployment.apps/fraud-detection condition met
+deployment.apps/frontend condition met
+deployment.apps/frontend-proxy condition met
+deployment.apps/grafana condition met
+deployment.apps/image-provider condition met
+deployment.apps/jaeger condition met
+deployment.apps/llm condition met
+deployment.apps/load-generator condition met
+deployment.apps/load-generator-worker condition met
+deployment.apps/metrics-server condition met
+deployment.apps/payment condition met
+deployment.apps/product-catalog condition met
+deployment.apps/product-reviews condition met
+deployment.apps/prometheus condition met
+deployment.apps/prometheus-adapter condition met
+deployment.apps/quote condition met
+deployment.apps/recommendation condition met
+deployment.apps/shipping condition met
+deployment.apps/shopping-copilot condition met
+deployment.apps/techx-corp-kube-state-metrics condition met

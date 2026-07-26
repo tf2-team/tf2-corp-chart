@@ -9,6 +9,7 @@
     {{- $config := set . "Chart" $.Chart }}
     {{- $config := set . "serviceAccount" $.Values.serviceAccount }}
     {{- $config := set . "observability" $.Values.observability }}
+    {{- $config := set . "egressProxy" $.Values.egressProxy }}
     {{- $config := set . "defaultValues" $.Values.default }}
     {{- $skipPg := false }}
     {{- if hasKey $.Values.components "postgresql" }}

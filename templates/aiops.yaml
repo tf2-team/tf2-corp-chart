@@ -98,6 +98,7 @@ spec:
         app.kubernetes.io/name: {{ $name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: aiops
+        opentelemetry.io/name: {{ $name }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: /metrics
@@ -144,6 +145,16 @@ spec:
               value: /var/run/secrets/kubernetes.io/serviceaccount/token
             - name: AIOPS_KUBERNETES_CA_CERT_PATH
               value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            {{- if .Values.egressProxy.enabled }}
+            - name: HTTPS_PROXY
+              value: {{ printf "http://egress-proxy:%v" .Values.egressProxy.port | quote }}
+            - name: https_proxy
+              value: {{ printf "http://egress-proxy:%v" .Values.egressProxy.port | quote }}
+            - name: NO_PROXY
+              value: {{ .Values.egressProxy.noProxy | quote }}
+            - name: no_proxy
+              value: {{ .Values.egressProxy.noProxy | quote }}
+            {{- end }}
           {{- with .Values.aiops.existingSecret }}
           envFrom:
             - secretRef:

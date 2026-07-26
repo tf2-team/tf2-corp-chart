@@ -41,6 +41,7 @@ spec:
   template:
     metadata:
       labels:
+        app.kubernetes.io/part-of: techx-corp
         {{- include "techx-corp.selectorLabels" . | nindent 8 }}
         {{- include "techx-corp.workloadLabels" . | nindent 8 }}
         {{- if .podLabels }}
@@ -61,7 +62,12 @@ spec:
       imagePullSecrets:
         {{- ((.imageOverride).pullSecrets) | default .defaultValues.image.pullSecrets | toYaml | nindent 8}}
       {{- end }}
+      {{- if .componentServiceAccount }}
       serviceAccountName: {{ include "techx-corp.serviceAccountName" .}}
+      {{- else }}
+      serviceAccountName: {{ .name }}
+      {{- end }}
+      automountServiceAccountToken: false
       {{- /* Component schedulingRules keys fully replace defaults when present (including empty maps/lists). */}}
       {{- $schedDefaults := default dict .defaultValues.schedulingRules }}
       {{- $schedOverrides := default dict .schedulingRules }}
@@ -132,6 +138,20 @@ spec:
           {{- end }}
           env:
             {{- include "techx-corp.pod.env" . | nindent 12 }}
+            {{- if .optionalDependencyTimeoutMs }}
+            - name: OPTIONAL_DEPENDENCY_TIMEOUT_MS
+              value: {{ .optionalDependencyTimeoutMs | quote }}
+            {{- end }}
+            {{- if and .egressProxy .egressProxy.enabled (has .name .egressProxy.callers) }}
+            - name: HTTPS_PROXY
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: https_proxy
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: NO_PROXY
+              value: {{ .egressProxy.noProxy | quote }}
+            - name: no_proxy
+              value: {{ .egressProxy.noProxy | quote }}
+            {{- end }}
             {{- if and .modelDelivery .modelDelivery.enabled }}
             - name: HF_HOME
               value: {{ .modelDelivery.mountPath | quote }}
@@ -267,6 +287,16 @@ spec:
               value: {{ .modelDelivery.awsRegion | quote }}
             - name: AWS_EC2_METADATA_DISABLED
               value: "true"
+            {{- if and .egressProxy .egressProxy.enabled (has .name .egressProxy.callers) }}
+            - name: HTTPS_PROXY
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: https_proxy
+              value: {{ printf "http://egress-proxy:%v" .egressProxy.port | quote }}
+            - name: NO_PROXY
+              value: {{ .egressProxy.noProxy | quote }}
+            - name: no_proxy
+              value: {{ .egressProxy.noProxy | quote }}
+            {{- end }}
             # AWS CLI caches web-identity credentials under $HOME/.aws. The
             # init container runs with readOnlyRootFilesystem; HOME must point
             # at the writable emptyDir mounted at /tmp (default HOME is /).
@@ -381,7 +411,8 @@ spec:
 
     {{- if and .service .service.port }}
     - port: {{ .service.port}}
-      name: tcp-service
+      name: {{ .service.portName | default "grpc" }}
+      appProtocol: {{ .service.appProtocol | default "grpc" }}
       targetPort: {{ .service.port }}
     {{- if .service.nodePort }}
       nodePort: {{ .service.nodePort }}
@@ -399,7 +430,8 @@ spec:
 
     {{- if and .service .service.port }}
     - port: {{ .service.port}}
-      name: tcp-service-{{ $i }}
+      name: {{ .service.portName | default (printf "grpc-%d" $i) }}
+      appProtocol: {{ .service.appProtocol | default "grpc" }}
       targetPort: {{ .service.port }}
     {{- if .service.nodePort }}
       nodePort: {{ .service.nodePort }}

@@ -2,3 +2,7 @@
 # Populated under service-digest/ after a successful platform rebuild of this service.
 # Until a digest is written, the chart uses default.image.tag (or component overrides).
 # Change trail: @hungxqt - 2026-07-20 - Bootstrap service-digest overlay for selective image promote.
+components:
+  frontend-proxy:
+    imageOverride:
+      digest: "sha256:b85bec27152a781e809544aa3c5946c9704ac567fbe59233995d526c47c65b5a"

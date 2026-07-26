@@ -90,7 +90,8 @@ try {
         -f $negativeValues 2>&1
     $negativeExitCode = $LASTEXITCODE
     $negativeText = $negativeOutput -join "`n"
-    if ($negativeExitCode -eq 0 -or $negativeText -notmatch "additional properties 'typo' not allowed") {
+    $rejectedExpectedTypo = $negativeText -match "(?i)additional propert(?:y|ies).*typo.*not allowed"
+    if ($negativeExitCode -eq 0 -or -not $rejectedExpectedTypo) {
         throw "Negative schema test did not reject the expected typo:`n$negativeText"
     }
     Write-Output "PASS negative Helm schema test"
@@ -130,6 +131,15 @@ try {
     Assert-Count $clusterwideText "(?m)^  - Warn$" 0 "Cluster-wide enforce Warn actions"
     Assert-Count $clusterwideText "(?m)^  - Audit$" 0 "Cluster-wide enforce Audit actions"
     Assert-Count $clusterwideText "namespaceSelector:" 0 "Cluster-wide enforce namespace exclusions"
+
+    $prodMigrationText = (& kubectl kustomize gitops/runtime-hardening/overlays/enforce-clusterwide-prod-audit) -join "`n"
+    Assert-LastExitCode "VAP production migration overlay render"
+    Assert-Count $prodMigrationText "(?m)^kind: ValidatingAdmissionPolicyBinding$" 6 "Production migration bindings"
+    Assert-Count $prodMigrationText "(?m)^  - Deny$" 3 "Production migration Deny actions"
+    Assert-Count $prodMigrationText "(?m)^  - Warn$" 3 "Production migration Warn actions"
+    Assert-Count $prodMigrationText "(?m)^  - Audit$" 3 "Production migration Audit actions"
+    Assert-Count $prodMigrationText "namespaceSelector:" 6 "Production migration namespace selectors"
+    Assert-Count $prodMigrationText "(?m)^        - techx-corp-prod$" 6 "Production migration namespace scope"
     Write-Output "PASS VAP base/audit/enforce/enforce-clusterwide render contracts"
 
     if (-not $KubeContext) {

@@ -26,6 +26,7 @@ spec:
       namespace: kube-system
 
   # Includes metrics-server APIService + RBAC from observability subcharts.
+  # StorageClass: encrypted gp3 SC shipped by app chart (EBS CSI).
   clusterResourceWhitelist:
     - group: rbac.authorization.k8s.io
       kind: ClusterRole
@@ -39,6 +40,8 @@ spec:
       kind: ValidatingAdmissionPolicy
     - group: admissionregistration.k8s.io
       kind: ValidatingAdmissionPolicyBinding
+    - group: storage.k8s.io
+      kind: StorageClass
 
   # Orphan ignore: kube defaults, Helm history Secrets, ESO-generated Secrets
   # (created by ESO, not by either Application), STS PVCs, ALB TargetGroupBindings.
@@ -66,4 +69,4 @@ spec:
         name: valkey-cart-data-valkey-cart-0
       - group: elbv2.k8s.aws
         kind: TargetGroupBinding
-# Change trail: @hungxqt - 2026-07-15 - Document dual Application ownership for secrets-chart.
+# Change trail: @hungxqt - 2026-07-22 - Allow StorageClass for encrypted gp3 EBS CSI SC.

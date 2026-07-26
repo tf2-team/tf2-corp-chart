@@ -49,6 +49,10 @@ spec:
         - service-digest/values-recommendation.yaml
         - service-digest/values-shipping.yaml
         - service-digest/values-shopping-copilot.yaml
+        # Temporary AIOps capacity profile for multi-hour, 1,000-user data
+        # collection. Remove after the approved collection window; see
+        # docs/changes/2026-07-26-aiops-long-run-1000-capacity.md.
+        - values-aiops-long-run-1000.yaml
       releaseName: techx-corp
 
   destination:
@@ -61,6 +65,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Required with ignoreDifferences: without this, Argo still applies full desired
+      # Helm PVC (volumeName: "") and fails Bound claim patches (immutable volumeName).
+      - RespectIgnoreDifferences=true
       # Do NOT enable ServerSideApply in v1 baseline.
     retry:
       limit: 3
@@ -68,4 +75,15 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-# Change trail: @hungxqt - 2026-07-20 - Load service-digest valueFiles for selective immutable image pins.
+
+  # Bound PVCs: the API fills /spec/volumeName after bind; Helm never sets it.
+  # After static rebind (encrypted EBS), live volumeName is pv-enc-*; desired is "".
+  # Patching volumeName is forbidden on Bound claims and fails the whole sync.
+  # Pair with RespectIgnoreDifferences=true so sync/apply skips these fields too
+  # (ignoreDifferences alone only affects comparison / OutOfSync status).
+  ignoreDifferences:
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/volumeName
+# Change trail: @hungxqt - 2026-07-22 - RespectIgnoreDifferences so PVC volumeName is not applied.

@@ -5,7 +5,14 @@ Docs: docs/operations/network-policy.md
 */}}
 {{- if .Values.networkPolicy.enabled }}
 {{- $relCtx := . }}
+{{- $enforceEgress := .Values.networkPolicy.enforceEgress }}
+{{- $vpcCidr := .Values.networkPolicy.vpcCidr }}
+{{- $kubernetesApiCidr := .Values.networkPolicy.kubernetesApiCidr }}
 {{- $ns := .Release.Namespace }}
+{{- $aiopsLongRun := .Values.aiopsLongRun | default (dict) }}
+{{- if and $enforceEgress (not .Values.egressProxy.enabled) }}
+{{- fail "networkPolicy.enforceEgress=true requires egressProxy.enabled=true" }}
+{{- end }}
 
 {{/* ── 1. DEFAULT DENY ─────────────────────────────────────────────── */}}
 ---
@@ -19,8 +26,12 @@ spec:
   podSelector: {}
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
 
-{{/* ── 2. ALLOW DNS (all pods need kube-dns egress) ────────────────── */}}
+{{/* ── 2. ALLOW DNS (only when egress isolation is enabled) ──────────── */}}
+{{- if $enforceEgress }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -37,11 +48,73 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+
+{{- end }}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-linkerd-mesh
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    # Allow inbound mTLS traffic from other meshed pods in the namespace
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4143
+    # Allow control plane and kubelet to scrape metrics / perform readiness probes
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - linkerd
+                  - kube-system
+                  - techx-corp-prod
+      ports:
+        - protocol: TCP
+          port: 4191
+{{- if $enforceEgress }}
+  egress:
+    # Allow outbound mTLS traffic to other meshed pods in the namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4143
+    # Allow egress to Linkerd control plane services in the linkerd namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: linkerd
+      ports:
+        - protocol: TCP
+          port: 8080  # identity
+        - protocol: TCP
+          port: 8086  # destination
+        - protocol: TCP
+          port: 8090  # policy
+{{- end }}
+
 
 {{/* ── 3. OTEL-COLLECTOR: accept telemetry from all pods ──────────── */}}
 ---
@@ -59,7 +132,9 @@ spec:
     - Ingress
   ingress:
     - from:
-        - podSelector: {}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: techx-corp
       ports:
         - protocol: TCP
           port: 4317
@@ -67,6 +142,196 @@ spec:
           port: 4318
         - protocol: TCP
           port: 9092  # kafkametrics scrape
+
+{{/* Observability/control-plane pods are selected by the namespace-wide deny. */}}
+{{- if and $enforceEgress (index .Values "opentelemetry-collector" "enabled") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: otel-collector-egress
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: otel-collector
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jaeger
+      ports:
+        - { protocol: TCP, port: 4317 }
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 9090 }
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: opensearch
+      ports:
+        - { protocol: TCP, port: 9200 }
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opentelemetry-collector
+      ports:
+        - { protocol: TCP, port: 4318 }
+    # Kubernetes attributes and cluster metrics use the in-cluster API Service.
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - { protocol: TCP, port: 443 }
+    # Kubelet metrics use node IPs inside the production VPC.
+    - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - { protocol: TCP, port: 10250 }
+        - { protocol: TCP, port: 9096 } # Amazon MSK SASL/SCRAM
+        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals. Delete after test done.
+        - { protocol: TCP, port: 6379 }
+{{- end }}
+
+{{- if (index .Values "metrics-server" "enabled") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metrics-server
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: metrics-server
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - { protocol: TCP, port: 10250 }
+{{- if $enforceEgress }}
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - { protocol: TCP, port: 443 }
+    - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - { protocol: TCP, port: 10250 }
+{{- end }}
+{{- end }}
+
+{{- if (index .Values "prometheus-adapter" "enabled") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-adapter
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-adapter
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - { protocol: TCP, port: 6443 }
+{{- if $enforceEgress }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 9090 }
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- end }}
+{{- end }}
+
+{{- if (index .Values "prometheus" "kube-state-metrics" "enabled") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-state-metrics
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 8080 }
+        - { protocol: TCP, port: 8081 }
+{{- if $enforceEgress }}
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- end }}
+{{- end }}
+
+{{- if $enforceEgress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runtime-hardening-inventory
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: runtime-hardening-inventory
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- end }}
 
 {{/* ── 4. FRONTEND-PROXY ────────────────────────────────────────────── */}}
 {{- if (index .Values.components "frontend-proxy").enabled }}
@@ -83,9 +348,29 @@ spec:
       opentelemetry.io/name: frontend-proxy
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
-    - {}  # public ALB target — allow all ingress
+    - from:
+        {{- range .Values.networkPolicy.albIngressCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: load-generator-worker
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: load-generator
+      ports:
+        - protocol: TCP
+          port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -97,14 +382,14 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              opentelemetry.io/name: grafana
+              app.kubernetes.io/name: grafana
       ports:
         - protocol: TCP
-          port: 80
+          port: 3000
     - to:
         - podSelector:
             matchLabels:
-              opentelemetry.io/name: jaeger
+              app.kubernetes.io/name: jaeger
       ports:
         - protocol: TCP
           port: 16686
@@ -134,7 +419,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
@@ -150,7 +435,8 @@ spec:
               app.kubernetes.io/name: argocd-server
       ports:
         - protocol: TCP
-          port: 80
+          port: 8080
+{{- end }}
 {{- end }}
 
 {{/* ── 5. FRONTEND ─────────────────────────────────────────────────── */}}
@@ -168,7 +454,9 @@ spec:
       opentelemetry.io/name: frontend
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -191,6 +479,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -267,12 +556,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 6. CHECKOUT ─────────────────────────────────────────────────── */}}
@@ -290,7 +580,9 @@ spec:
       opentelemetry.io/name: checkout
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -299,6 +591,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -350,6 +643,19 @@ spec:
         - protocol: TCP
           port: 9092
     - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - protocol: TCP
+          port: 9096 # Amazon MSK SASL/SCRAM
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+    - to:
         - podSelector:
             matchLabels:
               opentelemetry.io/name: flagd
@@ -361,12 +667,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 7. CART ──────────────────────────────────────────────────────── */}}
@@ -384,7 +691,9 @@ spec:
       opentelemetry.io/name: cart
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -395,6 +704,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     # In-cluster singleton (dev) and/or managed ElastiCache (prod private DNS).
     # When NetworkPolicy is enforced, cart must reach either the valkey-cart pod
@@ -408,7 +718,7 @@ spec:
           port: 6379
     - to:
         - ipBlock:
-            cidr: 10.0.0.0/8
+            cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
           port: 6379
@@ -424,12 +734,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 8. PAYMENT ───────────────────────────────────────────────────── */}}
@@ -447,7 +758,9 @@ spec:
       opentelemetry.io/name: payment
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -456,6 +769,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -469,12 +783,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 9. SHIPPING ──────────────────────────────────────────────────── */}}
@@ -492,7 +807,9 @@ spec:
       opentelemetry.io/name: shipping
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -503,6 +820,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -514,12 +832,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 10. QUOTE ────────────────────────────────────────────────────── */}}
@@ -537,7 +856,9 @@ spec:
       opentelemetry.io/name: quote
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -546,16 +867,18 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 11. CURRENCY ─────────────────────────────────────────────────── */}}
@@ -573,7 +896,9 @@ spec:
       opentelemetry.io/name: currency
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -584,16 +909,18 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 12. EMAIL ────────────────────────────────────────────────────── */}}
@@ -611,7 +938,9 @@ spec:
       opentelemetry.io/name: email
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -620,6 +949,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -633,12 +963,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 13. AD ───────────────────────────────────────────────────────── */}}
@@ -656,7 +987,9 @@ spec:
       opentelemetry.io/name: ad
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -665,6 +998,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -678,12 +1012,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 14. RECOMMENDATION ───────────────────────────────────────────── */}}
@@ -701,7 +1036,9 @@ spec:
       opentelemetry.io/name: recommendation
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -710,6 +1047,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -730,12 +1068,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 15. PRODUCT-CATALOG ──────────────────────────────────────────── */}}
@@ -753,7 +1092,9 @@ spec:
       opentelemetry.io/name: product-catalog
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -764,11 +1105,18 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
             matchLabels:
               opentelemetry.io/name: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
           port: 5432
@@ -784,12 +1132,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 16. PRODUCT-REVIEWS ──────────────────────────────────────────── */}}
@@ -807,7 +1156,9 @@ spec:
       opentelemetry.io/name: product-reviews
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -818,6 +1169,7 @@ spec:
       ports:
         - protocol: TCP
           port: 3551
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -841,6 +1193,12 @@ spec:
         - protocol: TCP
           port: 5432
     - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
         - podSelector:
             matchLabels:
               opentelemetry.io/name: flagd
@@ -852,19 +1210,21 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
-    # S3 model download. IRSA restricts reads to the exact bucket/prefix.
+    # External HTTPS is reachable only through the allowlisted proxy.
     - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
       ports:
         - protocol: TCP
-          port: 443
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
 {{- end }}
 
 {{/* ── 17. ACCOUNTING ───────────────────────────────────────────────── */}}
@@ -883,7 +1243,9 @@ spec:
       opentelemetry.io/name: shopping-copilot
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -892,6 +1254,7 @@ spec:
       ports:
         - protocol: TCP
           port: 3552
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -924,19 +1287,21 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
-    # Guardrail artifact S3 download and Bedrock Runtime HTTPS requests.
+    # External HTTPS is reachable only through the allowlisted proxy.
     - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
       ports:
         - protocol: TCP
-          port: 443
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
 {{- end }}
 
 {{- if .Values.components.accounting.enabled }}
@@ -953,8 +1318,11 @@ spec:
       opentelemetry.io/name: accounting
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress: []  # no inbound service traffic; Kafka consumer only
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -964,6 +1332,12 @@ spec:
         - protocol: TCP
           port: 9092
     - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - protocol: TCP
+          port: 9096 # Amazon MSK SASL/SCRAM
+    - to:
         - podSelector:
             matchLabels:
               opentelemetry.io/name: postgresql
@@ -971,14 +1345,21 @@ spec:
         - protocol: TCP
           port: 5432
     - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 18. FRAUD-DETECTION ──────────────────────────────────────────── */}}
@@ -996,8 +1377,11 @@ spec:
       opentelemetry.io/name: fraud-detection
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress: []  # no inbound service traffic; Kafka consumer only
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1006,6 +1390,18 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
+    - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - protocol: TCP
+          port: 9096 # Amazon MSK SASL/SCRAM
+    - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
+      ports:
+        - protocol: TCP
+          port: 6379
     - to:
         - podSelector:
             matchLabels:
@@ -1018,12 +1414,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 19. KAFKA ────────────────────────────────────────────────────── */}}
@@ -1041,7 +1438,9 @@ spec:
       opentelemetry.io/name: kafka
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1059,16 +1458,18 @@ spec:
       ports:
         - protocol: TCP
           port: 9092
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 20. VALKEY-CART ──────────────────────────────────────────────── */}}
@@ -1086,7 +1487,9 @@ spec:
       opentelemetry.io/name: valkey-cart
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1104,7 +1507,9 @@ spec:
       ports:
         - protocol: TCP
           port: 6379
+{{- if $enforceEgress }}
   egress: []  # no outbound connections needed
+{{- end }}
 {{- end }}
 
 {{/* ── 21. POSTGRESQL ───────────────────────────────────────────────── */}}
@@ -1122,7 +1527,9 @@ spec:
       opentelemetry.io/name: postgresql
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1142,11 +1549,13 @@ spec:
           port: 5432
     - from:
         - ipBlock:
-            cidr: 10.0.0.0/16
+            cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
           port: 5432
+{{- if $enforceEgress }}
   egress: []  # no outbound connections needed
+{{- end }}
 {{- end }}
 
 {{/* ── 22. LLM ──────────────────────────────────────────────────────── */}}
@@ -1164,7 +1573,9 @@ spec:
       opentelemetry.io/name: llm
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1173,6 +1584,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1183,6 +1595,7 @@ spec:
           port: 8013
         - protocol: TCP
           port: 8016
+{{- end }}
 {{- end }}
 
 {{/* ── 23. IMAGE-PROVIDER ───────────────────────────────────────────── */}}
@@ -1200,7 +1613,9 @@ spec:
       opentelemetry.io/name: image-provider
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1216,16 +1631,18 @@ spec:
       ports:
         - protocol: TCP
           port: 8081
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 24. LOAD-GENERATOR (Locust master) ────────────────────────────── */}}
@@ -1243,7 +1660,9 @@ spec:
       opentelemetry.io/name: load-generator
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     # Locust web UI via frontend-proxy
     - from:
@@ -1261,6 +1680,7 @@ spec:
       ports:
         - protocol: TCP
           port: 5557
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1281,12 +1701,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 24b. LOAD-GENERATOR-WORKER (Locust workers) ───────────────────── */}}
@@ -1304,9 +1725,12 @@ spec:
       opentelemetry.io/name: load-generator-worker
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   # Workers do not serve inbound traffic; deny ingress by default (empty rules).
   ingress: []
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1334,12 +1758,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 25. FLAGD ────────────────────────────────────────────────────── */}}
@@ -1357,7 +1782,9 @@ spec:
       opentelemetry.io/name: flagd
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1386,16 +1813,26 @@ spec:
           port: 8016
         - protocol: TCP
           port: 4000  # flagd-ui sidecar
+{{- if $enforceEgress }}
   egress:
+    {{- range .Values.networkPolicy.flagdSyncCidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . }}
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 26. OPENSEARCH ───────────────────────────────────────────────── */}}
@@ -1413,7 +1850,9 @@ spec:
       opentelemetry.io/name: opensearch
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1422,6 +1861,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+    {{- if $aiopsLongRun.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: aiops-opensearch-retention
+      ports:
+        - protocol: TCP
+          port: 9200
+    {{- end }}
     - from:
         - podSelector:
             matchLabels:
@@ -1429,7 +1877,9 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+{{- if $enforceEgress }}
   egress: []  # single-node; no outbound
+{{- end }}
 {{- end }}
 
 {{/* ── 27. PROMETHEUS ───────────────────────────────────────────────── */}}
@@ -1447,14 +1897,16 @@ spec:
       app.kubernetes.io/name: prometheus
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [aiops-runtime, grafana, jaeger, prometheus-adapter]
+                values: [grafana, jaeger, prometheus-adapter]
       ports:
         - protocol: TCP
           port: 9090
@@ -1465,20 +1917,64 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
+{{- if $enforceEgress }}
   egress:
-    # Prometheus scrapes pods across the namespace
+    # Prometheus may scrape only chart-managed workload endpoints.
     - to:
-        - podSelector: {}
-    # Scrape kubelet metrics from nodes
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: techx-corp
+      ports:
+        - { protocol: TCP, port: 3551 }
+        - { protocol: TCP, port: 3552 }
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 8013 }
+        - { protocol: TCP, port: 8080 }
+        - { protocol: TCP, port: 8081 }
+        - { protocol: TCP, port: 8888 }
+        - { protocol: TCP, port: 9090 }
+        - { protocol: TCP, port: 9464 }
+        # Linkerd proxy admin /metrics endpoint.  This is intentionally scoped
+        # to Prometheus and chart-managed pods; no application workload gains
+        # egress access to port 4191.
+        - { protocol: TCP, port: 4191 }
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kube-state-metrics
+      ports:
+        - { protocol: TCP, port: 8080 }
+        - { protocol: TCP, port: 8081 }
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opentelemetry-collector
+      ports:
+        - { protocol: TCP, port: 8888 }
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: karpenter
+      ports:
+        - { protocol: TCP, port: 8080 }
+    # Kubernetes discovery uses the in-cluster API Service.
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
+    # Kubelet scrape stays inside the production VPC.
+    - to:
+        - ipBlock:
+            cidr: {{ $vpcCidr }}
       ports:
         - protocol: TCP
           port: 10250
-        - protocol: TCP
-          port: 443
+{{- end }}
 {{- end }}
 
 {{/* ── 28. JAEGER ───────────────────────────────────────────────────── */}}
@@ -1496,7 +1992,9 @@ spec:
       app.kubernetes.io/name: jaeger
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1506,6 +2004,10 @@ spec:
         - protocol: TCP
           port: 4317
     - from:
+        {{- range .Values.networkPolicy.albIngressCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
         - podSelector:
             matchExpressions:
               - key: opentelemetry.io/name
@@ -1517,6 +2019,7 @@ spec:
       ports:
         - protocol: TCP
           port: 16686
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1528,12 +2031,13 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: otel-collector
+              app.kubernetes.io/name: opentelemetry-collector
       ports:
         - protocol: TCP
           port: 4317
         - protocol: TCP
           port: 4318
+{{- end }}
 {{- end }}
 
 {{/* ── 29. GRAFANA ──────────────────────────────────────────────────── */}}
@@ -1551,9 +2055,15 @@ spec:
       app.kubernetes.io/name: grafana
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
+        {{- range .Values.networkPolicy.albIngressCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
         - podSelector:
             matchLabels:
               opentelemetry.io/name: frontend-proxy
@@ -1562,6 +2072,7 @@ spec:
           port: 80
         - protocol: TCP
           port: 3000
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1584,7 +2095,7 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
-{{ if .Values.aiops.enabled }}
+{{- if .Values.aiops.enabled }}
     - to:
         - podSelector:
             matchLabels:
@@ -1592,10 +2103,39 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
-{{ end }}
+{{- end }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+    # Provisioning init/sidecars list namespaced ConfigMaps and Secrets.
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
+    # Linkerd control plane egress (identity 8080, destination 8086, policy 8090).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: linkerd
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8086
+        - protocol: TCP
+          port: 8090
 {{- end }}
 
-{{/* â”€â”€ 30. AIOPS RUNTIME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+{{- end }}
+
+{{/* ── 30. EGRESS PROXY ────────────────────────────────────────────── */}}
+{{/* AIOps runtime: webhook ingress plus contained Prometheus, API, and HTTPS egress. */}}
 {{- if .Values.aiops.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -1610,7 +2150,9 @@ spec:
       app.kubernetes.io/name: aiops-runtime
   policyTypes:
     - Ingress
+{{- if $enforceEgress }}
     - Egress
+{{- end }}
   ingress:
     - from:
         - podSelector:
@@ -1621,6 +2163,7 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+{{- if $enforceEgress }}
   egress:
     - to:
         - podSelector:
@@ -1629,8 +2172,62 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
-    # Kubernetes API and approved HTTPS enrichment endpoints. Authentication
-    # and AIOps policy mode remain the authorization boundary.
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
+{{- end }}
+
+{{- if and $enforceEgress .Values.egressProxy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-proxy
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: egress-proxy
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: opentelemetry.io/name
+                operator: In
+                values:
+                  {{- range .Values.egressProxy.callers }}
+                  - {{ . }}
+                  {{- end }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.adminPort }}
+  egress:
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
@@ -1641,4 +2238,4 @@ spec:
 
 {{- end }}{{/* end networkPolicy.enabled */}}
 
-# Change trail: @hungxqt - 2026-07-15 - Cart egress to VPC 10/8:6379 for managed Valkey.
+# Change trail: @hungxqt - 2026-07-21 - Mandate 17 three-state enforcement and allowlisted egress proxy.

@@ -7,7 +7,7 @@ This chart implements **hard placement** between Critical MNG and Karpenter. Bas
 | Contract | Mechanism | Workloads |
 |----------|-----------|-----------|
 | **Critical** | `nodeSelector.workload-class=critical`; no Karpenter toleration; singleton/stateful workloads opt out while protected production replicas may use hard spreads | `frontend-proxy`, `flagd`, `load-generator` master, stateful dependencies, Prometheus, Grafana, Jaeger, metrics-server, kube-state-metrics |
-| **Stateless (default)** | `nodeSelector.workload-class=spot-tolerant` + matching `NoSchedule` toleration + preferred Spot affinity; soft spreads in base/dev and hard spreads in production | First-party Deployments inheriting `default.schedulingRules`; `load-generator-worker` intentionally packs and opts out of spread |
+| **Stateless (default)** | `nodeSelector.workload-class=spot-tolerant` + matching `NoSchedule` toleration + preferred Spot affinity; soft zone spread and hard hostname spread | First-party Deployments inheriting `default.schedulingRules`; `load-generator-worker` intentionally packs and opts out of spread |
 | **Universal DaemonSet** | No workload-class selector; Karpenter taint toleration | `opentelemetry-collector` (agent DaemonSet) |
 
 ### Important distinctions
@@ -118,7 +118,7 @@ kubectl get pods -n %NAMESPACE% -l opentelemetry.io/name=frontend -o wide
 kubectl get pods -n %NAMESPACE% -l opentelemetry.io/name=checkout -o wide
 ```
 
-Base/development soft spreads prefer multi-zone placement when capacity allows. Production hard spreads remain Pending until both required domains are schedulable.
+Zone spread prefers multi-zone placement but uses `ScheduleAnyway`, allowing recovery in one surviving AZ. Hostname spread uses `DoNotSchedule`, so replicas remain separated across eligible nodes.
 
 ## Canaries (runtime acceptance)
 

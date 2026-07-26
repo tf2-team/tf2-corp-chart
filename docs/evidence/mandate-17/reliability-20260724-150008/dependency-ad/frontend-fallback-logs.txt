@@ -1,0 +1,9 @@
+[ 11294.650166s]  WARN ThreadId(01) outbound:proxy{addr=172.20.126.102:8080}: linkerd_stack::failfast: Service entering failfast after 3s
+[ 11294.650222s]  INFO ThreadId(01) outbound:proxy{addr=172.20.126.102:8080}:rescue{client.addr=10.0.44.199:45580}: linkerd_app_core::errors::respond: gRPC request failed error=logical service 172.20.126.102:8080: route default.http: backend default.service: service in fail-fast error.sources=[route default.http: backend default.service: service in fail-fast, backend default.service: service in fail-fast, service in fail-fast]
+[ 11306.868953s]  INFO ThreadId(01) outbound:proxy{addr=172.20.126.102:8080}:service{ns= name=service port=0}: linkerd_proxy_api_resolve::resolve: No endpoints
+[ 11331.760994s]  WARN ThreadId(01) outbound:proxy{addr=172.20.126.102:8080}: linkerd_stack::failfast: Service entering failfast after 3s
+[ 11331.761039s]  INFO ThreadId(01) outbound:proxy{addr=172.20.126.102:8080}:rescue{client.addr=10.0.44.199:53994}: linkerd_app_core::errors::respond: gRPC request failed error=logical service 172.20.126.102:8080: route default.http: backend default.service: service in fail-fast error.sources=[route default.http: backend default.service: service in fail-fast, backend default.service: service in fail-fast, service in fail-fast]
+{"event":"optional_dependency_fallback","dependency":"ad","errorCode":4}
+{"event":"optional_dependency_fallback","dependency":"ad","errorCode":14}
+{"event":"optional_dependency_fallback","dependency":"ad","errorCode":4}
+{"event":"optional_dependency_fallback","dependency":"ad","errorCode":14}

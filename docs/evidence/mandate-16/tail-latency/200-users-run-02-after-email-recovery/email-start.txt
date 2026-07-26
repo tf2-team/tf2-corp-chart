@@ -1,3 +1,0 @@
-NAME                                             READY   STATUS    RESTARTS        AGE
-email-746cdfc565-85dmv                           1/1     Running   0               19m
-email-746cdfc565-s9dpt                           1/1     Running   0               18m

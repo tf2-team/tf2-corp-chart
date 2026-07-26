@@ -1,0 +1,50 @@
+context=arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod namespace=techx-corp-prod started=2026-07-23T10:38:54.5284446+07:00
+serviceaccount/mandate17-attacker created
+deployment.apps/mandate17-attacker created
+Waiting for deployment "mandate17-attacker" rollout to finish: 0 of 1 updated replicas are available...
+deployment "mandate17-attacker" successfully rolled out
+Server:		172.20.0.10
+Address:	172.20.0.10:53
+
+
+Name:	kubernetes.default.svc.cluster.local
+Address: 172.20.0.1
+
+PASS DNS positive control
+TEST blocked: same-namespace service -> http://cart:8080
+curl: (28) Connection timed out after 3002 milliseconds
+command terminated with exit code 28
+PASS blocked: same-namespace service
+TEST blocked: cross-namespace service -> https://argocd-server.argocd.svc.cluster.local:443
+curl: (28) Connection timed out after 3002 milliseconds
+command terminated with exit code 28
+PASS blocked: cross-namespace service
+TEST blocked: Kubernetes API -> https://kubernetes.default.svc
+curl: (28) Connection timed out after 3002 milliseconds
+command terminated with exit code 28
+PASS blocked: Kubernetes API
+TEST blocked: egress proxy -> http://egress-proxy:10000
+curl: (28) Connection timed out after 3002 milliseconds
+command terminated with exit code 28
+PASS blocked: egress proxy
+TEST blocked: arbitrary internet -> https://example.com
+curl: (28) Connection timed out after 3000 milliseconds
+command terminated with exit code 28
+PASS blocked: arbitrary internet
+TEST blocked: RDS data plane -> telnet://techx-prod-tf2-postgresql.cijoii00i7pl.us-east-1.rds.amazonaws.com:5432
+curl: (28) Connection timed out after 3002 milliseconds
+command terminated with exit code 28
+PASS blocked: RDS data plane
+TEST blocked: MSK data plane -> telnet://b-1.techxprodtf2msk.aastkf.c5.kafka.us-east-1.amazonaws.com:9096
+curl: (28) Connection timed out after 3002 milliseconds
+command terminated with exit code 28
+PASS blocked: MSK data plane
+TEST blocked: Valkey data plane -> telnet://master.techx-prod-tf2-cart.2bnsjq.use1.cache.amazonaws.com:6379
+curl: (28) Connection timed out after 3001 milliseconds
+command terminated with exit code 28
+PASS blocked: Valkey data plane
+PASS no Kubernetes API token
+PASS no Kubernetes RBAC
+RESULT PASS completed=2026-07-23T10:40:46.4515392+07:00
+serviceaccount "mandate17-attacker" deleted from techx-corp-prod namespace
+deployment.apps "mandate17-attacker" deleted from techx-corp-prod namespace

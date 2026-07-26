@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
+  <rect width="1200" height="430" rx="20" fill="#0d1117"/>
+  <text x="48" y="60" fill="#f0f6fc" font-family="Segoe UI,Arial" font-size="30" font-weight="700">ENTRY GATE + BASELINE — PASS</text>
+  <text x="48" y="94" fill="#8b949e" font-family="Segoe UI,Arial" font-size="17">Rendered from committed raw evidence • reliability-20260724-190910</text>
+  <g font-family="Segoe UI,Arial">
+    <rect x="48" y="128" width="250" height="190" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="73" y="169" fill="#8b949e" font-size="18">BASELINE</text><text x="73" y="222" fill="#3fb950" font-size="42" font-weight="700">601</text><text x="73" y="253" fill="#f0f6fc" font-size="18">iterations</text><text x="73" y="287" fill="#f0f6fc" font-size="18">0 dropped</text>
+    <rect x="322" y="128" width="250" height="190" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="347" y="169" fill="#8b949e" font-size="18">MONEY FLOW</text><text x="347" y="222" fill="#3fb950" font-size="42" font-weight="700">100%</text><text x="347" y="253" fill="#f0f6fc" font-size="18">browse • cart</text><text x="347" y="287" fill="#f0f6fc" font-size="18">checkout</text>
+    <rect x="596" y="128" width="250" height="190" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="621" y="169" fill="#8b949e" font-size="18">BROWSE P95</text><text x="621" y="222" fill="#3fb950" font-size="42" font-weight="700">316.42</text><text x="621" y="253" fill="#f0f6fc" font-size="18">milliseconds</text><text x="621" y="287" fill="#f0f6fc" font-size="18">threshold &lt; 1000 ms</text>
+    <rect x="870" y="128" width="282" height="190" rx="14" fill="#161b22" stroke="#238636" stroke-width="2"/>
+    <text x="895" y="169" fill="#8b949e" font-size="18">PLATFORM GATE</text><text x="895" y="211" fill="#3fb950" font-size="26" font-weight="700">READY</text><text x="895" y="248" fill="#f0f6fc" font-size="17">Argo • Deployments • Nodes</text><text x="895" y="278" fill="#f0f6fc" font-size="17">CoreDNS 2/2 • Locust 0</text>
+  </g>
+  <text x="48" y="382" fill="#8b949e" font-family="Consolas,monospace" font-size="15">Sources: baseline-k6-summary.json • capacity-review.json • preflight.json</text>
+</svg>
