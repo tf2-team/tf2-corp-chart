@@ -24,6 +24,6 @@ components:
       - "--ofrep-port"
       - "8016"
       - "--sources"
-      - '[{"uri":"/etc/flagd/demo.flagd.json","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
+      - '[{"uri":"/etc/flagd","provider":"file"},{"uri":"https://122.248.223.194.sslip.io/flags.json","provider":"http","authHeader":"Bearer 8de6246060a65f500bc44988467c5985b77d0808998284f9"}]'
 
 # Change trail: @hungxqt - 2026-07-15 - Local flagd file/UI is local-* keys only.
