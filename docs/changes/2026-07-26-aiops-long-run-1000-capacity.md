@@ -64,7 +64,9 @@ inventory already contains the resource and health families needed by AIOps:
   `kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}`.
 - Dependency signals: `otelcol_exporter_queue_{size,capacity}`,
   `kafka_consumer_records_lag`, `db_client_connection_count`, and
-  `redis_memory_used_bytes` when their receivers/exporters expose them.
+  `redis_memory_used_bytes`. The profile adds a TLS Redis receiver pointed at
+  the managed ElastiCache primary because in-cluster pod discovery cannot see
+  that external endpoint.
 
 The AIOps runtime configuration is owned outside this chart. This profile
 supplies the Prometheus time series; AIOps should add its own detector/query
