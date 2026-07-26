@@ -180,6 +180,9 @@
     "components": {
       "$ref": "#/definitions/Components"
     },
+    "aiops": {
+      "$ref": "#/definitions/Aiops"
+    },
     "opentelemetry-collector": {
       "type": "object"
     },
@@ -550,6 +553,160 @@
     }
   ],
   "definitions": {
+    "Aiops": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "image": {
+          "$ref": "#/definitions/Image"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "containerPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "annotations": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "port",
+            "containerPort"
+          ]
+        },
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "create"
+          ]
+        },
+        "rbac": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "create"
+          ]
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "existingClaim": {
+              "type": "string"
+            },
+            "storageClass": {
+              "type": "string"
+            },
+            "accessMode": {
+              "type": "string",
+              "enum": [
+                "ReadWriteOnce",
+                "ReadOnlyMany",
+                "ReadWriteMany",
+                "ReadWriteOncePod"
+              ]
+            },
+            "size": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "accessMode",
+            "size"
+          ]
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "environment": {
+              "type": "string"
+            },
+            "policyMode": {
+              "type": "string",
+              "enum": [
+                "dry-run",
+                "approval-required",
+                "live"
+              ]
+            },
+            "autoRunEnabled": {
+              "type": "boolean"
+            },
+            "autoRunIntervalSeconds": {
+              "type": "integer",
+              "minimum": 30
+            },
+            "prometheusBaseUrl": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "environment",
+            "policyMode",
+            "autoRunEnabled",
+            "autoRunIntervalSeconds",
+            "prometheusBaseUrl"
+          ]
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources"
+        }
+      },
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "service",
+        "serviceAccount",
+        "rbac",
+        "persistence",
+        "config",
+        "resources"
+      ],
+      "title": "AIOps"
+    },
     "Components": {
       "type": "object",
       "additionalProperties": false,
@@ -657,7 +814,8 @@
               "type": "string"
             },
             "automountServiceAccountToken": {
-              "type": "boolean"
+              "type": "boolean",
+              "const": false
             }
           },
           "required": [

@@ -41,7 +41,7 @@ contactPoints:
         settings:
           url: "${AIOPS_GRAFANA_WEBHOOK_URL}"
           httpMethod: POST
-          httpHeaderName1: X-AIOps-Grafana-Secret
-          httpHeaderValue1: "${AIOPS_GRAFANA_WEBHOOK_SECRET}"
+          extraHeaders:
+            X-AIOps-Grafana-Secret: "${AIOPS_GRAFANA_WEBHOOK_SECRET}"
           maxAlerts: 20
         disableResolveMessage: false

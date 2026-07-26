@@ -26,6 +26,18 @@ policies:
     group_interval: 5m
     repeat_interval: 4h
     routes:
+{{ if .Values.aiops.enabled }}
+      # Mirror actionable severities to AIOps, then continue to the existing
+      # Discord route. Separate contact points isolate delivery failures.
+      - receiver: aiops-grafana-events
+        matchers:
+          - severity =~ "warning|critical|SEV1|SEV2"
+        group_wait: 10s
+        group_interval: 2m
+        repeat_interval: 30m
+        continue: true
+{{ end }}
+
       - receiver: discord-alerts
         matchers:
           - alert_type =~ "error_rate|latency|restart"
@@ -128,4 +140,12 @@ policies:
         group_wait: 30s
         group_interval: 5m
         repeat_interval: 1h
+        continue: false
+
+      - receiver: discord-alerts
+        matchers:
+          - severity =~ "SEV1|SEV2"
+        group_wait: 10s
+        group_interval: 2m
+        repeat_interval: 30m
         continue: false

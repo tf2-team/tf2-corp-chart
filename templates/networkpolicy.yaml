@@ -2097,6 +2097,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+{{- if .Values.aiops.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aiops-runtime
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}
     - to:
         - podSelector:
             matchLabels:
@@ -2156,6 +2165,59 @@ spec:
           port: 5000
 {{- if $enforceEgress }}
   egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
+{{- end }}
+
+{{/* AIOps runtime: webhook ingress plus contained Prometheus, API, and HTTPS egress. */}}
+{{- if .Values.aiops.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aiops-runtime
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: aiops-runtime
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [grafana, prometheus]
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- if $enforceEgress }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
     - to:
         - podSelector:
             matchLabels:
