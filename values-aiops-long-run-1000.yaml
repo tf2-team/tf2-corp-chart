@@ -211,11 +211,12 @@ jaeger:
 prometheus:
   server:
     global:
-      scrape_interval: 1s
-      # Prometheus requires scrape_timeout < scrape_interval. Keep a small
-      # margin while preserving the one-second AIOps sample cadence.
-      scrape_timeout: 900ms
-      evaluation_interval: 1s
+      # Keep the long-run profile aligned with the production monitoring
+      # cadence. One-second scraping overloaded the in-cluster Prometheus TSDB
+      # during AIOps collection and caused no-data incidents.
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      evaluation_interval: 30s
     retention: 24h
     persistentVolume:
       # EBS expansion is one-way; see the runbook before enabling this profile.
