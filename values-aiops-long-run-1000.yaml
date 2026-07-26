@@ -65,7 +65,6 @@ components:
           topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: ScheduleAnyway
         - maxSkew: 1
-          minDomains: 2
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
     resources:
