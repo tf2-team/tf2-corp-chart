@@ -1,0 +1,6 @@
+# Opt-in overlay for the internal TF2 AIOps runtime.
+# Publish the aiops image to the chart's default repository before applying.
+aiops:
+  enabled: true
+  # ESO provisions this Secret from techx-corp/production/aiops-grafana-webhook.
+  existingSecret: techx-corp-aiops-grafana-webhook

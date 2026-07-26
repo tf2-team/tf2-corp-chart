@@ -31,10 +31,12 @@ networkPolicy:
 egressProxy:
   enabled: true
   callers:
+    - aiops-runtime
     - checkout
     - grafana
     - product-reviews
     - shopping-copilot
+    - yace
   allowedDomains:
     - api.groq.com:443
     - bedrock-runtime.us-east-1.amazonaws.com:443
@@ -130,6 +132,262 @@ mem0:
     archiveName: fastembed-paraphrase-multilingual-MiniLM-L12-v2-faf4aa422582.tar.gz
     mountPath: /models/fastembed
 components:
+  yace:
+    enabled: true
+    replicas: 1
+    useDefault:
+      env: false
+    serviceAccount:
+      create: true
+      name: yace
+      automountServiceAccountToken: false
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-yace-cloudwatch-read
+    imageOverride:
+      repository: quay.io/prometheuscommunity/yet-another-cloudwatch-exporter
+      tag: v0.67.0
+      digest: sha256:404791bf0b2f6efc0773f1cb65f314e6205cac3521064ce1b9d640f5bb268cfb
+    command:
+      - /bin/yace
+      - --config.file=/etc/yace/config.yml
+      - --listen-address=0.0.0.0:5000
+    ports:
+      - name: metrics
+        value: 5000
+    env:
+      - name: AWS_REGION
+        value: us-east-1
+      - name: AWS_STS_REGIONAL_ENDPOINTS
+        value: regional
+    podAnnotations:
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: prometheus_simple
+      io.opentelemetry.discovery.metrics/config: |
+        endpoint: "http://`endpoint`"
+        metrics_path: /metrics
+        collection_interval: 30s
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 5000
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 24
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 5000
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 5000
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    mountedConfigMaps:
+      - name: yace-config
+        mountPath: /etc/yace
+        data:
+          config.yml: |
+            apiVersion: v1alpha1
+            sts-region: us-east-1
+            static:
+              - name: rds-postgresql
+                regions: [us-east-1]
+                namespace: AWS/RDS
+                dimensions:
+                  - name: DBInstanceIdentifier
+                    value: techx-prod-tf2-postgresql
+                metrics:
+                  - name: CPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: DatabaseConnections
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: FreeableMemory
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: FreeStorageSpace
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: ReadIOPS
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: WriteIOPS
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: ReadLatency
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: WriteLatency
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkReceiveThroughput
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkTransmitThroughput
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - name: elasticache-cart-001
+                regions: [us-east-1]
+                namespace: AWS/ElastiCache
+                dimensions:
+                  - name: CacheClusterId
+                    value: techx-prod-tf2-cart-001
+                  - name: CacheNodeId
+                    value: "0001"
+                metrics:
+                  - name: CPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: EngineCPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkBytesIn
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkBytesOut
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CurrConnections
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: DatabaseMemoryUsagePercentage
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - name: elasticache-cart-002
+                regions: [us-east-1]
+                namespace: AWS/ElastiCache
+                dimensions:
+                  - name: CacheClusterId
+                    value: techx-prod-tf2-cart-002
+                  - name: CacheNodeId
+                    value: "0001"
+                metrics:
+                  - name: CPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: EngineCPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkBytesIn
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkBytesOut
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CurrConnections
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: DatabaseMemoryUsagePercentage
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - name: kafka-broker-1
+                regions: [us-east-1]
+                namespace: AWS/Kafka
+                dimensions:
+                  - name: Cluster Name
+                    value: techx-prod-tf2-msk
+                  - name: Broker ID
+                    value: "1"
+                metrics: &kafka_metrics
+                  - name: CpuUser
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CpuSystem
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CpuIdle
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: MemoryUsed
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: KafkaDataLogsDiskUsed
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: BytesInPerSec
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: BytesOutPerSec
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkRxPackets
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkTxPackets
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - name: kafka-broker-2
+                regions: [us-east-1]
+                namespace: AWS/Kafka
+                dimensions:
+                  - name: Cluster Name
+                    value: techx-prod-tf2-msk
+                  - name: Broker ID
+                    value: "2"
+                metrics: *kafka_metrics
+              - name: kafka-broker-3
+                regions: [us-east-1]
+                namespace: AWS/Kafka
+                dimensions:
+                  - name: Cluster Name
+                    value: techx-prod-tf2-msk
+                  - name: Broker ID
+                    value: "3"
+                metrics: *kafka_metrics
+
   # DIRECTIVE #3: keep at least two Ready instances for every stateless service
   # on the synchronous browse -> cart -> checkout path. HPA services use a
   # production floor of two; fixed-size services declare replicas explicitly.
@@ -566,6 +824,26 @@ opentelemetry-collector:
         secretKeyRef:
           name: techx-corp-msk
           key: KAFKA_SASL_PASSWORD
+    - name: VALKEY_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-valkey-cart
+          key: VALKEY_PASSWORD
+    - name: POSTGRES_MON_USER
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: username
+    - name: POSTGRES_MON_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: password
+    - name: POSTGRES_MON_DB
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: database
   config:
     receivers:
       kafkametrics:
@@ -580,6 +858,22 @@ opentelemetry-collector:
             mechanism: SCRAM-SHA-512
         tls:
           insecure: false
+      redis/valkey-cart:
+        endpoint: master.techx-prod-tf2-cart.2bnsjq.use1.cache.amazonaws.com:6379
+        password: ${env:VALKEY_PASSWORD}
+        collection_interval: 30s
+        tls:
+          insecure: false
+      postgresql/rds:
+        endpoint: techx-prod-tf2-postgresql.cijoii00i7pl.us-east-1.rds.amazonaws.com:5432
+        transport: tcp
+        username: ${env:POSTGRES_MON_USER}
+        password: ${env:POSTGRES_MON_PASSWORD}
+        databases: ["${env:POSTGRES_MON_DB}"]
+        collection_interval: 60s
+        tls:
+          insecure: false
+          insecure_skip_verify: true
     processors:
       resource:
         attributes:
@@ -592,5 +886,9 @@ opentelemetry-collector:
         - key: service.namespace
           value: techx-corp-prod
           action: upsert
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds]
 
-# Change trail: @hungxqt - 2026-07-24 - Raise currency minReplicas to 3 for checkout Convert headroom.
+# Change trail: AIO4 - 2026-07-26 - Collect managed Valkey and RDS PostgreSQL metrics in production.

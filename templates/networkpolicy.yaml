@@ -196,8 +196,10 @@ spec:
       ports:
         - { protocol: TCP, port: 10250 }
         - { protocol: TCP, port: 9096 } # Amazon MSK SASL/SCRAM
-        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals. Delete after test done.
+        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals.
         - { protocol: TCP, port: 6379 }
+        # Managed RDS PostgreSQL stats scrape for AIOps resource signals.
+        - { protocol: TCP, port: 5432 }
 {{- end }}
 
 {{- if (index .Values "metrics-server" "enabled") }}
@@ -2095,6 +2097,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+{{- if .Values.aiops.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aiops-runtime
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}
     - to:
         - podSelector:
             matchLabels:
@@ -2126,6 +2137,97 @@ spec:
 {{- end }}
 
 {{/* ── 30. EGRESS PROXY ────────────────────────────────────────────── */}}
+{{/* YACE: CloudWatch metrics for managed RDS, ElastiCache and MSK. */}}
+{{- if (index .Values.components "yace").enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: yace
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      opentelemetry.io/name: yace
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: otel-collector
+      ports:
+        - protocol: TCP
+          port: 5000
+{{- if $enforceEgress }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
+{{- end }}
+
+{{/* AIOps runtime: webhook ingress plus contained Prometheus, API, and HTTPS egress. */}}
+{{- if .Values.aiops.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aiops-runtime
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: aiops-runtime
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [grafana, prometheus]
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- if $enforceEgress }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    - to:
+        - ipBlock:
+            cidr: {{ $kubernetesApiCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
+{{- end }}
+
 {{- if and $enforceEgress .Values.egressProxy.enabled }}
 ---
 apiVersion: networking.k8s.io/v1

@@ -35,10 +35,12 @@ egressProxy:
   port: 10000
   adminPort: 9901
   callers:
+    - aiops-runtime
     - checkout
     - grafana
     - product-reviews
     - shopping-copilot
+    - yace
   noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana"
   allowedDomains:
     # Envoy matches the CONNECT target, which includes the destination port.
@@ -409,6 +411,48 @@ mem0:
       limits:
         cpu: 500m
         memory: 512Mi
+# AIOps is disabled in the base release until its image has been published.
+# Enable it with values-aiops.yaml. The runtime remains dry-run by default.
+aiops:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  existingSecret: ""
+  service:
+    port: 8080
+    containerPort: 8000
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: /metrics
+      prometheus.io/port: "8080"
+  serviceAccount:
+    create: true
+    name: aiops
+    annotations: {}
+  rbac:
+    create: true
+  persistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: gp2
+    accessMode: ReadWriteOnce
+    size: 2Gi
+  config:
+    environment: techx-corp-prod
+    policyMode: dry-run
+    autoRunEnabled: true
+    autoRunIntervalSeconds: 60
+    prometheusBaseUrl: http://prometheus:9090
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 # SEC-03 least-privilege: any component may declare its OWN serviceAccount to get
 # a distinct, auditable identity instead of sharing the global one above. Fallback
@@ -436,6 +480,13 @@ mem0:
 
 components:
   ## Demo Components are named objects (services) with several properties
+  yace:
+    enabled: false
+    serviceAccount:
+      create: true
+      name: yace
+      automountServiceAccountToken: false
+
   # demoService:
   ## Enable the component (service)
   #   enabled: true

@@ -67,7 +67,11 @@ spec:
       {{- else }}
       serviceAccountName: {{ .name }}
       {{- end }}
-      automountServiceAccountToken: false
+      {{- $automountServiceAccountToken := false }}
+      {{- if and .componentServiceAccount (hasKey .componentServiceAccount "automountServiceAccountToken") }}
+      {{- $automountServiceAccountToken = .componentServiceAccount.automountServiceAccountToken }}
+      {{- end }}
+      automountServiceAccountToken: {{ $automountServiceAccountToken }}
       {{- /* Component schedulingRules keys fully replace defaults when present (including empty maps/lists). */}}
       {{- $schedDefaults := default dict .defaultValues.schedulingRules }}
       {{- $schedOverrides := default dict .schedulingRules }}
