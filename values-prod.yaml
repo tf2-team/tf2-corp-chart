@@ -463,9 +463,9 @@ components:
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    # Idle production should not generate background storefront load. Operators
-    # can scale workers explicitly during a bounded load test window.
-    replicas: 0
+    # Enable the bounded handoff load-test worker pool. Keep Locust users/ramp
+    # controlled from the master UI; workers only provide distributed capacity.
+    replicas: 10
     autoscaling:
       enabled: false
 
