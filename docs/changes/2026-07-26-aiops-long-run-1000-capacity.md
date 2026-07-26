@@ -46,6 +46,9 @@ groups, which Cluster Autoscaler may grow up to their configured limits.
   2GiB JVM heap. A `t4g.large` has only 1930m allocatable CPU, so a 2-core
   request would never schedule. The AIOps ISM policy keeps `otel-logs-*` for
   two days and removes older daily indices.
+- The retention bootstrap is a PostSync hook and waits up to ten minutes for
+  OpenSearch HTTPS to accept requests. It therefore does not fail merely
+  because the StatefulSet is still attaching its volume or starting.
 - Logs have a bounded 1,024-item, 60-second exporter backlog. A failed log
   store can drop logs after that bounded period, but cannot consume all
   Collector memory and create gaps in metrics or traces.

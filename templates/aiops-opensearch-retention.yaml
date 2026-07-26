@@ -15,6 +15,7 @@ data:
     import json
     import os
     import ssl
+    import time
     import urllib.error
     import urllib.request
 
@@ -37,6 +38,32 @@ data:
         with urllib.request.urlopen(req, context=context, timeout=20) as response:
             return response.read().decode()
 
+    def wait_for_opensearch():
+        # The retention hook runs after a chart sync, but a StatefulSet can
+        # still need time to attach its volume and start its HTTP listener.
+        # Do not turn that normal startup interval into a failed Argo sync.
+        deadline = time.monotonic() + 600
+        while True:
+            try:
+                request("GET", "/_cluster/health?timeout=20s")
+                print("OpenSearch is accepting HTTPS requests")
+                return
+            except urllib.error.HTTPError as error:
+                # 503 is a normal transient response while the local node is
+                # recovering its cluster state. Other HTTP errors are real.
+                if error.code != 503:
+                    raise
+                last_error = error
+            except urllib.error.URLError as error:
+                last_error = error
+
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"OpenSearch did not become reachable within 10 minutes: {last_error}"
+                )
+            print(f"OpenSearch is not ready yet ({last_error}); retrying in 5s")
+            time.sleep(5)
+
     policy = {
         "policy": {
             "description": "Temporary AIOps long-run retention for OpenTelemetry logs",
@@ -50,6 +77,8 @@ data:
             "ism_template": [{"index_patterns": ["otel-logs-*"], "priority": 110}],
         }
     }
+    wait_for_opensearch()
+
     try:
         request("GET", f"/_plugins/_ism/policies/{policy_id}")
         print("retention policy already exists")
@@ -71,7 +100,10 @@ kind: Job
 metadata:
   name: {{ $name }}-bootstrap
   annotations:
-    argocd.argoproj.io/hook: Sync
+    # Run only after the StatefulSet and its service have become healthy.
+    # A Sync hook runs in parallel with OpenSearch startup and can fail with
+    # connection-refused before port 9200 begins listening.
+    argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
   labels:
     {{- include "techx-corp.labels" . | nindent 4 }}
