@@ -15,12 +15,37 @@ spec:
   project: linkerd
 
   source:
-    repoURL: https://helm.linkerd.io/stable
+    repoURL: https://helm.linkerd.io/edge
     chart: linkerd2-cni
-    targetRevision: 30.12.2
+    # Matches edge-26.7.2, which supplies CNI v1.7.0-alpha.1.
+    targetRevision: 2026.7.2
     helm:
       releaseName: linkerd-cni
       valuesObject:
+        # Schedule the node networking prerequisite ahead of application Pods.
+        priorityClassName: system-node-critical
+        # Custom image refreshes the projected CNI API token on every node.
+        # Tag is immutable; CI signs and attests the corresponding digest.
+        # Custom image refreshes the projected CNI API token on every node.
+        # Tag is immutable; CI signs and attests the corresponding digest.
+        image:
+          name: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/linkerd-cni
+          version: "sha-ff4d7cf"
+
+        # Linkerd documents this controller for the node-join race where an
+        # application Pod is created before the CNI chain is installed. It
+        # deletes only Pods whose network-validator reports that exact failure,
+        # allowing their controller to recreate them with correct iptables.
+        repairController:
+          enabled: true
+          resources:
+            cpu:
+              request: 10m
+              limit: 100m
+            memory:
+              request: 32Mi
+              limit: 128Mi
+
         resources:
           cpu:
             request: 10m

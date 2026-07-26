@@ -1,0 +1,24 @@
+{
+  "evacuationStartedAt": "2026-07-24T19:19:35.4256282+07:00",
+  "faultEstablishedAt": "2026-07-24T19:20:01.8871860+07:00",
+  "evacuationSeconds": 26.462,
+  "faultNodes": [
+    "ip-10-0-16-62.ec2.internal",
+    "ip-10-0-29-227.ec2.internal"
+  ],
+  "targetPods": [
+    "ad-7df9776d9-j247z",
+    "cart-57b6bb695c-zwlxl",
+    "checkout-dff9cd57b-98s6z",
+    "currency-fb78f676d-h6prm",
+    "email-846dc874cb-584gl",
+    "frontend-c88f786f8-dkg5m",
+    "image-provider-ffb99b8bc-t6w48",
+    "llm-7659dbf7c6-mtsb6",
+    "payment-6cbf6456-pr5qr",
+    "product-catalog-5944c56b56-bssb7",
+    "quote-696b6b9dfc-nhq47",
+    "recommendation-6bd768bcd7-c7jns",
+    "shipping-59c9487779-hqrc9"
+  ]
+}

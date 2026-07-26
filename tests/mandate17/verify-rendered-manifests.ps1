@@ -60,8 +60,13 @@ foreach ($required in @('cniEnabled: true', 'disableHeartBeat: true')) {
 }
 foreach ($required in @(
     'chart: linkerd2-cni',
-    'targetRevision: 30.12.2',
+    # EKS is v1.36; Linkerd stable is not compatible. The CNI Application
+    # therefore tracks the validated edge release used by control-plane GitOps.
+    'targetRevision: 2026.7.2',
     'namespace: linkerd-cni',
+    'priorityClassName: system-node-critical',
+    'repairController:',
+    'enabled: true',
     'request: 10m',
     'limit: 100m',
     'request: 32Mi',
@@ -69,6 +74,17 @@ foreach ($required in @(
 )) {
     if ($linkerdCni -notmatch [regex]::Escape($required)) {
         throw "linkerd-cni Application missing required field: $required"
+    }
+}
+
+$defaultValues = Get-Content -Raw (Join-Path $chartRoot "values.yaml")
+foreach ($required in @(
+    'rootKey: linkerd-cni/DaemonSet/linkerd-cni',
+    '- repair-controller',
+    '- NON_ROOT'
+)) {
+    if ($defaultValues -notmatch [regex]::Escape($required)) {
+        throw "Linkerd repair-controller exception must remain exact: $required"
     }
 }
 
@@ -122,6 +138,17 @@ if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
 }
 
 $fullRendered = Render $true $true $true
+$cartDeployment = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/templates/component.yaml' -and
+    $_ -match '(?m)^kind: Deployment$' -and
+    $_ -match '(?m)^  name: cart$'
+})
+if ($cartDeployment.Count -ne 1) {
+    throw "full state must render one cart Deployment"
+}
+if ($cartDeployment[0] -notmatch '(?m)^\s+config\.linkerd\.io/skip-outbound-ports: 6379,10000,9901$') {
+    throw "cart must bypass Linkerd CNI for the managed Valkey init probe while retaining Envoy admin bypasses"
+}
 $opensearchDatasourcePosition = $fullRendered.IndexOf("01-opensearch.yaml")
 $jaegerDatasourcePosition = $fullRendered.IndexOf("02-jaeger.yaml")
 $defaultDatasourcePosition = $fullRendered.IndexOf("default.yaml")
@@ -285,6 +312,9 @@ $proxyConfig = ($fullRendered -split '(?m)^---\s*$') | Where-Object {
 foreach ($requiredDomain in @(
     'monitoring.us-east-1.amazonaws.com:443',
     'logs.us-east-1.amazonaws.com:443',
+    'dynamodb.us-east-1.amazonaws.com:443',
+    '493499579600.ddb.us-east-1.amazonaws.com:443',
+    '*.ddb.us-east-1.amazonaws.com:443',
     'athena.ap-southeast-1.amazonaws.com:443',
     'glue.ap-southeast-1.amazonaws.com:443',
     'sts.ap-southeast-1.amazonaws.com:443',

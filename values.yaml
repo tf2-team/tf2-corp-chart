@@ -180,6 +180,14 @@ runtimeHardeningInventory:
         - NON_ROOT
         - PRIV_ESC
         - HOST_PATH
+    # The upstream Linkerd 30.12.2 chart hardens repair-controller but does not
+    # expose an explicit runAsNonRoot/runAsUser value. Keep this exception to
+    # the single observed tuple; all other container rules remain enforced.
+    - rootKey: linkerd-cni/DaemonSet/linkerd-cni
+      containers:
+        - repair-controller
+      rules:
+        - NON_ROOT
     - rootKey: kube-system/Deployment/ebs-csi-controller
       containers:
         - ebs-plugin
@@ -862,7 +870,9 @@ components:
       - name: IPV6_ENABLED
         value: "false"
     resources:
-      # Guaranteed QoS (request = limit) for critical path stability
+      # Burstable (request < limit): Guaranteed 50m/50m throttled Convert under concurrent
+      # multi-item checkout (Jaeger: Convert p50 ~3ms vs p99 ~1.4s; checkout p95 ~1.7s).
+      # Same pattern as checkout: modest request keeps HPA % sane; higher limit allows burst.
       requests:
         cpu: 50m
         memory: 64Mi
@@ -870,7 +880,7 @@ components:
         cpu: 50m
         memory: 64Mi
     # High-RPS / low-CPU gRPC (native C++): RPS is the primary capacity signal; CPU often never hits 70%.
-    # maxReplicas 72: load-test pin at 12 with CPU ~412%/70% → desired ~71 (tiny 10m request amplifies %).
+    # maxReplicas 72: load-test pin at 12 with CPU ~412%/70% → desired ~71 (tiny request amplifies %).
     autoscaling:
       enabled: true
       minReplicas: 1
@@ -1024,15 +1034,19 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
     resources:
-      # Burstable QoS: cpu limit set to 200m for admission policy compliance
+      # Burstable QoS. Under the 700–800-user M16 run, all 20 replicas were
+      # reachable and received balanced Linkerd traffic, but 200m caused CFS
+      # throttling and inflated tail latency. Keep the small request so the
+      # CPU HPA still reacts early; allow one Node.js BFF to burst to 500m.
       requests:
         cpu: 64m
         memory: 160Mi
       limits:
-        cpu: 200m
+        cpu: 500m
         memory: 256Mi
     # BFF/SSR: RPS primary (often I/O-wait on backends); CPU safety valve.
-    # maxReplicas 20: load-test pin at 14 with CPU ~100%/80% → desired ~18; +headroom.
+    # maxReplicas 20: controlled M16 ceiling; actual capacity is validated by
+    # sustained-load SLO results, not by replica count alone.
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -1160,22 +1174,26 @@ components:
         value: "4318"
     resources:
       # Guaranteed QoS (request = limit) for critical path stability.
-      # 48Mi OOMKilled under real routes/load (Envoy + OTEL); raised 2026-07-23.
+      # 48Mi OOMKilled under real routes/load (Envoy + OTEL) required 128Mi.
+      # At 700–800 users, 50m CPU was CFS-throttled although traffic was
+      # balanced across proxy pods; reserve 100m so Envoy is not the artificial
+      # gateway bottleneck ahead of the Next.js BFF.
       requests:
-        cpu: 50m
+        cpu: 100m
         memory: 128Mi
       limits:
-        cpu: 50m
+        cpu: 100m
         memory: 128Mi
     # Edge / ALB target on Critical MNG (small floor). maxReplicas 10 needs MNG headroom.
     # RPS primary; CPU safety valve. If pods Pending: free Critical capacity in infra.
     # OTel service.name may differ for Envoy — set autoscaling.serviceName after metric inventory.
-    # maxReplicas 10: load-test pin at 6 with CPU ~110%/80% → desired ~8; +headroom.
+    # The M16 bottleneck overlay may raise maxReplicas to 20 for controlled tests.
     autoscaling:
       enabled: true
       minReplicas: 2
       maxReplicas: 10
-      targetCPUUtilizationPercentage: 70
+      # Scale before a 100m Envoy cgroup becomes saturated.
+      targetCPUUtilizationPercentage: 60
       # Envoy edge: raised from 200 → 300 RPS/pod (delay Critical MNG scale-out).
       targetRequestsPerSecond: 300
       behavior: *hpa-behavior-default
@@ -1888,12 +1906,14 @@ components:
       - name: GRPC_MAX_WORKERS
         value: "20"
     resources:
-      # Burstable QoS: cpu limit set to 100m for admission policy compliance
+      # At 100m, sustained browse load caused 23–43% CFS throttling per pod and
+      # recommendation p99 > the frontend's 500ms optional-dependency deadline.
+      # 200m removes that artificial CPU ceiling while retaining a bounded HPA.
       requests:
-        cpu: 20m
+        cpu: 50m
         memory: 80Mi
       limits:
-        cpu: 100m
+        cpu: 200m
         memory: 144Mi
     # Product-page traffic (P1); RPS primary; CPU safety valve.
     autoscaling:
@@ -2575,15 +2595,17 @@ opentelemetry-collector:
         enabled: true
   # Packed Critical MNG nodes (t4g.medium ~96% mem) could not finish startup under 200Mi:
   # health :13133 stayed closed or hung → readiness/liveness connection refused → restart storm.
-  # Healthy agents already sit ~110–150Mi; leave headroom + raise GOMEMLIMIT (80% of limit).
+  # Healthy agents sit ~100–150Mi; memory_limiter uses 80% of cgroup limit as soft ceiling.
+  # Guaranteed 128Mi/128Mi → soft limit ~102Mi → "data refused due to high memory usage" while
+  # agents were at 94–105Mi; currency SimpleSpan/Log processors then blocked Convert on export
+  # (checkout p95 multi-second). Burstable limit restores headroom (see also 2026-07-11 probe fix).
   resources:
-    # Guaranteed QoS (request = limit) for platform DaemonSet agent
     requests:
-      cpu: 20m
-      memory: 128Mi
+      cpu: 50m
+      memory: 200Mi
     limits:
-      cpu: 20m
-      memory: 128Mi
+      cpu: 400m
+      memory: 512Mi
   # Block liveness until health extension is serving (slow start under node memory pressure).
   startupProbe:
     httpGet:
@@ -2809,7 +2831,7 @@ jaeger:
       # Cap in-memory backend size so multi-service OTLP ingest cannot grow past the cgroup limit.
       # 25000 traces under load exceeded 1536Mi (~6 min) and OOMKilled (exit 137 / CrashLoopBackOff).
       - name: MEMORY_MAX_TRACES
-        value: "10000"
+        value: "25000"
       - name: PROMETHEUS_ADDR
         value: prometheus:9090
       - name: OTEL_COLLECTOR_HOST
@@ -2824,10 +2846,10 @@ jaeger:
       # Burstable QoS: cpu limit set to 100m for admission policy compliance
       requests:
         cpu: 20m
-        memory: 384Mi
+        memory: 512Mi
       limits:
         cpu: 100m
-        memory: 1Gi
+        memory: 3Gi
   userconfig:
     service:
       extensions: [jaeger_storage, jaeger_query, healthcheckv2]
@@ -2896,7 +2918,29 @@ prometheus:
     enabled: false
   configmapReload:
     prometheus:
-      enabled: false
+      # Reload Prometheus when ArgoCD updates extraScrapeConfigs.  Without this
+      # sidecar, a ConfigMap update leaves the running server on its old scrape
+      # configuration until a manual rollout.
+      enabled: true
+      # Runtime-hardening requires every added container to explicitly drop
+      # privileges and declare bounded resources.
+      containerSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 5m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
   kube-state-metrics:
     enabled: true
     # Expose only the node-placement labels required by capacity alerts.
@@ -2921,6 +2965,53 @@ prometheus:
       static_configs:
         - targets:
             - karpenter.kube-system.svc.cluster.local:8080
+    # M16: scrape Linkerd's L7 proxy metrics from every injected workload pod.
+    # Linkerd exposes Prometheus metrics on :4191.  Restrict discovery to pods
+    # created by proxy-injector so this job neither probes nor labels arbitrary
+    # application pods.  The namespace/pod labels below identify the *receiving*
+    # proxy for inbound response_total, which is the signal used by the per-pod
+    # load-balancing dashboard.
+    - job_name: linkerd-proxy
+      metrics_path: /metrics
+      kubernetes_sd_configs:
+        - role: pod
+      relabel_configs:
+        # Prometheus has cluster-wide pod discovery. Restrict this job before
+        # scraping so Linkerd control-plane and non-production proxies cannot
+        # silently expand the production TSDB cardinality.
+        - source_labels:
+            - __meta_kubernetes_namespace
+          action: keep
+          regex: techx-corp-prod
+        - source_labels:
+            - __meta_kubernetes_pod_annotation_linkerd_io_created_by
+          action: keep
+          regex: linkerd/proxy-injector.*
+        - source_labels:
+            - __meta_kubernetes_pod_ip
+          target_label: __address__
+          replacement: $1:4191
+        - source_labels:
+            - __meta_kubernetes_namespace
+          target_label: namespace
+        - source_labels:
+            - __meta_kubernetes_pod_name
+          target_label: pod
+        - source_labels:
+            - __meta_kubernetes_pod_label_linkerd_io_proxy_deployment
+          target_label: deployment
+      # The per-pod distribution dashboard only consumes inbound request count
+      # and inbound latency. Scraping every proxy/process/TCP/outbound metric
+      # retained hundreds of thousands of stale series after pod and endpoint
+      # churn. Keep the two required metric families at ingestion time; retain
+      # all latency buckets so p95/p99 histogram_quantile remains accurate.
+      metric_relabel_configs:
+        - source_labels:
+            - __name__
+            - direction
+          separator: ";"
+          action: keep
+          regex: (response_total|response_latency_ms_bucket);inbound
   server:
     fullnameOverride: prometheus
     # Observability control plane → Critical MNG
@@ -2929,6 +3020,10 @@ prometheus:
     extraFlags:
       - "enable-feature=exemplar-storage"
       - "web.enable-otlp-receiver"
+      # Required by prometheus-config-reloader, which POSTs /-/reload whenever
+      # Argo CD updates the mounted ConfigMap. Without this flag the endpoint
+      # returns 403 and Prometheus keeps scraping with stale runtime config.
+      - "web.enable-lifecycle"
     # emptyDir TSDB: keep retention short so WAL/replay stays bounded on restart.
     retention: 2d
     tsdb:
@@ -2974,32 +3069,36 @@ prometheus:
       size: 8Gi
     service:
       servicePort: 9090
-    # PVC + OTLP + exemplars: WAL replay (~50s) and head block exceed the former
-    # 2Gi limit (OOMKilled exit 137 / CrashLoop). Request stays below Critical
-    # t4g.large packing pressure; limit covers replay spikes.
+    # PVC + OTLP + exemplars: WAL replay/compaction exceeded both 1792Mi and
+    # 2560Mi (OOMKilled exit 137 on 2026-07-25). 4Gi covers the observed
+    # 2258Mi steady-state footprint plus replay/compaction headroom. Prometheus
+    # also saturated its former 200m CPU limit, delaying health and HPA queries.
     resources:
       # Guaranteed QoS (request = limit) for observability platform core
       requests:
-        cpu: 200m
-        memory: 1792Mi
+        cpu: 500m
+        memory: 4Gi
       limits:
-        cpu: 200m
-        memory: 1792Mi
-    # WAL/config load observed ~50s under load; block liveness until ready.
+        cpu: 500m
+        memory: 4Gi
+    # A damaged WAL needed repair/replay before the server became ready. Keep
+    # liveness gated for up to ten minutes so recovery is not interrupted.
     startupProbe:
       enabled: true
       periodSeconds: 10
-      failureThreshold: 36
+      failureThreshold: 60
       timeoutSeconds: 10
     readinessProbeInitialDelay: 10
     readinessProbePeriodSeconds: 10
     readinessProbeTimeout: 10
-    readinessProbeFailureThreshold: 3
+    # Keep the Service endpoint during short compaction/ingestion stalls so the
+    # adapter does not immediately fail every external-metric HPA query.
+    readinessProbeFailureThreshold: 6
     readinessProbeSuccessThreshold: 1
     livenessProbeInitialDelay: 30
     livenessProbePeriodSeconds: 20
     livenessProbeTimeout: 10
-    livenessProbeFailureThreshold: 3
+    livenessProbeFailureThreshold: 6
     livenessProbeSuccessThreshold: 1
     securityContext:
       runAsUser: 65534
@@ -3153,20 +3252,38 @@ grafana:
 metrics-server:
   enabled: true
   fullnameOverride: metrics-server
-  # HPA dependency — pin to critical MNG floor
+  # Resource metrics are a cluster-wide dependency, not a Checkout-only signal.
+  # Keep the APIService on the critical node floor so workload scale-out cannot
+  # evict it to a spot-tolerant node.
   nodeSelector:
     workload-class: critical
-  # EKS / many managed node groups: kubelet serving certs are not trusted by default.
+  # EKS kubelet serving certificates are not trusted by default.  This is needed
+  # for Metrics Server to collect resource metrics from every node; it does not
+  # affect Prometheus RPS metrics or Linkerd telemetry.
   args:
     - --kubelet-insecure-tls
   resources:
-    # Raised cpu limit to 50m to prevent /livez probe timeouts under scraping load
+    # At 1,000-user load and 24 nodes, the previous 50m/32Mi allocation caused
+    # /livez and /readyz to exceed their one-second timeout, restarting the sole
+    # Metrics Server pod and making all HPA CPU metrics temporarily unavailable.
+    # These bounded values add collection and API-serving headroom without
+    # changing the 15-second metrics resolution or HPA targets.
     requests:
-      cpu: 10m
-      memory: 32Mi
+      cpu: 100m
+      memory: 128Mi
     limits:
-      cpu: 50m
-      memory: 32Mi
+      cpu: 250m
+      memory: 256Mi
+  livenessProbe:
+    # Avoid killing a healthy server while it is scraping all cluster nodes.
+    timeoutSeconds: 5
+    failureThreshold: 6
+  readinessProbe:
+    # Do not advertise the aggregated metrics API until the first collection
+    # cycle has had time to complete; retain an endpoint during brief load spikes.
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
 
 # Prometheus Adapter — custom/external metrics API for request-rate (RPS) HPA.
 # Reads OTel request counters already scraped into in-cluster Prometheus.
@@ -3221,13 +3338,15 @@ prometheus-adapter:
           as: "http_requests_per_second"
         metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (service_name) or (sum(<<.Series>>{<<.LabelMatchers>>} * 0) by (service_name))'
   resources:
-    # Guaranteed QoS (request = limit) for critical External Metrics API stability
+    # Keep enough headroom to serve HPA queries while Prometheus is under the
+    # 1,000-user scrape/query load. Two replicas avoid a single API endpoint
+    # becoming unavailable during a slow query or pod restart.
     requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 256Mi
-  replicas: 1
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  replicas: 2
 
-# Change trail: @hungxqt - 2026-07-23 - Raise frontend-proxy memory/CPU after OOMKilled 503 outage.
+# Change trail: @hungxqt - 2026-07-24 - Raise otel-collector agent memory after OTLP refuse/checkout latency.

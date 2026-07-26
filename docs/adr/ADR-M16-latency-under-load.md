@@ -3,9 +3,9 @@
 | Trường            | Nội dung                                                                                        |
 | ----------------- | ----------------------------------------------------------------------------------------------- |
 | **Mandate**       | MANDATE-16 — Latency Under Load                                                                 |
-| **Trạng thái**    | 🔄 **Đang thực hiện** — Giải pháp đã triển khai, đang xác nhận kết quả trên production         |
-| **Tác giả**       | Nguyễn Đức Chinh ([@chinhgithub04](https://github.com/chinhgithub04)) — CDO-03 / TF 2 |
-| **Ngày**          | 2026-07-24                                                                                      |
+| **Trạng thái**    | **Đã chấp nhận**                             |
+| **Team**          | CDO-03 / TF 2 |
+| **Ngày**          | 2026-07-26                                                                                      |
 
 ---
 
@@ -86,7 +86,6 @@ Cluster đang chạy **2 replica** cho service `currency`. Đo request rate, CPU
 
 - `hth74`: **62–96%** tổng traffic (đỉnh điểm: 95.9%).
 - `5gwwk`: chỉ **4–38%**.
-- Tỷ lệ kỳ vọng nếu cân bằng: ~50%/50%.
 
 **Tail latency theo pod:**
 
@@ -162,124 +161,252 @@ gRPC dùng **HTTP/2 multiplexing** — nhiều request chia sẻ 1 TCP connectio
 
 ---
 
-## 3. Giải pháp: Linkerd Service Mesh
+## 3. Quyết định và thay đổi tối ưu
 
-### 3.1 Lý do chọn Linkerd
+### 3.1 Chọn Linkerd để loại bỏ gRPC connection pinning
 
-| Tiêu chí                   | Headless Service             | Linkerd Service Mesh              |
-| -------------------------- | ---------------------------- | --------------------------------- |
-| **Phạm vi**                | Phải cấu hình từng service   | Inject 1 lần → áp dụng 18 service |
-| **Thay đổi code**          | Sửa env var + client config  | **Không cần đụng code**            |
-| **gRPC Load Balancing**    | L4 DNS-level                 | **L7 per-request** (đúng cấp)     |
-| **Các tính năng thêm**     | Không có                     | mTLS, observability, retries       |
-| **Rủi ro khi thay đổi**    | Cao (sửa từng service)       | Thấp (non-invasive sidecar)        |
+| Tiêu chí | Headless Service + `round_robin` | Linkerd | Istio |
+| --- | --- | --- | --- |
+| **Phạm vi áp dụng** | Cấu hình và kiểm thử từng client/backend | Namespace injection, áp dụng nhất quán cho workload đã mesh | Namespace injection, áp dụng nhất quán cho workload đã mesh |
+| **Thay đổi ứng dụng** | Sửa DNS scheme, resolver và LB policy trong client | Không sửa client gRPC | Không sửa client gRPC |
+| **Cấp cân bằng tải** | Endpoint DNS/client-side; phụ thuộc cấu hình từng client | L7, nhận biết HTTP/2/gRPC và chọn endpoint thích nghi | L7, nhận biết HTTP/2/gRPC và có traffic management phong phú |
+| **Tính năng vận hành** | Không có mesh telemetry hay mTLS | mTLS và metrics mesh; retry chỉ bật khi cấu hình policy | mTLS, telemetry, traffic policy/retry/routing phong phú |
+| **Độ phức tạp vận hành** | Thấp ban đầu, nhưng nhân lên theo số service/client | Nhẹ, phù hợp mục tiêu xử lý load-balancing | Cao hơn: control plane, CRD và policy surface lớn hơn |
+| **Phù hợp với M16** | Không bao phủ HTTP/1.1 keep-alive và dễ sót client | **Có — xử lý đúng nguyên nhân với footprint vận hành nhỏ** | Có, nhưng vượt nhu cầu hiện tại và tăng chi phí vận hành |
 
-Linkerd inject sidecar proxy `linkerd-proxy` vào mỗi pod. Proxy này hiểu gRPC (HTTP/2) và thực hiện **L7 per-request load balancing** — mỗi gRPC call được gửi tới pod ít tải nhất, không phụ thuộc vào connection hiện tại.
+Linkerd inject sidecar proxy `linkerd-proxy` vào mỗi pod. Proxy này hiểu gRPC (HTTP/2) và thực hiện **L7 per-request load balancing**. Linkerd dùng lựa chọn endpoint thích nghi (P2C/EWMA), ưu tiên endpoint có latency thấp hơn tại thời điểm đó; vì vậy mục tiêu là cả replica đều nhận request và tail latency ổn định.
 
-### 3.2 Kiến trúc triển khai
+### 3.2 Song song hóa hai nhánh chuẩn bị checkout độc lập
 
-Linkerd được triển khai hoàn toàn qua **ArgoCD GitOps**, theo đúng mô hình GitOps hiện tại của hệ thống:
-
-```
-gitops/
-└── linkerd/
-    ├── README.md                        ← Hướng dẫn + ADR reference
-    ├── appproject.yaml                  ← AppProject "linkerd" (sync-wave: -1)
-    └── applications/
-        ├── linkerd-crds.yaml            ← Cài CRDs (sync-wave: 0)
-        └── linkerd-control-plane.yaml   ← Cài control plane (sync-wave: 1)
-
-gitops/clusters/prod/
-└── linkerd-application.yaml            ← Đăng ký vào root app-of-apps
-```
-
-**Sync order được đảm bảo bởi sync-wave annotations:**
-
-```
-wave -1 → AppProject "linkerd" (phải tạo trước để Applications tham chiếu)
-wave  0 → linkerd-crds (CRDs phải tồn tại trước control plane)
-wave  1 → linkerd-control-plane (proxy-injector, destination, identity)
-```
-
-### 3.3 Cấu hình Linkerd Control Plane
-
-```yaml
-# gitops/linkerd/applications/linkerd-control-plane.yaml (trích)
-identity:
-  issuer:
-    scheme: kubernetes.io/tls   # Đọc issuer cert từ K8s Secret
-proxy:
-  resources:
-    cpu:    { request: 10m,  limit: 100m  }
-    memory: { request: 20Mi, limit: 250Mi }
-proxyInjector:
-  failurePolicy: Ignore   # Không block pod creation nếu injector tạm thời down
-```
-
-Resource overhead mỗi pod: **10m CPU / 20Mi RAM** — phù hợp với budget hiện tại (BUDGET.md).
-
-### 3.4 Kích hoạt proxy injection
-
-Namespace `techx-corp-prod` được annotate qua Helm template (`templates/linkerd-namespace-inject.yaml`), đảm bảo GitOps owns metadata:
-
-```yaml
-# templates/linkerd-namespace-inject.yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: techx-corp-prod
-  annotations:
-    linkerd.io/inject: enabled
-    config.linkerd.io/proxy-cpu-request:    "10m"
-    config.linkerd.io/proxy-cpu-limit:      "100m"
-    config.linkerd.io/proxy-memory-request: "20Mi"
-    config.linkerd.io/proxy-memory-limit:   "250Mi"
-```
-
-### 3.5 Thay đổi code checkout
-
-Code `checkout/main.go` được revert về trạng thái sạch — không cần `dns:///` scheme hay `round_robin` serviceConfig nữa vì Linkerd proxy sẽ intercept và handle L7 LB:
+Code gốc thực hiện tuần tự hai công việc độc lập sau khi lấy cart: chuẩn bị order item, rồi mới lấy shipping quote.
 
 ```go
-// Sau khi sửa — Linkerd proxy handle load balancing
-func mustCreateClient(svcAddr string) *grpc.ClientConn {
-    // Linkerd sidecar proxy intercepts this connection and performs
-    // L7 (per-request) load balancing across all destination pod replicas automatically.
-    c, err := grpc.NewClient(svcAddr,
-        grpc.WithTransportCredentials(insecure.NewCredentials()),
-        grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-    )
-    return c
-}
+// Trước: tuần tự.
+orderItems, err := cs.prepOrderItems(ctx, cartItems, userCurrency)
+shippingUSD, err := cs.quoteShipping(ctx, address, cartItems)
 ```
 
-Ngoài ra, các lời gọi downstream trong checkout đã được **song song hóa bằng `errgroup`** (commit `be9c187`) — giảm thêm latency cộng dồn khi gọi nhiều service đồng thời.
+`prepOrderItems` chỉ cần `cartItems` và `userCurrency`; `quoteShipping` chỉ cần `address` và `cartItems`. Hai lời gọi không có dependency dữ liệu, nên được chuyển sang chạy đồng thời bằng `errgroup`.
+
+```go
+// Sau: chạy đồng thời.
+var (
+    orderItems  []*pb.OrderItem
+    shippingUSD *pb.Money
+)
+
+g, gctx := errgroup.WithContext(ctx)
+g.Go(func() error {
+    var err error
+    orderItems, err = cs.prepOrderItems(gctx, cartItems, userCurrency)
+    if err != nil {
+        return fmt.Errorf("failed to prepare order: %+v", err)
+    }
+    return nil
+})
+g.Go(func() error {
+    var err error
+    shippingUSD, err = cs.quoteShipping(gctx, address, cartItems)
+    if err != nil {
+        return fmt.Errorf("shipping quote failure: %+v", err)
+    }
+    return nil
+})
+if err := g.Wait(); err != nil {
+    return out, err
+}
+
+shippingPrice, err := cs.convertCurrency(ctx, shippingUSD, userCurrency)
+```
+
+`g.Wait()` đồng bộ hai kết quả trước khi quy đổi `shippingUSD`; `convertShipping` vẫn chạy sau đó vì phụ thuộc shipping quote. Critical path vì vậy đổi từ `prepOrderItems + quoteShipping` thành `max(prepOrderItems, quoteShipping)`. Khi một nhánh lỗi, `errgroup` hủy context của nhánh còn lại. Thay đổi giữ nguyên kết quả nghiệp vụ nhưng giảm thời gian chờ không cần thiết trên checkout path.
 
 ---
 
-## 4. Kết quả
+## 4. Kết quả xác nhận trên production
 
-> **Trạng thái: 🔄 Đang xác nhận trên production.**
->
-> Linkerd đang trong quá trình deploy. Phần này sẽ được cập nhật sau khi chạy lại load test 200 users và có số liệu so sánh đầy đủ.
+### 4.1 Benchmark aggregate — 200 Locust users, cửa sổ 30 phút
 
-### 4.1 Điều kiện xác nhận thành công
+Load test duy trì ổn định trong 30 phút. Cả ba luồng nghiệp vụ đạt **100% success rate**. Checkout — SLO bị vi phạm trước thay đổi — hiện đạt p95/p99 dưới budget trong toàn bộ cửa sổ quan sát mà không thêm bất kỳ replica hay node nào.
 
-Bản sửa được coi là thành công khi đồng thời đạt **tất cả** các điều kiện sau, tại cùng mức tải 200 Locust users:
+| Chỉ số | Last | Max | Mean | Budget SLO | Kết quả |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Total system throughput | 218 req/s | — | — | — | Thông lượng tổng duy trì |
+| Browse RPS | 40.0 req/s | 40.9 req/s | 39.5 req/s | — | Ổn định |
+| Cart RPS | 15.3 req/s | 16.1 req/s | 14.8 req/s | — | Ổn định |
+| Checkout RPS | 5.07 req/s | 5.20 req/s | 4.86 req/s | — | Ổn định |
+| Checkout end-to-end p95 | 96.9 ms | 125 ms | 106 ms | ≤ 500 ms | ✅ Đạt |
+| Checkout end-to-end p99 | 193 ms | 324 ms | 223 ms | ≤ 1 s | ✅ Đạt |
+| Browse p95 / p99 | 9.89 / 50.0 ms | 16.9 / 73.5 ms | 10.7 / 59.5 ms | ≤ 300 / 700 ms | ✅ Đạt |
+| Cart p95 / p99 | 11.1 / 99.2 ms | 28.3 / 139 ms | 14.4 / 107 ms | ≤ 300 / 700 ms | ✅ Đạt |
 
-| Điều kiện                                         | Ngưỡng mục tiêu          |
-| ------------------------------------------------- | ------------------------ |
-| Tỷ lệ traffic Currency pod 1 / pod 2              | Gần 50% / 50%            |
-| Chênh lệch CPU giữa 2 Currency replica            | Giảm rõ rệt so với trước |
-| Checkout p95                                      | ≤ 500ms (đạt SLO)        |
-| Checkout p99                                      | ≤ 1s (đạt SLO)           |
-| Tổng tài nguyên cluster (node count, instance type) | Không tăng               |
+![Grafana benchmark 200 users sau khi bật Linkerd](../adr/image/mandate16/after/grafana-m16-200-users-30m.png)
 
-### 4.2 Kết quả dự kiến
+So với baseline Checkout p95 **3.22–4.90 s** và p99 **5.88–9.65 s**, kết quả hiện tại lần lượt là p95 trung bình **106 ms** và p99 trung bình **223 ms**. Đây là mức giảm tail latency xấp xỉ một đến hai bậc độ lớn, trong khi giữ nguyên mức tải kiểm thử.
 
-- **Tải cân bằng hơn:** Linkerd proxy intercept mỗi gRPC request và gửi tới pod ít tải nhất (EWMA algorithm).
-- **Checkout p95/p99 giảm:** Khi currency không còn bị dồn vào 1 pod, latency mỗi lời gọi `CurrencyService/Convert` giảm xuống, kéo theo checkout end-to-end giảm.
-- **Áp dụng cho toàn hệ thống:** frontend → product-catalog, frontend → recommendation, frontend → cart cũng được hưởng lợi mà không cần thêm config.
+### 4.2 Phân phối request Currency và latency L7
+
+Dashboard Linkerd `response_total` và `response_latency_ms_bucket` xác nhận cả hai Currency pod đều nhận request liên tục. Ảnh sau ghi lại cùng một cửa sổ 15 phút cho **RPS, traffic share, inbound p95, inbound p99 và CPU** theo từng pod; do đó có thể đối chiếu trực tiếp với năm ảnh baseline ở mục 2.2.
+
+| Currency pod | Mean RPS | Mean traffic share | Mean p95 | Mean p99 | Mean CPU |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `currency-ccb8cf44f-lxrmk` | 2.49 req/s | 32.0% | 4.66 ms | 30.8 ms | 6.28m cores |
+| `currency-ccb8cf44f-qhpjf` | 5.29 req/s | 68.0% | 2.92 ms | 5.69 ms | 8.71m cores |
+
+![Currency theo pod sau Linkerd: RPS, traffic share, p95, p99 và CPU](../adr/image/mandate16/after/currency-traffic-and-latency.png)
+
+*Cùng một dashboard per-pod, cửa sổ 15 phút: panel trên cùng là RPS và traffic share; hàng giữa là Linkerd inbound p95/p99; panel cuối là CPU theo pod.*
+
+Tỷ lệ 32/68 là phản ứng của thuật toán adaptive trước chênh lệch endpoint latency, nhưng không có nghĩa hai replica đang có hiệu năng đồng nhất. Đo trực tiếp từ **từng** Checkout pod đến **từng** Currency endpoint trong 15 phút cho thấy `lxrmk` có outbound p95 7.4–8.2 ms và p99 30.6–63.3 ms, trong khi `qhpjf` tương ứng khoảng 3.45 ms và 6.16 ms. Vì vậy Linkerd ưu tiên `qhpjf` khoảng 2/3 request.
+
+Đây vẫn khác bản chất với connection pinning trước đó: cả hai Checkout pod đều gửi request tới cả hai Currency endpoint (không có source nào bị giữ tại một backend), và không còn tail latency hàng giây. CPU-throttling period ratio của `lxrmk` chỉ cao hơn nhẹ (0.71% so với 0.54%), node không có CPU/memory pressure và không có pod restart; nguyên nhân của chênh lệch endpoint latency cần được theo dõi riêng, không quy kết khi chưa có profile ứng dụng.
+
+### 4.3 Đối chiếu request-level bằng Jaeger
+
+Hai trace sau thay đổi xác nhận các lời gọi `CurrencyService/Convert` đều chỉ mất vài millisecond:
+
+| Trace | Tổng duration | Currency client spans | Currency server spans |
+| --- | ---: | --- | --- |
+| `user_checkout_single` / `6ed734c` | 80.78 ms | 3.54 ms, 2.85 ms | 1.16 ms, 0.893 ms |
+| `user_checkout_multi` / `8f39be0` | 193.4 ms | 5.40 ms, 10.0 ms, 7.04 ms, 58.6 ms, 0.276 ms | 1.66 ms, 6.16 ms, 3.58 ms, 2.54 ms, 1.09 ms |
+
+![Jaeger checkout single sau Linkerd](../adr/image/mandate16/after/jaeger-checkout-single.png)
+
+*Trace `user_checkout_single` (`6ed734c`), 80.78 ms tổng: hai lời gọi `CurrencyService/Convert` ở client mất 3.54 ms và 2.85 ms; server Currency xử lý lần lượt 1.16 ms và 0.893 ms.*
+
+![Jaeger checkout multi sau Linkerd](../adr/image/mandate16/after/jaeger-checkout-multi.png)
+
+*Trace `user_checkout_multi` (`8f39be0`), 193.4 ms tổng: năm lời gọi Currency có server span 1.09–6.16 ms. Một client span 58.6 ms vẫn ở mức millisecond, không còn các span Currency 1–5 giây như baseline.*
+
+*Hai trace Jaeger là bằng chứng theo request; benchmark aggregate ở mục 4.1 là bằng chứng SLO chính thức.*
+
+### 4.4 Hiệu quả tài nguyên
+
+Benchmark sau thay đổi vẫn dùng **9 EC2 nodes** và có 69 workload pods. CPU sử dụng toàn cluster trung bình 1.23 cores (max 1.28); RAM working set trung bình 12.5 GiB (max 12.9 GiB). Vì node count và instance type không tăng, kết quả không đạt được bằng cách scale hạ tầng mà bằng cách loại bỏ gRPC connection pinning.
+
+### 4.5 Các tối ưu khác
+
+Khi nâng thử nghiệm lên **700 users**, frontend bị CPU throttling và bắt đầu tạo hàng chờ. Hai trace dưới đây cho thấy request dành phần lớn thời gian ở frontend/frontend-proxy, trong khi các dependency phía sau vẫn xử lý nhanh.
+
+![Jaeger checkout qua frontend dưới tải cao](../adr/image/mandate16/before/1.png)
+
+*Trace `user_checkout_multi` (`356d811`), tổng 3.53s: frontend-proxy mất khoảng 1.21s, handler frontend 805.5ms và RPC từ frontend sang Checkout 691.0ms; Checkout server chỉ xử lý khoảng 400.2ms. Phần thời gian thừa nằm ở frontend trước khi Checkout hoàn thành.*
+
+![Jaeger browse và cart qua frontend dưới tải cao](../adr/image/mandate16/before/2.png)
+
+*Trace `user_add_to_cart` (`9d782db`), tổng 1.35s: nhánh đọc product qua frontend-proxy mất khoảng 276ms nhưng handler chỉ 7.97ms. Nhánh thêm cart có handler frontend 574.1ms và RPC Cart `AddItem` 480.1ms, trong khi Valkey chỉ vài trăm microsecond. Frontend là nơi request phải chờ; Valkey không phải điểm nghẽn.*
+
+#### Nguyên nhân
+
+`pages/_app.tsx` khai báo `MyApp.getInitialProps` nhưng không bổ sung dữ liệu cho page. Với Next.js, một trang không cần dữ liệu động có thể được static optimization: HTML được tạo sẵn từ build time và request chỉ việc trả file HTML.
+
+```text
+User request /
+      |
+      v
+File HTML có sẵn
+```
+
+Nhưng khi custom App có `MyApp.getInitialProps()`, Next.js phải giả định app cần chạy server mỗi request, kể cả homepage `/` không cần dữ liệu động:
+
+```text
+User request /
+      |
+      v
+Next server render HTML
+      |
+      v
+Response
+```
+
+Kết quả là frontend tốn CPU hơn và chậm hơn khi nhiều người cùng truy cập.
+
+```tsx
+// Trước: custom App có getInitialProps nhưng không trả page props bổ sung.
+MyApp.getInitialProps = async (appContext: AppContext) => {
+  const appProps = await App.getInitialProps(appContext);
+
+  return { ...appProps };
+};
+```
+
+#### Giải pháp
+
+Xóa hoàn toàn `MyApp.getInitialProps`; không thay bằng hook tương đương. Các page đủ điều kiện trở lại cho static optimization của Next.js, thay vì bị ép vào server-rendering path bởi custom App.
+
+```tsx
+// Sau: custom App chỉ giữ provider tree; không còn getInitialProps.
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <ThemeProvider theme={Theme}>
+      <OpenFeatureProvider>
+        <QueryClientProvider client={queryClient}>
+          <CurrencyProvider>
+            <CartProvider>
+              <Component {...pageProps} />
+            </CartProvider>
+          </CurrencyProvider>
+        </QueryClientProvider>
+      </OpenFeatureProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+`InstrumentationMiddleware` cũng dùng toàn bộ URL động làm label `target` của metric. Với mỗi product ID, Prometheus nhận một time series riêng, ví dụ `/api/products/OLJCESPC7Z/index` và `/api/products/0PUK6V6EV0/index`. Cardinality tăng theo số sản phẩm/request làm tăng allocation, scrape/ingest và memory pressure không cần thiết ở đường observability của frontend.
+
+```ts
+// Trước: URL động trở thành một metric label riêng cho mỗi product ID.
+const { method, url = '' } = request;
+const [target] = url.split('?');
+
+// ...
+requestCounter.add(1, { method, target, status: httpStatus });
+```
+
+Giải pháp là chuẩn hóa dynamic URL trước khi ghi metric. Product ID không còn là label value, nhưng operation vẫn phân biệt được endpoint product, review, average-score và AI assistant.
+
+```ts
+// Sau: giữ số lượng series có giới hạn thay vì một series/product ID.
+export const normalizeMetricTarget = (target: string): string => {
+  if (/^\/api\/products\/[^/]+\/index$/.test(target)) {
+    return '/api/products/{productId}/index';
+  }
+  if (/^\/api\/product-reviews\/[^/]+\/index$/.test(target)) {
+    return '/api/product-reviews/{productId}/index';
+  }
+  return target;
+};
+
+const { method, url = '' } = request;
+const [rawTarget] = url.split('?');
+const target = normalizeMetricTarget(rawTarget);
+requestCounter.add(1, { method, target, status: httpStatus });
+```
+
+Phần normalize thực tế cũng bao phủ `product-reviews-avg-score` và `product-ask-ai-assistant`. Đây không phải thay đổi nghiệp vụ hay bỏ metric: frontend vẫn ghi request counter, nhưng metric bounded-cardinality hơn nên giảm chi phí telemetry dưới tải dài.
+
+```ts
+// Các route product còn lại cũng được chuẩn hóa trong implementation.
+if (/^\/api\/product-reviews-avg-score\/[^/]+\/index$/.test(target)) {
+  return '/api/product-reviews-avg-score/{productId}/index';
+}
+if (/^\/api\/product-ask-ai-assistant\/[^/]+\/index$/.test(target)) {
+  return '/api/product-ask-ai-assistant/{productId}/index';
+}
+```
+
+#### Bằng chứng sau cải thiện
+
+Sau khi deploy frontend mới, hai flow tương ứng đều giảm thời gian xử lý rõ rệt.
+
+![Jaeger checkout qua frontend sau cải thiện](../adr/image/mandate16/after/1.png)
+
+*Trace `user_checkout_multi` (`62f8cd3`), tổng 650.07ms. frontend-proxy còn 191.02ms, handler frontend 184.48ms và Checkout RPC 163.29ms; so với trace trước là 3.53s, 1.21s và 805.5ms tương ứng.*
+
+![Jaeger browse và cart qua frontend sau cải thiện](../adr/image/mandate16/after/2.png)
+
+*Trace `user_add_to_cart` (`23d595f`), tổng 111.02ms. Nhánh đọc product qua frontend-proxy 23.88ms; nhánh thêm cart qua frontend-proxy 71.01ms, handler frontend 15.25ms và Cart `AddItem` 12.53ms. Trace trước cùng flow mất 1.35s, với frontend handler 574.1ms và Cart `AddItem` 480.1ms.*
 
 ---
 
@@ -290,7 +417,7 @@ Bản sửa được coi là thành công khi đồng thời đạt **tất cả
 Tạo `ClusterIP: None` service cho từng backend (currency-headless, cart-headless, ...), cấu hình DNS resolver `dns:///` và `round_robin` trong gRPC client.
 
 **Lý do từ chối:**
-- Phải cấu hình riêng cho 18 service → tốn công, dễ sót.
+- Phải cấu hình riêng cho nhiều service → tốn công, dễ sót.
 - Phải sửa env var của tất cả client service (checkout, frontend, ...).
 - Chỉ giải quyết ở L4 DNS level, không phải L7.
 - Không giải quyết được HTTP/1.1 keep-alive pinning ở frontend.
@@ -315,46 +442,43 @@ Tăng replica để "pha loãng" tải vào pod bị ghim.
 
 ## 6. Ảnh hưởng và rủi ro
 
-| Rủi ro                                    | Mức độ   | Biện pháp giảm thiểu                                                   |
-| ----------------------------------------- | -------- | ---------------------------------------------------------------------- |
-| Rolling restart toàn bộ pod khi inject    | Trung bình | Thực hiện khi không có load test; PodDisruptionBudget hiện có đảm bảo rolling |
-| Linkerd proxy tạm thời không available    | Thấp     | `failurePolicy: Ignore` — pod vẫn tạo được nếu injector down           |
-| Resource overhead ~10m CPU / 20Mi / pod  | Thấp     | Đã tính toán phù hợp với BUDGET.md; cluster hiện không bị CPU pressure |
-| Xung đột với runtime-hardening policy    | Thấp     | Linkerd proxy chạy với UID 2102 (non-root); tuân thủ runAsNonRoot policy |
+Linkerd nhẹ hơn và đơn giản hơn Istio, nhưng cũng không có cùng mức độ tính năng. Istio phù hợp hơn nếu sau này cần traffic management phức tạp, gateway/API management, policy phong phú hoặc nhiều kiểu routing/canary. Trong Mandate 16, các khả năng đó chưa cần thiết; Linkerd được dùng cho mTLS, observability và cân bằng tải gRPC nên đổi lại được footprint thấp hơn trong ngân sách hiện tại.
+
+Linkerd vẫn thêm proxy vào mỗi pod và phụ thuộc vào CNI hoạt động bình thường khi tạo pod mới. Lưu lượng giữa các pod cũng không bắt buộc phải đúng 50/50 ở từng thời điểm; tiêu chí theo dõi là RPS, p95/p99 theo pod và SLO chung. Khi hệ thống phát triển đến mức cần các tính năng mesh nâng cao hoặc Linkerd trở thành giới hạn vận hành, team sẽ đánh giá lại Istio.
 
 ---
 
-## 7. Files thay đổi
+## 7. Công việc theo dõi sau Mandate 16
 
-### `tf2-corp-chart`
+Các hạng mục dưới đây có giá trị khi hệ thống lớn hơn, nhưng chưa phải thay đổi hợp lý ở thời điểm hiện tại.
 
-| File | Loại | Mô tả |
-| ---- | ---- | ----- |
-| `gitops/linkerd/README.md` | NEW | Hướng dẫn Linkerd GitOps, cert generation, rollback |
-| `gitops/linkerd/appproject.yaml` | NEW | AppProject "linkerd" với whitelist CRDs và webhooks |
-| `gitops/linkerd/applications/linkerd-crds.yaml` | NEW | ArgoCD Application cài Linkerd CRDs (sync-wave 0) |
-| `gitops/linkerd/applications/linkerd-control-plane.yaml` | NEW | ArgoCD Application cài control plane (sync-wave 1) |
-| `gitops/clusters/prod/linkerd-application.yaml` | NEW | Đăng ký vào root app-of-apps prod |
-| `templates/linkerd-namespace-inject.yaml` | NEW | Namespace resource với `linkerd.io/inject: enabled` |
+### 7.1 Cache product-catalog bằng ElastiCache
 
-### `tf2-corp-platform`
+`product-catalog` hiện chỉ mất vài trăm mili-giây ngay cả dưới tải thử nghiệm; đây chưa phải điểm nghẽn chính. Thêm ElastiCache cho product cache lúc này vừa tăng chi phí vận hành, vừa tăng độ phức tạp về TTL, cache invalidation và xử lý dữ liệu cũ. Với ngân sách **$300/tuần**, chưa triển khai hạng mục này.
 
-| File | Loại | Mô tả |
-| ---- | ---- | ----- |
-| `src/checkout/main.go` | MODIFY | Revert `dns:///` và `round_robin`; thêm errgroup parallelization |
+Khi traffic tăng và latency của `product-catalog` bắt đầu chiếm phần đáng kể trong trace Browse hoặc Checkout, sẽ đánh giá lại cache-aside với TTL phù hợp và benchmark lại trước/sau.
 
----
+### 7.2 Đưa xoá cart và gửi email thành consumer MSK
 
-## 8. Tham chiếu
+Sau khi checkout thành công, luồng xoá cart và gửi email nên được xử lý bất đồng bộ bởi các consumer MSK độc lập, tương tự accounting và fraud-detection. Cách này sẽ rút ngắn critical path của Checkout và cho phép retry riêng từng tác vụ.
 
-- [gitops/linkerd/README.md](../../gitops/linkerd/README.md) — Hướng dẫn đầy đủ về Linkerd GitOps
-- [Linkerd gRPC Load Balancing](https://linkerd.io/2.17/features/load-balancing/)
-- [Linkerd GitOps with ArgoCD](https://linkerd.io/2.17/tasks/gitops/)
-- [BUDGET.md](../../../onboarding/BUDGET.md)
-- [SLO.md](../../../onboarding/SLO.md)
+Chưa thực hiện vì latency hiện tại của hai tác vụ này thấp, trong khi cấu trúc dữ liệu checkout/cart hiện không đủ để chuyển an toàn sang event-driven flow. Thay đổi đúng cách sẽ cần migration database, thiết kế event/outbox và cơ chế idempotency; chi phí và rủi ro của migration chưa tương xứng với lợi ích hiện tại.
+
+### 7.3 RDS Proxy và connection pool
+
+Hiện tại các service kết nối **trực tiếp** tới RDS; hệ thống chưa có RDS Proxy. `product-catalog` đã giới hạn pool ở 5 kết nối mở và 2 kết nối idle cho mỗi pod, nhưng đây là pool trong ứng dụng, không phải RDS Proxy. `product-reviews` hiện còn mở một kết nối PostgreSQL cho mỗi thao tác đọc rồi đóng lại.
+
+RDS Proxy phù hợp để bảo vệ RDS khi số pod và số kết nối tăng cao, giảm connection storm khi HPA scale hoặc khi pod restart, và giúp ứng dụng dùng ít connection backend hơn. Tuy nhiên nó tạo thêm chi phí theo giờ và theo vCPU, nên chưa thêm trong phạm vi ngân sách **$300/tuần** khi RDS chưa là bottleneck. Khi tăng replica hoặc dashboard cho thấy connection count/connection wait trên RDS tăng, sẽ benchmark hai bước: chuẩn hoá pool cho từng service trước, sau đó đánh giá RDS Proxy bằng tải thực tế.
 
 ---
 
-*Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-24*
+## 8. Bonus — thử tải 700 users với HPA giới hạn 2 replica
+
+*Sau khi giới hạn `maxReplicas: 2` cho mọi HPA application, hệ thống được chạy load test 700 users trong 15 phút. Dù không cho scale-out vượt 2 replica, throughput duy trì 642 req/s và Browse, Cart, Checkout đều đạt 100% success rate. Tail latency vẫn dưới SLO: Browse p95/p99 tối đa 64.5/126ms, Cart 46.5/82.8ms và Checkout 375/624ms (budget tương ứng 300/700ms, 300/700ms, 500/1000ms).*
+
+![Grafana load test 700 users với HPA giới hạn 2 replica](../adr/image/mandate16/after/grafana-last.png)
+
+*Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-26*
 
 <!-- Change trail: @chinhgithub04 - 2026-07-24 - M16: Rewrite as proper ADR with root cause analysis and Linkerd solution. -->
+<!-- Change trail: @chinhgithub04 - 2026-07-25 - M16: Record successful 200-user, 30-minute production benchmark; add Linkerd per-pod RPS, traffic-share, tail-latency and CPU evidence. -->

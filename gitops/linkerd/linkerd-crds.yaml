@@ -4,7 +4,7 @@
 # HTTPRoute, GRPCRoute, Server, MeshTLSAuthentication, NetworkAuthentication, etc.
 # CRDs must exist before the control-plane chart tries to create CRs.
 #
-# Chart: https://helm.linkerd.io/stable / linkerd-crds
+# Chart: https://helm.linkerd.io/edge / linkerd-crds
 # Upstream docs: https://linkerd.io/docs/tasks/install-helm/
 #
 # Change trail: @chinhgithub04 - 2026-07-24 - M16: Linkerd CRDs GitOps Application.
@@ -20,11 +20,10 @@ spec:
   project: linkerd
 
   source:
-    repoURL: https://helm.linkerd.io/stable
+    repoURL: https://helm.linkerd.io/edge
     chart: linkerd-crds
-    # Pin to a specific stable release. Upgrade deliberately via PR.
-    # Latest stable as of 2026-07: check https://artifacthub.io/packages/helm/linkerd2/linkerd-crds
-    targetRevision: 1.8.0
+    # Pin CRDs to the same reviewed edge release as CNI/control plane.
+    targetRevision: 2026.7.2
     helm:
       releaseName: linkerd-crds
 

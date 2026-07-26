@@ -9,6 +9,7 @@ Docs: docs/operations/network-policy.md
 {{- $vpcCidr := .Values.networkPolicy.vpcCidr }}
 {{- $kubernetesApiCidr := .Values.networkPolicy.kubernetesApiCidr }}
 {{- $ns := .Release.Namespace }}
+{{- $aiopsLongRun := .Values.aiopsLongRun | default (dict) }}
 {{- if and $enforceEgress (not .Values.egressProxy.enabled) }}
 {{- fail "networkPolicy.enforceEgress=true requires egressProxy.enabled=true" }}
 {{- end }}
@@ -195,6 +196,8 @@ spec:
       ports:
         - { protocol: TCP, port: 10250 }
         - { protocol: TCP, port: 9096 } # Amazon MSK SASL/SCRAM
+        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals. Delete after test done.
+        - { protocol: TCP, port: 6379 }
 {{- end }}
 
 {{- if (index .Values "metrics-server" "enabled") }}
@@ -1858,6 +1861,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9200
+    {{- if $aiopsLongRun.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: aiops-opensearch-retention
+      ports:
+        - protocol: TCP
+          port: 9200
+    {{- end }}
     - from:
         - podSelector:
             matchLabels:
@@ -1922,6 +1934,10 @@ spec:
         - { protocol: TCP, port: 8888 }
         - { protocol: TCP, port: 9090 }
         - { protocol: TCP, port: 9464 }
+        # Linkerd proxy admin /metrics endpoint.  This is intentionally scoped
+        # to Prometheus and chart-managed pods; no application workload gains
+        # egress access to port 4191.
+        - { protocol: TCP, port: 4191 }
     - to:
         - podSelector:
             matchLabels:

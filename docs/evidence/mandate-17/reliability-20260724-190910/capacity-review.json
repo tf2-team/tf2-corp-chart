@@ -1,0 +1,220 @@
+{
+  "capturedAt": "2026-07-24T19:17:05.2772027+07:00",
+  "faultZone": "us-east-1a",
+  "survivingZone": "us-east-1b",
+  "survivingNodes": 5,
+  "survivingFreeCpuM": 3420.0,
+  "survivingFreeMemoryBytes": 11000532992.0,
+  "targetPods": 13,
+  "targetCpuM": 1390.0,
+  "targetMemoryBytes": 1749024768.0,
+  "requiresScaleOut": false,
+  "nodePools": [
+    {
+      "name": "stateless-spot",
+      "limits": {
+        "cpu": "32",
+        "memory": "64Gi"
+      },
+      "resources": {
+        "cpu": "8",
+        "ephemeral-storage": "83578800Ki",
+        "hugepages-1Gi": "0",
+        "hugepages-2Mi": "0",
+        "hugepages-32Mi": "0",
+        "hugepages-64Ki": "0",
+        "memory": "19688140Ki",
+        "nodes": "4",
+        "pods": "440",
+        "vpc.amazonaws.com/pod-eni": "0"
+      },
+      "zones": [
+        "us-east-1a",
+        "us-east-1b"
+      ]
+    },
+    {
+      "name": "stateless-on-demand",
+      "limits": {
+        "cpu": "32",
+        "memory": "64Gi"
+      },
+      "resources": {
+        "cpu": "0",
+        "ephemeral-storage": "0",
+        "memory": "0",
+        "nodes": "0",
+        "pods": "0"
+      },
+      "zones": [
+        "us-east-1a",
+        "us-east-1b"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "ip-10-0-16-62.ec2.internal",
+      "zone": "us-east-1a",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 1185.0,
+      "freeCpuM": 745.0,
+      "allocMemoryBytes": 7411560448.0,
+      "requestedMemoryBytes": 3837788160.0,
+      "freeMemoryBytes": 3573772288.0
+    },
+    {
+      "name": "ip-10-0-29-227.ec2.internal",
+      "zone": "us-east-1a",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 1575.0,
+      "freeCpuM": 355.0,
+      "allocMemoryBytes": 3284353024.0,
+      "requestedMemoryBytes": 2298478592.0,
+      "freeMemoryBytes": 985874432.0
+    },
+    {
+      "name": "ip-10-0-37-8.ec2.internal",
+      "zone": "us-east-1b",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 1775.0,
+      "freeCpuM": 155.0,
+      "allocMemoryBytes": 7411560448.0,
+      "requestedMemoryBytes": 6551502848.0,
+      "freeMemoryBytes": 860057600.0
+    },
+    {
+      "name": "ip-10-0-39-36.ec2.internal",
+      "zone": "us-east-1b",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 585.0,
+      "freeCpuM": 1345.0,
+      "allocMemoryBytes": 3284287488.0,
+      "requestedMemoryBytes": 3267362816.0,
+      "freeMemoryBytes": 16924672.0
+    },
+    {
+      "name": "ip-10-0-43-187.ec2.internal",
+      "zone": "us-east-1b",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 1350.0,
+      "freeCpuM": 580.0,
+      "allocMemoryBytes": 7411560448.0,
+      "requestedMemoryBytes": 2652897280.0,
+      "freeMemoryBytes": 4758663168.0
+    },
+    {
+      "name": "ip-10-0-46-179.ec2.internal",
+      "zone": "us-east-1b",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 1185.0,
+      "freeCpuM": 745.0,
+      "allocMemoryBytes": 3284287488.0,
+      "requestedMemoryBytes": 2101346304.0,
+      "freeMemoryBytes": 1182941184.0
+    },
+    {
+      "name": "ip-10-0-47-201.ec2.internal",
+      "zone": "us-east-1b",
+      "allocCpuM": 1930.0,
+      "requestedCpuM": 1335.0,
+      "freeCpuM": 595.0,
+      "allocMemoryBytes": 7411560448.0,
+      "requestedMemoryBytes": 3229614080.0,
+      "freeMemoryBytes": 4181946368.0
+    }
+  ],
+  "targets": [
+    {
+      "pod": "ad-7df9776d9-j247z",
+      "deployment": "ad",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 322961408.0
+    },
+    {
+      "pod": "cart-57b6bb695c-zwlxl",
+      "deployment": "cart",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 222298112.0
+    },
+    {
+      "pod": "checkout-dff9cd57b-98s6z",
+      "deployment": "checkout",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 110.0,
+      "memoryBytes": 88080384.0
+    },
+    {
+      "pod": "currency-fb78f676d-h6prm",
+      "deployment": "currency",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 110.0,
+      "memoryBytes": 88080384.0
+    },
+    {
+      "pod": "email-846dc874cb-584gl",
+      "deployment": "email",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 104857600.0
+    },
+    {
+      "pod": "frontend-c88f786f8-dkg5m",
+      "deployment": "frontend",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 188743680.0
+    },
+    {
+      "pod": "image-provider-ffb99b8bc-t6w48",
+      "deployment": "image-provider",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 37748736.0
+    },
+    {
+      "pod": "llm-7659dbf7c6-mtsb6",
+      "deployment": "llm",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 104857600.0
+    },
+    {
+      "pod": "payment-6cbf6456-pr5qr",
+      "deployment": "payment",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 188743680.0
+    },
+    {
+      "pod": "product-catalog-5944c56b56-bssb7",
+      "deployment": "product-catalog",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 160.0,
+      "memoryBytes": 155189248.0
+    },
+    {
+      "pod": "quote-696b6b9dfc-nhq47",
+      "deployment": "quote",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 110.0,
+      "memoryBytes": 88080384.0
+    },
+    {
+      "pod": "recommendation-6bd768bcd7-c7jns",
+      "deployment": "recommendation",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 104857600.0
+    },
+    {
+      "pod": "shipping-59c9487779-hqrc9",
+      "deployment": "shipping",
+      "node": "ip-10-0-29-227.ec2.internal",
+      "cpuM": 100.0,
+      "memoryBytes": 54525952.0
+    }
+  ]
+}

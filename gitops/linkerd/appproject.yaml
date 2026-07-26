@@ -24,6 +24,9 @@ spec:
   sourceRepos:
     # Linkerd stable Helm charts
     - https://helm.linkerd.io/stable
+    # Edge is required while EKS 1.36 is ahead of the latest stable support
+    # matrix. All Linkerd Applications pin one reviewed edge chart revision.
+    - https://helm.linkerd.io/edge
     # tf2-corp-chart for any supplementary manifests
     - https://github.com/tf2-team/tf2-corp-chart.git
     - git@github.com:tf2-team/tf2-corp-chart.git

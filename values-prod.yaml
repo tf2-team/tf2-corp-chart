@@ -41,6 +41,11 @@ egressProxy:
     - sts.us-east-1.amazonaws.com:443
     - monitoring.us-east-1.amazonaws.com:443
     - logs.us-east-1.amazonaws.com:443
+    # Lists in Helm overlays replace the base list, so keep every DynamoDB
+    # endpoint required by the checkout durable outbox in this prod override.
+    - dynamodb.us-east-1.amazonaws.com:443
+    - 493499579600.ddb.us-east-1.amazonaws.com:443
+    - "*.ddb.us-east-1.amazonaws.com:443"
     - athena.ap-southeast-1.amazonaws.com:443
     - glue.ap-southeast-1.amazonaws.com:443
     - sts.ap-southeast-1.amazonaws.com:443
@@ -147,6 +152,11 @@ components:
     pdb:
       maxUnavailable: 1
     schedulingRules: *directive03-hard-spread
+    # Linkerd CNI redirects init-container traffic before the proxy sidecar is
+    # running. Bypass only the managed Valkey startup probe; retain the
+    # namespace-level Envoy admin bypasses.
+    podAnnotations:
+      config.linkerd.io/skip-outbound-ports: "6379,10000,9901"
     envOverrides:
       # Stable private DNS (Route53 CNAME → ElastiCache primary). TCP-only init
       # proves reachability; the app must use TLS + AUTH (replication group has
@@ -261,6 +271,8 @@ components:
 
   currency:
     autoscaling:
+      # Floor 3 pods: concurrent Convert from multi-item checkout (errgroup) needs headroom
+      # beyond HPA RPS/CPU averages (those stay low while Convert p99 is multi-second).
       minReplicas: 2
     schedulingRules: *directive03-hard-spread
   email:
@@ -581,4 +593,4 @@ opentelemetry-collector:
           value: techx-corp-prod
           action: upsert
 
-# Change trail: @hungxqt - 2026-07-19 - Temporarily disable mem0.enabled in prod app chart only.
+# Change trail: @hungxqt - 2026-07-24 - Raise currency minReplicas to 3 for checkout Convert headroom.

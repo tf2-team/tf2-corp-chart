@@ -1,0 +1,329 @@
+{
+  "capturedAt": "2026-07-24T19:09:54.7915348+07:00",
+  "scriptCommit": "0d85f98",
+  "platformSha": "e3f6f5142511a58ea3b51e3ab864f530dc3a71ff",
+  "chartSha": "4899e054f43d3af3795f4aced5b41f0f7861f0d4",
+  "infraSha": "5e07b2cfe1ec54a00638dd45e96638abd59e8f74",
+  "locust": "stopped|0",
+  "nodeNames": [
+    "ip-10-0-16-62.ec2.internal",
+    "ip-10-0-29-227.ec2.internal",
+    "ip-10-0-37-8.ec2.internal",
+    "ip-10-0-39-36.ec2.internal",
+    "ip-10-0-43-187.ec2.internal",
+    "ip-10-0-46-179.ec2.internal",
+    "ip-10-0-47-201.ec2.internal"
+  ],
+  "applications": [
+    {
+      "name": "linkerd",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "name": "linkerd-cni",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "30.12.2"
+    },
+    {
+      "name": "linkerd-control-plane",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "1.16.11"
+    },
+    {
+      "name": "linkerd-crds",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "1.8.0"
+    },
+    {
+      "name": "root-prod",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "name": "runtime-hardening",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "name": "supply-chain",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": null
+    },
+    {
+      "name": "techx-corp",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    },
+    {
+      "name": "techx-corp-secrets",
+      "sync": "Synced",
+      "health": "Healthy",
+      "revision": "4899e054f43d3af3795f4aced5b41f0f7861f0d4"
+    }
+  ],
+  "deployments": [
+    {
+      "name": "accounting",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:46ee0f2f128191f4ccdf168379a7daaa135c4f6901f6557fc1f067752087b318"
+      ]
+    },
+    {
+      "name": "ad",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/ad@sha256:dc0e0c35b700b39b7791354c3a6ec313ca4f6b2a17180414157d4e35917a4d38"
+      ]
+    },
+    {
+      "name": "cart",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/cart@sha256:a9b8551b4d02f5c70630d10acea6e3ccd7672340aee18010a8a4eb74f1404b92"
+      ]
+    },
+    {
+      "name": "checkout",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/checkout@sha256:f0d4f8ed4db281456ea0ec3402cae258df147796b0b54d9d65e665ffcc808481"
+      ]
+    },
+    {
+      "name": "currency",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/currency@sha256:ebb17c69b82853e153d22673b8c11665e4fc900f7a7fc951bac0a2d65a45c488"
+      ]
+    },
+    {
+      "name": "egress-proxy",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "envoyproxy/envoy@sha256:a7a56545102f7a682e0cafea2c9b8448af1b09ebb710eab688dfb931e3ec7ff6"
+      ]
+    },
+    {
+      "name": "email",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/email@sha256:30632c0d6a10daf951480ceb4c5444d40f6e0a8b619b8981d05d0710062af6cf"
+      ]
+    },
+    {
+      "name": "flagd",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "ghcr.io/open-feature/flagd:v0.12.9",
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/flagd-ui@sha256:475ef801f5162ab43e11b211b8b3bf68568acfc4675abebdcf48eeee380c3c55"
+      ]
+    },
+    {
+      "name": "fraud-detection",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/fraud-detection@sha256:1c78d03436a02d5a23c1536f56b55572aac52d52a625a7f772a2a385b7888812"
+      ]
+    },
+    {
+      "name": "frontend",
+      "desired": 3,
+      "available": 3,
+      "updated": 3,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend@sha256:3249a2f8275a05f52ffea476c2fa559e097a5acd1e6036d2640addb6079f9ed2"
+      ]
+    },
+    {
+      "name": "frontend-proxy",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/frontend-proxy@sha256:a3101e4035acaddb42f3fcdf8cb66a677a50c24181ed202eff8c156c0973e508"
+      ]
+    },
+    {
+      "name": "grafana",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "quay.io/kiwigrid/k8s-sidecar:2.7.1",
+        "docker.io/grafana/grafana:13.0.1"
+      ]
+    },
+    {
+      "name": "image-provider",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/image-provider@sha256:47c88c0f37f771cf8295b37342c1dd12cbf0234383154debeec864fabdcc15b9"
+      ]
+    },
+    {
+      "name": "jaeger",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "jaegertracing/jaeger:2.17.0"
+      ]
+    },
+    {
+      "name": "llm",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/llm@sha256:143ce8c3090a96699f78ac346827d0b157ffc98c816cae9d4385d1977b0ba56d"
+      ]
+    },
+    {
+      "name": "load-generator",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator@sha256:8ad157efa2bc8fcfce313a0067ca9f993860d3b6e710576e6e9d0d78b5f2cc24"
+      ]
+    },
+    {
+      "name": "load-generator-worker",
+      "desired": 10,
+      "available": 10,
+      "updated": 10,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator@sha256:8ad157efa2bc8fcfce313a0067ca9f993860d3b6e710576e6e9d0d78b5f2cc24"
+      ]
+    },
+    {
+      "name": "metrics-server",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "registry.k8s.io/metrics-server/metrics-server:v0.8.1"
+      ]
+    },
+    {
+      "name": "payment",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/payment@sha256:3d9bbc517ce35186eda40f3cbe138f5b3d2ec2997b1a31f7500febb695deb60d"
+      ]
+    },
+    {
+      "name": "product-catalog",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/product-catalog@sha256:30b8c80e8a89419d0b05d8d91484b9be48f77ea0b14dd3d0af658350e83bc24f"
+      ]
+    },
+    {
+      "name": "product-reviews",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/product-reviews@sha256:569588e6ac96a567b77b7dc1d18955b78407f4c1ca292daf445c691074fe6ebe"
+      ]
+    },
+    {
+      "name": "prometheus",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "quay.io/prometheus/prometheus:v3.11.3"
+      ]
+    },
+    {
+      "name": "prometheus-adapter",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.12.0"
+      ]
+    },
+    {
+      "name": "quote",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/quote@sha256:ad1d40e3c1da5ed501fef942723d23129e077ceb922a25931e95951de5908933"
+      ]
+    },
+    {
+      "name": "recommendation",
+      "desired": 3,
+      "available": 3,
+      "updated": 3,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/recommendation@sha256:d78d549ff897b98a9669967313ab0d3c079b51bd49771316969b80eb5ddd7c20"
+      ]
+    },
+    {
+      "name": "shipping",
+      "desired": 2,
+      "available": 2,
+      "updated": 2,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/shipping@sha256:bf26299221aa7b5dfdb053f8dbdae187b2f00296f005a33440ca20f407973839"
+      ]
+    },
+    {
+      "name": "shopping-copilot",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/shopping-copilot@sha256:8538bad0a9ab4fd7cbecb299c2e7beb65c87c325b9b6984d88cbf096fd2c2fa7"
+      ]
+    },
+    {
+      "name": "techx-corp-kube-state-metrics",
+      "desired": 1,
+      "available": 1,
+      "updated": 1,
+      "images": [
+        "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0"
+      ]
+    }
+  ]
+}
