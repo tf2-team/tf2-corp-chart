@@ -39,6 +39,7 @@ egressProxy:
     - grafana
     - product-reviews
     - shopping-copilot
+    - yace
   noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana"
   allowedDomains:
     # Envoy matches the CONNECT target, which includes the destination port.
@@ -2553,6 +2554,14 @@ components:
       - name: tmp-dir
         mountPath: /tmp
 
+  # CloudWatch metrics exporter (YACE) for managed RDS/ElastiCache/MSK host
+  # metrics. Production-only: dev keeps in-cluster data stores. Full spec
+  # (image digest, IRSA ServiceAccount, config) lives in values-prod.yaml.
+  yace:
+    enabled: false
+    useDefault:
+      env: false
+
 opentelemetry-collector:
   enabled: true
   # Universal DaemonSet: run on Critical MNG and Karpenter (no workload-class selector).
@@ -3349,4 +3358,4 @@ prometheus-adapter:
       memory: 512Mi
   replicas: 2
 
-# Change trail: @hungxqt - 2026-07-24 - Raise otel-collector agent memory after OTLP refuse/checkout latency.
+# Change trail: @hungxqt - 2026-07-26 - Add yace component stub and egress-proxy caller for CloudWatch metrics export.

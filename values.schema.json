@@ -628,6 +628,9 @@
         },
         "opensearch": {
           "$ref": "#/definitions/Component"
+        },
+        "yace": {
+          "$ref": "#/definitions/Component"
         }
       },
       "title": "Components"

@@ -196,8 +196,11 @@ spec:
       ports:
         - { protocol: TCP, port: 10250 }
         - { protocol: TCP, port: 9096 } # Amazon MSK SASL/SCRAM
-        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals. Delete after test done.
+        # Managed ElastiCache Valkey INFO scrape for AIOps resource signals
+        # (permanent: redis/valkey-cart receiver lives in values-prod.yaml).
         - { protocol: TCP, port: 6379 }
+        # Managed RDS PostgreSQL stats scrape for AIOps resource signals.
+        - { protocol: TCP, port: 5432 }
 {{- end }}
 
 {{- if (index .Values "metrics-server" "enabled") }}
@@ -2174,6 +2177,46 @@ spec:
           port: 443
 {{- end }}
 
+{{/* ── 31. YACE CLOUDWATCH EXPORTER ────────────────────────────────── */}}
+{{- if (index .Values.components "yace").enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: yace
+  labels:
+    {{- include "techx-corp.labels" $relCtx | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      opentelemetry.io/name: yace
+  policyTypes:
+    - Ingress
+{{- if $enforceEgress }}
+    - Egress
+{{- end }}
+  ingress:
+    # OTel DaemonSet agent scrapes /metrics on 5000 via annotation discovery.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: otel-collector
+      ports:
+        - protocol: TCP
+          port: 5000
+{{- if $enforceEgress }}
+  egress:
+    # CloudWatch/STS HTTPS is reachable only through the allowlisted proxy.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: egress-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.egressProxy.port }}
+{{- end }}
+{{- end }}
+
 {{- end }}{{/* end networkPolicy.enabled */}}
 
-# Change trail: @hungxqt - 2026-07-21 - Mandate 17 three-state enforcement and allowlisted egress proxy.
+# Change trail: @hungxqt - 2026-07-26 - Otel-collector RDS 5432 egress and yace exporter policy for AIOps metrics.

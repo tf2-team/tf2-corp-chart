@@ -35,6 +35,7 @@ egressProxy:
     - grafana
     - product-reviews
     - shopping-copilot
+    - yace
   allowedDomains:
     - api.groq.com:443
     - bedrock-runtime.us-east-1.amazonaws.com:443
@@ -481,6 +482,225 @@ components:
     autoscaling:
       enabled: false
 
+  # CloudWatch metrics exporter for the managed data stores (Directive-08):
+  # AWS/RDS, AWS/ElastiCache, AWS/Kafka host metrics become aws_* series in
+  # Prometheus for AIOps RCA. Static jobs with fixed dimension tuples — if a
+  # broker/replica count changes in Terraform, update the config below.
+  # CloudWatch API reached only via egress-proxy (see egressProxy.callers).
+  yace:
+    enabled: true
+    useDefault:
+      env: false
+    replicas: 1
+    serviceAccount:
+      create: true
+      name: yace
+      annotations:
+        # techx-corp-infra module.yace_cloudwatch (apply infra before merge).
+        eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-yace-cloudwatch-read
+    imageOverride:
+      repository: quay.io/prometheuscommunity/yet-another-cloudwatch-exporter
+      tag: v0.67.0
+      digest: sha256:404791bf0b2f6efc0773f1cb65f314e6205cac3521064ce1b9d640f5bb268cfb
+    # Default listen-address is loopback; bind all interfaces so the OTel
+    # DaemonSet agent can scrape :5000 via annotation discovery.
+    command:
+      - /bin/yace
+      - --config.file=/etc/yace/config.yml
+      - --listen-address=:5000
+    ports:
+      - name: metrics
+        value: 5000
+    env:
+      - name: AWS_REGION
+        value: us-east-1
+      # Regional STS is on the egress-proxy allowlist; global sts is not.
+      - name: AWS_STS_REGIONAL_ENDPOINTS
+        value: regional
+    podAnnotations:
+      io.opentelemetry.discovery.metrics/enabled: "true"
+      io.opentelemetry.discovery.metrics/scraper: prometheus_simple
+      io.opentelemetry.discovery.metrics/config: |
+        collection_interval: 60s
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 5000
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 5
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 5000
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    mountedConfigMaps:
+      - name: yace-config
+        mountPath: /etc/yace
+        data:
+          # 300s period matches CloudWatch standard-resolution granularity and
+          # keeps GetMetricData cost ~$3-4/month; the 60s pod scrape only
+          # re-reads cached values.
+          config.yml: |
+            apiVersion: v1alpha1
+            sts-region: us-east-1
+            static:
+              - namespace: AWS/RDS
+                name: techx-prod-rds-postgresql
+                regions: [us-east-1]
+                dimensions:
+                  - name: DBInstanceIdentifier
+                    value: techx-prod-tf2-postgresql
+                metrics:
+                  - name: CPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: DatabaseConnections
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: FreeableMemory
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: FreeStorageSpace
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: ReadIOPS
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: WriteIOPS
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: ReadLatency
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: WriteLatency
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkReceiveThroughput
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkTransmitThroughput
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - namespace: AWS/ElastiCache
+                name: techx-prod-valkey-cart-001
+                regions: [us-east-1]
+                dimensions:
+                  - name: CacheClusterId
+                    value: techx-prod-tf2-cart-001
+                  - name: CacheNodeId
+                    value: "0001"
+                metrics: &elasticache-metrics
+                  - name: CPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: EngineCPUUtilization
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkBytesIn
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkBytesOut
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CurrConnections
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: DatabaseMemoryUsagePercentage
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - namespace: AWS/ElastiCache
+                name: techx-prod-valkey-cart-002
+                regions: [us-east-1]
+                dimensions:
+                  - name: CacheClusterId
+                    value: techx-prod-tf2-cart-002
+                  - name: CacheNodeId
+                    value: "0001"
+                metrics: *elasticache-metrics
+              - namespace: AWS/Kafka
+                name: techx-prod-msk-broker-1
+                regions: [us-east-1]
+                dimensions:
+                  - name: Cluster Name
+                    value: techx-prod-tf2-msk
+                  - name: Broker ID
+                    value: "1"
+                metrics: &msk-metrics
+                  - name: CpuUser
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CpuSystem
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: CpuIdle
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: MemoryUsed
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: KafkaDataLogsDiskUsed
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: BytesInPerSec
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: BytesOutPerSec
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkRxPackets
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+                  - name: NetworkTxPackets
+                    statistics: [Average]
+                    period: 300
+                    length: 300
+              - namespace: AWS/Kafka
+                name: techx-prod-msk-broker-2
+                regions: [us-east-1]
+                dimensions:
+                  - name: Cluster Name
+                    value: techx-prod-tf2-msk
+                  - name: Broker ID
+                    value: "2"
+                metrics: *msk-metrics
+
 # Explicit production APM resource context (same as values.yaml defaults).
 # Ensures prod overlay does not inherit a future base-values drift unintentionally.
 # Arrays replace under Helm merge — keep the full attributes list.
@@ -566,6 +786,31 @@ opentelemetry-collector:
         secretKeyRef:
           name: techx-corp-msk
           key: KAFKA_SASL_PASSWORD
+    # Managed ElastiCache Valkey INFO scrape (promoted from the temporary
+    # AIOps long-run overlay so the RCA metric set survives overlay removal).
+    - name: VALKEY_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-valkey-cart
+          key: VALKEY_PASSWORD
+    # Managed RDS PostgreSQL stats scrape credentials. Reuses the ESO-synced
+    # application secret; the RDS endpoint itself is not a standalone secret
+    # key (only embedded in DSNs), so the receiver hardcodes the hostname.
+    - name: POSTGRES_MON_USER
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: username
+    - name: POSTGRES_MON_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: password
+    - name: POSTGRES_MON_DB
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: database
   config:
     receivers:
       kafkametrics:
@@ -580,6 +825,31 @@ opentelemetry-collector:
             mechanism: SCRAM-SHA-512
         tls:
           insecure: false
+      # Production Valkey is ElastiCache, not the disabled in-cluster pod;
+      # annotation discovery cannot collect its INFO metrics. Promoted from
+      # the AIOps long-run overlay (which may still tighten the interval).
+      redis/valkey-cart:
+        endpoint: master.techx-prod-tf2-cart.2bnsjq.use1.cache.amazonaws.com:6379
+        password: ${env:VALKEY_PASSWORD}
+        collection_interval: 30s
+        tls:
+          insecure: false
+      # Production PostgreSQL is RDS (Directive-08 cutover); the in-cluster
+      # pod and its annotation-discovery scraper are disabled. 60s interval:
+      # every DaemonSet agent opens its own connection per cycle.
+      postgresql/rds:
+        endpoint: techx-prod-tf2-postgresql.cijoii00i7pl.us-east-1.rds.amazonaws.com:5432
+        transport: tcp
+        username: ${env:POSTGRES_MON_USER}
+        password: ${env:POSTGRES_MON_PASSWORD}
+        databases:
+          - ${env:POSTGRES_MON_DB}
+        collection_interval: 60s
+        tls:
+          # rds.force_ssl=1 requires TLS; app DSNs use sslmode=require
+          # without CA pinning, mirrored here.
+          insecure: false
+          insecure_skip_verify: true
     processors:
       resource:
         attributes:
@@ -592,5 +862,12 @@ opentelemetry-collector:
         - key: service.namespace
           value: techx-corp-prod
           action: upsert
+    service:
+      pipelines:
+        metrics:
+          # Helm replaces arrays: restate the FULL base receiver list plus the
+          # managed-store receivers. The AIOps long-run overlay restates the
+          # same list; keep both in sync while the overlay is active.
+          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds]
 
-# Change trail: @hungxqt - 2026-07-24 - Raise currency minReplicas to 3 for checkout Convert headroom.
+# Change trail: @hungxqt - 2026-07-26 - Managed-store collector receivers and yace CloudWatch exporter for AIOps RCA metrics.

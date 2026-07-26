@@ -12,7 +12,7 @@ $firstParty = @(
     "flagd", "fraud-detection", "frontend", "frontend-proxy",
     "image-provider", "llm", "load-generator", "load-generator-worker",
     "payment", "product-catalog", "product-reviews", "quote",
-    "recommendation", "shipping", "shopping-copilot"
+    "recommendation", "shipping", "shopping-copilot", "yace"
 )
 
 $rendered = & $Helm template techx-corp $chartRoot --namespace $Namespace `
@@ -84,3 +84,5 @@ if ($KubeContext) {
 }
 
 Write-Host "Mandate 17 identity inventory passed for $checked rendered workload(s)."
+
+# Change trail: @hungxqt - 2026-07-26 - Add yace to the first-party identity inventory.

@@ -212,6 +212,23 @@ opentelemetry-collector:
         secretKeyRef:
           name: techx-corp-valkey-cart
           key: VALKEY_PASSWORD
+    # Managed RDS PostgreSQL stats scrape credentials (receiver defined in
+    # values-prod.yaml; restated here because Helm replaces arrays).
+    - name: POSTGRES_MON_USER
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: username
+    - name: POSTGRES_MON_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: password
+    - name: POSTGRES_MON_DB
+      valueFrom:
+        secretKeyRef:
+          name: techx-corp-postgresql-app
+          key: database
   resources:
     requests:
       # The agent is a DaemonSet and must fit even on the packed critical
@@ -228,14 +245,10 @@ opentelemetry-collector:
     receivers:
       kafkametrics:
         collection_interval: 1s
-      # Production Valkey is ElastiCache, not the disabled in-cluster pod;
-      # annotation discovery therefore cannot collect its INFO metrics.
+      # Base receiver now lives in values-prod.yaml (30s steady-state); this
+      # overlay only tightens the interval for the collection window.
       redis/valkey-cart:
-        endpoint: master.techx-prod-tf2-cart.2bnsjq.use1.cache.amazonaws.com:6379
-        password: ${env:VALKEY_PASSWORD}
         collection_interval: 1s
-        tls:
-          insecure: false
     exporters:
       otlp/jaeger:
         retry_on_failure:
@@ -261,7 +274,8 @@ opentelemetry-collector:
     service:
       pipelines:
         metrics:
-          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart]
+          # Keep in sync with values-prod.yaml (arrays replace, maps merge).
+          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds]
 
 jaeger:
   jaeger:
@@ -324,3 +338,5 @@ metrics-server:
     limits:
       cpu: "1"
       memory: 512Mi
+
+# Change trail: @hungxqt - 2026-07-26 - Sync collector env/pipeline with managed-store receivers promoted to values-prod.yaml.
