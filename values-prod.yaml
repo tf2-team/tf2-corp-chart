@@ -318,15 +318,40 @@ components:
   frontend:
     optionalDependencyTimeoutMs: 500
     autoscaling:
-      # Temporary N+1 capacity for the maintenance window: draining one node
-      # leaves two frontend pods serving while the replacement becomes Ready.
+      # Keep enough storefront headroom for a node drain without letting noisy
+      # RPS metrics drive the Deployment past the current Karpenter envelope.
       minReplicas: 3
-      targetCPUUtilizationPercentage: 65
-      # Spanmetrics counts all frontend server spans; observed ~160-190 metric RPS
-      # at 150-200 users. Base target is 80 RPS/pod; keep prod aligned so steady
-      # load stays near minReplicas 3 instead of over-scaling on inflated RPS.
-      targetRequestsPerSecond: 80
-    schedulingRules: *directive03-hard-spread
+      maxReplicas: 18
+      targetCPUUtilizationPercentage: 80
+      # Spanmetrics counts all frontend server spans; production incidents saw
+      # the previous 80 RPS/pod target double desired replicas into Pending.
+      # 180 keeps the target aligned with observed 150-200 user steady load.
+      targetRequestsPerSecond: 180
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 60
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 60
+    schedulingRules:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
 
   frontend-proxy:
     publicAlb:
@@ -450,7 +475,9 @@ components:
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    replicas: 10
+    # Idle production should not generate background storefront load. Operators
+    # can scale workers explicitly during a bounded load test window.
+    replicas: 0
     autoscaling:
       enabled: false
 
@@ -461,6 +488,11 @@ prometheus:
   server:
     podAnnotations:
       linkerd.io/inject: disabled
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 30s
+      scrape_timeout: 10s
+    retention: 24h
   kube-state-metrics:
     podAnnotations:
       linkerd.io/inject: disabled
