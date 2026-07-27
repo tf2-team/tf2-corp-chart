@@ -27,11 +27,14 @@ read-only Kubernetes RBAC, and a persistent volume for incident and audit
 state. It intentionally runs one replica with a non-overlapping rollout because
 the current store is SQLite.
 
-Sensitive `AIOPS_*` values must come from the ESO-managed
+Sensitive inbound `AIOPS_*` values come from the ESO-managed
 `techx-corp-aiops-grafana-webhook` Secret referenced by `aiops.existingSecret`.
+Outbound incident summaries use `aiops.notificationSecretRef`; the AIOps
+overlay points it at the ESO-managed `techx-corp-grafana-discord` Secret.
 The runtime is exposed only inside the cluster as `aiops-runtime:8080`, backed
 by the FastAPI container on port 8000. The default policy remains `dry-run`;
-switching to live remediation is a separate operational approval. Grafana's
+supported modes are `observe`, `dry-run`, and `live-approved`. Switching to
+live remediation is a separate operational approval. Grafana's
 single notification-policy tree keeps the existing Discord route and mirrors
 warning, critical, SEV1, and SEV2 alerts to the separate AIOps contact point.
 

@@ -582,6 +582,23 @@
         "existingSecret": {
           "type": "string"
         },
+        "notificationSecretRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "key"
+          ]
+        },
         "service": {
           "type": "object",
           "additionalProperties": false,
@@ -677,9 +694,9 @@
             "policyMode": {
               "type": "string",
               "enum": [
+                "observe",
                 "dry-run",
-                "approval-required",
-                "live"
+                "live-approved"
               ]
             },
             "autoRunEnabled": {

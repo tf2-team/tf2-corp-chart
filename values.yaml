@@ -426,6 +426,9 @@ aiops:
     tag: ""
     pullPolicy: IfNotPresent
   existingSecret: ""
+  notificationSecretRef:
+    name: ""
+    key: webhook-url
   service:
     port: 8080
     containerPort: 8000
