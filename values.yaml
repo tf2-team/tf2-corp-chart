@@ -490,6 +490,8 @@ components:
   ## Demo Components are named objects (services) with several properties
   yace:
     enabled: false
+    useDefault:
+      env: false
     serviceAccount:
       create: true
       name: yace
@@ -1519,8 +1521,9 @@ components:
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
-    # Fixed Worker Pool: Disable HPA to prevent scale-churn and socket disconnects during load tests.
-    replicas: 10
+    # Fixed Worker Pool: keep idle at 0; production load-test overlays may raise
+    # this explicitly during approved test windows.
+    replicas: 0
     # PDB minAvailable: 9 limits voluntary disruption during a 10-worker load test.
     pdb:
       minAvailable: 9

@@ -18,8 +18,8 @@ components:
         cpu: "1"
         memory: 384Mi
     autoscaling:
-      minReplicas: 24
-      maxReplicas: 36
+      minReplicas: 6
+      maxReplicas: 40
       behavior:
         scaleUp:
           stabilizationWindowSeconds: 0
@@ -40,7 +40,7 @@ components:
   frontend-proxy:
     autoscaling:
       minReplicas: 4
-      maxReplicas: 8
+      maxReplicas: 20
   checkout:
     resources:
       requests:
@@ -50,8 +50,8 @@ components:
         cpu: 500m
         memory: 192Mi
     autoscaling:
-      minReplicas: 10
-      maxReplicas: 20
+      minReplicas: 4
+      maxReplicas: 30
   cart:
     rollout:
       strategy:
@@ -75,7 +75,7 @@ components:
         cpu: 500m
         memory: 384Mi
     autoscaling:
-      minReplicas: 16
+      minReplicas: 4
       maxReplicas: 24
   currency:
     resources:
@@ -86,8 +86,8 @@ components:
         cpu: 250m
         memory: 96Mi
     autoscaling:
-      minReplicas: 8
-      maxReplicas: 16
+      minReplicas: 4
+      maxReplicas: 20
   product-catalog:
     resources:
       requests:
@@ -97,8 +97,8 @@ components:
         cpu: 500m
         memory: 192Mi
     autoscaling:
-      minReplicas: 10
-      maxReplicas: 20
+      minReplicas: 4
+      maxReplicas: 24
   product-reviews:
     resources:
       requests:
@@ -108,7 +108,7 @@ components:
         cpu: "2"
         memory: 3072Mi
     autoscaling:
-      minReplicas: 6
+      minReplicas: 2
       maxReplicas: 12
   recommendation:
     resources:
@@ -119,10 +119,10 @@ components:
         cpu: "1"
         memory: 256Mi
     autoscaling:
-      minReplicas: 8
-      maxReplicas: 16
+      minReplicas: 4
+      maxReplicas: 20
   shopping-copilot:
-    replicas: 4
+    replicas: 2
     resources:
       requests:
         cpu: 500m

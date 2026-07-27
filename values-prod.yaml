@@ -736,9 +736,9 @@ components:
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    # Enable the bounded handoff load-test worker pool. Keep Locust users/ramp
-    # controlled from the master UI; workers only provide distributed capacity.
-    replicas: 10
+    # Keep workers off when no load test is running; operators raise this only
+    # during an approved Locust test window.
+    replicas: 0
     autoscaling:
       enabled: false
 
