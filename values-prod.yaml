@@ -752,9 +752,8 @@ components:
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    # Temporary test window profile: four distributed workers are enough for a
-    # controlled 100-200 user Locust baseline without turning this into a stress test.
-    replicas: 4
+    # Idle overnight; raise back to 4 for the next controlled Locust test window.
+    replicas: 0
     pdb:
       minAvailable: 3
     autoscaling:
