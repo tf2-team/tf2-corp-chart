@@ -11,10 +11,7 @@
 | EKS cluster | `techx-tf2-prod` |
 | Môi trường | Production |
 | Kênh nhận cảnh báo | Discord |
-| Ngày đối chiếu source | 27/07/2026 |
 | Phạm vi evidence | Hạ tầng lọc thô, parser, rule/allowlist, router, Discord, TTD và dashboard |
-
-Tài liệu này là bản evidence hợp nhất dùng để trình bày và bàn giao Mandate 11. Các tài liệu `00` đến `06` trong cùng thư mục vẫn được giữ nguyên để tra cứu chi tiết; báo cáo này tổng hợp những nội dung và bằng chứng quan trọng nhất thành một mạch hoàn chỉnh.
 
 Không đưa Discord webhook, secret, token, password, dữ liệu thanh toán, PII hoặc raw log nhạy cảm vào báo cáo.
 
@@ -150,7 +147,7 @@ Lớp 11.2 lọc thô các nhóm:
 
 Source rule hiện tại:
 
-`TEAM/tf2-corp-platform/src/audit-alert-parser/config/rules.yaml`
+`audit-alert-parser/config/rules.yaml`
 
 ### 6.1 Rule AWS/CloudTrail
 
@@ -480,4 +477,4 @@ CloudTrail / EKS Audit
   -> CloudWatch Logs, Metrics và Dashboard
 ```
 
-Mandate 11 đáp ứng bốn yêu cầu trọng tâm: phát hiện đúng nhóm hành vi nguy hiểm, gửi cảnh báo có đủ ngữ cảnh điều tra, đo được TTD và giảm nhiễu mà vẫn giữ evidence. Bộ ảnh, sáu test case và source mapping trong báo cáo đủ để mentor kiểm tra từng tầng mà không cần dựa vào lời mô tả chung.
+Mandate 11 đáp ứng bốn yêu cầu trọng tâm: phát hiện đúng nhóm hành vi nguy hiểm, gửi cảnh báo có đủ ngữ cảnh điều tra, đo được TTD và giảm nhiễu mà vẫn giữ evidence.
