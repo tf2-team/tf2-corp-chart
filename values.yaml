@@ -3028,6 +3028,17 @@ prometheus:
       static_configs:
         - targets:
             - karpenter.kube-system.svc.cluster.local:8080
+    # M21: YACE is the single, bounded bridge for managed-service DR signals.
+    # Scrape it directly so RDS/Valkey/ALB panels do not depend on an indirect
+    # OTel discovery path. The Service exists only when the prod overlay enables
+    # the component; a missing target is therefore harmless outside production.
+    - job_name: yace
+      metrics_path: /metrics
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      static_configs:
+        - targets:
+            - yace.techx-corp-prod.svc.cluster.local:5000
     # M16: scrape Linkerd's L7 proxy metrics from every injected workload pod.
     # Linkerd exposes Prometheus metrics on :4191.  Restrict discovery to pods
     # created by proxy-injector so this job neither probes nor labels arbitrary

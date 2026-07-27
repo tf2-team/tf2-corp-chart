@@ -327,6 +327,39 @@ components:
                     statistics: [Average]
                     period: 300
                     length: 300
+              # M21 current ALB target-group contract. If Terraform recreates
+              # the ALB/TG, Person 1 must update these two dimensions from its
+              # outputs before the drill preflight is allowed to pass.
+              - name: frontend-alb-1a
+                regions: [us-east-1]
+                namespace: AWS/ApplicationELB
+                dimensions:
+                  - name: LoadBalancer
+                    value: app/k8s-techxcor-frontend-ae4ef3a99c/67565bb9a2abe1fb
+                  - name: TargetGroup
+                    value: targetgroup/k8s-techxcor-frontend-a8455610b8/2ab4985888ffc34b
+                  - name: AvailabilityZone
+                    value: us-east-1a
+                metrics: &alb_target_metrics
+                  - name: HealthyHostCount
+                    statistics: [Minimum]
+                    period: 60
+                    length: 300
+                  - name: UnHealthyHostCount
+                    statistics: [Maximum]
+                    period: 60
+                    length: 300
+              - name: frontend-alb-1b
+                regions: [us-east-1]
+                namespace: AWS/ApplicationELB
+                dimensions:
+                  - name: LoadBalancer
+                    value: app/k8s-techxcor-frontend-ae4ef3a99c/67565bb9a2abe1fb
+                  - name: TargetGroup
+                    value: targetgroup/k8s-techxcor-frontend-a8455610b8/2ab4985888ffc34b
+                  - name: AvailabilityZone
+                    value: us-east-1b
+                metrics: *alb_target_metrics
               - name: kafka-broker-1
                 regions: [us-east-1]
                 namespace: AWS/Kafka
@@ -483,6 +516,11 @@ components:
     initContainers: []
   
   accounting:
+    # M21: Accounting persists the durable order path and must survive either AZ.
+    replicas: 2
+    pdb:
+      maxUnavailable: 1
+    schedulingRules: *directive03-hard-spread
     serviceAccount:
       create: true
       name: accounting
@@ -628,8 +666,9 @@ components:
       certificateArn: "arn:aws:acm:us-east-1:493499579600:certificate/043175b8-99f5-492f-a258-ff280e0b9a75"
     autoscaling:
       minReplicas: 2
-    # Preserve the critical MNG pin from values.yaml, but prefer separate AZs
-    # and hosts. Hard spread prevents both ingress replicas sharing one node/AZ.
+    # Preserve the critical MNG pin and soft zone spread so replicas can collapse
+    # into the surviving AZ. The M21 wrapper blocks the drill unless baseline
+    # skew is <= 1; hostname spread remains hard.
     schedulingRules: *directive03-hard-spread
 
   image-provider:

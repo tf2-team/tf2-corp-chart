@@ -1,4 +1,5 @@
 import http from "k6/http";
+import crypto from "k6/crypto";
 import { check, fail, sleep } from "k6";
 import { Rate } from "k6/metrics";
 
@@ -41,6 +42,39 @@ export const options = {
 
 const headers = { "Content-Type": "application/json" };
 const fallbackProductId = __ENV.PRODUCT_ID || "OLJCESPC7Z";
+const ledgerEnabled = (__ENV.LEDGER_ENABLED || "false").toLowerCase() === "true";
+const faultId = __ENV.FAULT_ID || "baseline";
+
+function traceContext(requestId) {
+  const traceId = crypto.sha256(`${requestId}:trace`, "hex").slice(0, 32);
+  const spanId = crypto.sha256(`${requestId}:span`, "hex").slice(0, 16);
+  return {
+    traceId,
+    headers: {
+      ...headers,
+      traceparent: `00-${traceId}-${spanId}-01`,
+      "x-mandate21-request-id": requestId,
+    },
+  };
+}
+
+function extractOrderId(response) {
+  try {
+    const body = response.json();
+    return body.orderId || body.order_id || (body.order && (body.order.id || body.order.orderId)) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeLedger(record) {
+  if (ledgerEnabled) {
+    // Run with --log-format raw --console-output <evidence>/ledger.jsonl.
+    // This intentionally contains correlation metadata only: no card, secret,
+    // address, email, or customer payload.
+    console.log(JSON.stringify(record));
+  }
+}
 
 function extractProductId(response) {
   try {
@@ -55,10 +89,12 @@ function extractProductId(response) {
 }
 
 export default function () {
-  const userId = `directive-03-${__VU}-${__ITER}-${Date.now()}`;
+  const requestId = `m21-${__VU}-${__ITER}-${Date.now()}`;
+  const userId = requestId;
+  const trace = traceContext(requestId);
 
-  const homepage = http.get(`${baseUrl}/`, { tags: { flow: "browse" } });
-  const products = http.get(`${baseUrl}/api/products`, { tags: { flow: "browse" } });
+  const homepage = http.get(`${baseUrl}/`, { headers: trace.headers, tags: { flow: "browse" } });
+  const products = http.get(`${baseUrl}/api/products`, { headers: trace.headers, tags: { flow: "browse" } });
   const browseOk = check(homepage, { "homepage HTTP 200": (r) => r.status === 200 })
     && check(products, { "products HTTP 200": (r) => r.status === 200 });
   browseSuccess.add(browseOk);
@@ -70,7 +106,7 @@ export default function () {
       userId,
       item: { productId, quantity: 1 },
     }),
-    { headers, tags: { flow: "cart" } },
+    { headers: trace.headers, tags: { flow: "cart" } },
   );
   const cartOk = check(cart, { "cart HTTP 200": (r) => r.status === 200 });
   cartSuccess.add(cartOk);
@@ -95,12 +131,27 @@ export default function () {
         creditCardExpirationMonth: 1,
       },
     }),
-    { headers, tags: { flow: "checkout" } },
+    { headers: trace.headers, tags: { flow: "checkout" } },
   );
+  const orderId = extractOrderId(checkout);
   const checkoutOk = check(checkout, {
-    "checkout HTTP 200 with order": (r) => r.status === 200 && r.body.includes("orderId"),
+    "checkout HTTP 200 with order": (r) => r.status === 200 && orderId !== null,
   });
   checkoutSuccess.add(checkoutOk);
+  const outcome = checkoutOk
+    ? "accepted"
+    : (checkout.status === 0 || checkout.status >= 500 ? "ambiguous" : "rejected");
+  writeLedger({
+    schema_version: 1,
+    fault_id: faultId,
+    request_id: requestId,
+    trace_id: trace.traceId,
+    timestamp: new Date().toISOString(),
+    http_status: checkout.status,
+    latency_ms: checkout.timings.duration,
+    order_id: orderId,
+    outcome,
+  });
 
   sleep(Number(__ENV.SLEEP || 0.2));
 }
