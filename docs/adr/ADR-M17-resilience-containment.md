@@ -1,86 +1,57 @@
-# ADR-M17: Resilience and containment
+# ADR-M17: Chịu lỗi và khoanh vùng runtime
 
-- Status: Proposed
-- Date: 2026-07-21
+- Trạng thái: Đề xuất
+- Ngày: 2026-07-21
 - Platform owner: pending approval
 - CDO reviewer: pending approval
 - Rollback operator: pending assignment
 
-## Context
+## Bối cảnh
 
-The storefront depends on ad and recommendation for optional content. A slow or
-unavailable optional dependency must not fail browse, cart, or checkout. The
-production cluster also spans two availability zones, but hard zone scheduling
-can prevent replacement Pods when one zone is unavailable.
+Storefront phụ thuộc vào `ad` và `recommendation` để hiển thị nội dung tùy chọn. Khi một dependency tùy chọn bị chậm hoặc không sẵn sàng, lỗi đó không được làm hỏng luồng browse, cart hoặc checkout. Hệ thống phải degrade có kiểm soát thay vì để lỗi lan ngược lên storefront.
 
-Application workloads currently share a Kubernetes ServiceAccount and receive
-the default API token even though they do not call the Kubernetes API. This
-increases lateral-movement impact after application compromise.
+Production cluster đang trải trên hai Availability Zone. Nếu lập lịch theo zone quá cứng, khi một zone mất khả dụng thì Pod thay thế có thể không schedule được sang zone còn lại. Vì vậy Mandate 17 cần cân bằng giữa việc trải workload qua AZ và khả năng recover khi một AZ bị mất.
 
-## Decision
+Các workload ứng dụng trước đây có nguy cơ dùng chung Kubernetes ServiceAccount hoặc được mount default API token trong khi phần lớn không cần gọi Kubernetes API. Điều này làm tăng tác động lateral movement nếu một pod ứng dụng bị compromise.
 
-1. Frontend gRPC calls to ad and recommendation use a configurable deadline,
-   defaulting to 500 ms. Only deadline, unavailable, and equivalent connection
-   errors fall back to HTTP 200 with an empty list.
-2. Fallback responses expose `X-TechX-Degraded-Dependencies` and record a
-   structured log plus active-span attributes. Programming and schema errors
-   continue through the normal error path.
-3. Every first-party chart component receives a dedicated ServiceAccount named
-   after the component. ServiceAccount and Pod both set
-   `automountServiceAccountToken: false`. Existing IRSA annotations remain on
-   checkout, product-reviews, and shopping-copilot.
-4. Zone topology spread uses `ScheduleAnyway` so Pods can recover in the
-   surviving zone. Hostname topology spread remains `DoNotSchedule` to avoid
-   co-locating replicas on one node.
-5. Flagd source, key, provider, ports, singleton placement, and incident
-   behavior are unchanged.
-6. NetworkPolicy has three rollout states: disabled, ingress-only, and full
-   ingress/egress enforcement. AWS VPC CNI remains in `standard` mode during
-   Mandate 17.
-7. External HTTPS for approved callers uses a two-replica Envoy CONNECT proxy
-   with a hostname allowlist. Application pods cannot egress directly to the
-   internet; flagd retains its existing exact BTC provider path.
-8. The attacker fixture is a hardened Deployment with no Kubernetes token and
-   only DNS egress. It must not reach application services, Kubernetes API,
-   managed data planes, the proxy, or arbitrary internet.
+## Quyết định
 
-## Safety and rollout
+1. Các frontend gRPC call tới `ad` và `recommendation` dùng deadline có thể cấu hình, mặc định 500 ms. Chỉ các lỗi deadline, unavailable và lỗi kết nối tương đương mới được fallback về HTTP 200 với danh sách rỗng.
+2. Response fallback gắn header `X-TechX-Degraded-Dependencies`, ghi structured log và gắn active-span attributes để quan sát được trạng thái degraded. Lỗi lập trình và lỗi schema vẫn đi theo error path bình thường, không bị che bởi fallback.
+3. Mỗi first-party chart component có một ServiceAccount riêng theo tên component. ServiceAccount và Pod đều đặt `automountServiceAccountToken: false`. Các IRSA annotation hiện có vẫn được giữ cho `checkout`, `product-reviews` và `shopping-copilot`.
+4. Zone topology spread dùng `ScheduleAnyway` để Pod có thể recover sang AZ còn lại khi một AZ mất khả dụng. Hostname topology spread vẫn dùng `DoNotSchedule` để tránh dồn nhiều replica lên cùng một node.
+5. Không chỉnh, không disable và không thay đổi cơ chế sự cố/feature flag của `flagd`. Source, key, provider, port, singleton placement và incident behavior của `flagd` được giữ nguyên. `flagd` chỉ được đưa vào baseline/recovery check để chứng minh hệ thống không làm hỏng cơ chế này.
+6. NetworkPolicy có ba trạng thái rollout: disabled, ingress-only và full ingress/egress enforcement. AWS VPC CNI giữ `standard` mode trong phạm vi Mandate 17.
+7. External HTTPS cho các caller được phê duyệt đi qua Envoy CONNECT proxy hai replica với hostname allowlist. Application pod không được egress trực tiếp ra Internet; `flagd` vẫn giữ đúng path BTC provider hiện có.
+8. Attacker fixture là một Deployment đã harden, không có Kubernetes token và chỉ có DNS egress cần thiết. Attacker pod không được truy cập application services, Kubernetes API, managed data planes, proxy hoặc Internet tùy tiện.
 
-- Merge and validate the platform fallback before promoting its immutable image.
-- Roll out identity/AZ changes before any NetworkPolicy activation.
-- Apply CNI support while application policy is disabled, then activate
-  ingress-only before full egress containment.
-- Require Argo CD `Synced/Healthy`, available error budget, and no open incident.
-- Run dependency and AZ chaos as separate windows under continuous load.
-- Chaos scripts capture initial state and restore replicas/nodes in `finally`.
-- Do not run live chaos without named operator and rollback operator approval.
+## An toàn và rollout
 
-## Verification
+- Merge và validate fallback của platform trước khi promote immutable image.
+- Rollout identity và AZ scheduling trước khi kích hoạt NetworkPolicy.
+- Áp dụng CNI support khi application policy đang disabled, sau đó bật ingress-only trước khi bật full egress containment.
+- Chỉ chạy fault khi Argo CD đang `Synced/Healthy`, error budget còn đủ và không có incident đang mở.
+- Chạy dependency chaos và AZ chaos ở hai cửa sổ riêng, dưới continuous load; không chạy đồng thời.
+- Chaos script phải capture initial state và restore replica/node trong `finally`.
+- Không chạy live chaos nếu chưa có named operator và rollback operator approval.
 
-- Frontend test covers timeout parsing and degradable/non-degradable errors.
-- Helm lint, Mandate 5 verification, Directive 3 verification, and Mandate 17
-  identity inventory must pass.
-- Dependency fault requires HTTP 200 empty fallback, degraded header, and p95
-  below 750 ms for the affected endpoint.
-- AZ fault requires browse/cart/checkout SLO and successful node uncordon.
-- IRSA, observability, storefront exposure, and flagd must remain functional.
-- Static verification must prove ingress-only renders no egress isolation and
-  only the proxy owns an internet CIDR rule in full mode.
+## Kiểm chứng
+
+- Frontend test bao phủ timeout parsing và phân biệt lỗi degradable/non-degradable.
+- Helm lint, Mandate 5 verification, Directive 3 verification và Mandate 17 identity inventory phải pass.
+- Dependency fault pass khi có HTTP 200 empty fallback, degraded header và p95 của endpoint bị ảnh hưởng nằm dưới ngưỡng chấp nhận.
+- AZ fault pass khi browse/cart/checkout giữ SLO và node được uncordon hoặc recovery được ghi nhận rõ ràng.
+- IRSA, observability, storefront exposure và `flagd` phải tiếp tục hoạt động.
+- Static verification phải chứng minh ingress-only không render egress isolation, và trong full mode chỉ proxy nắm giữ rule internet CIDR.
 
 ## Rollback
 
-- Revert the frontend image to the previous immutable digest if fallback fails.
-- Revert the chart revision if identity or scheduling breaks a workload. Do not
-  grant broad RBAC as a rollback shortcut.
-- The dependency script restores the original replica count.
-- The AZ script uncordons every node it cordoned, including on failure.
-- Network rollback is `true/true -> true/false -> false/false`; CNI rollback is
-  last and only after application policy is disabled.
+- Revert frontend image về immutable digest trước đó nếu fallback gây lỗi.
+- Revert chart revision nếu identity hoặc scheduling làm hỏng workload. Không cấp RBAC rộng như một cách rollback nhanh.
+- Dependency script restore lại replica count ban đầu.
+- AZ script uncordon mọi node mà nó đã cordon, kể cả khi script lỗi giữa chừng.
+- Rollback NetworkPolicy theo thứ tự `true/true -> true/false -> false/false`; rollback CNI là bước cuối và chỉ làm sau khi application policy đã disabled.
 
-## Consequences
+## Hệ quả
 
-Optional dependency failures become visible degradation instead of storefront
-failure. Application compromise no longer receives a Kubernetes API token by
-default. Surviving-zone scheduling becomes possible, while hard hostname spread
-may still leave a replica Pending if only one suitable node remains; capacity is
-therefore a mandatory chaos preflight.
+Optional dependency failure trở thành degraded có quan sát được thay vì làm storefront failure. Pod ứng dụng bị compromise không mặc định nhận Kubernetes API token. Workload có thể schedule/recover sang AZ còn lại khi một AZ mất khả dụng, trong khi hard hostname spread vẫn tránh việc dồn replica lên cùng một node. Vì vậy capacity preflight là điều kiện bắt buộc trước khi chạy AZ chaos.
