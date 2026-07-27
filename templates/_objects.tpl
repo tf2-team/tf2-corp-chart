@@ -111,7 +111,9 @@ spec:
       containers:
         - name: {{ .name }}
           {{- /* Default: REGISTRY/PROJECT/SERVICE:VERSION  |  Override: repository:tag as given */ -}}
-          {{- if ((.imageOverride).repository) }}
+          {{- if ((.imageOverride).digest) }}
+          image: '{{ default .defaultValues.image.repository .imageOverride.repository }}/{{ .name }}@{{ .imageOverride.digest }}'
+          {{- else if ((.imageOverride).repository) }}
           image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
           {{- else }}
           image: '{{ .defaultValues.image.repository }}/{{ .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
@@ -170,7 +172,9 @@ spec:
         {{- $sidecar := set . "Release" $.Release }}
         {{- $sidecar := set . "defaultValues" $.defaultValues }}
         - name: {{ .name   }}
-          {{- if ((.imageOverride).repository) }}
+          {{- if ((.imageOverride).digest) }}
+          image: '{{ default .defaultValues.image.repository .imageOverride.repository }}/{{ .name }}@{{ .imageOverride.digest }}'
+          {{- else if ((.imageOverride).repository) }}
           image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
           {{- else }}
           image: '{{ .defaultValues.image.repository }}/{{ .name }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
