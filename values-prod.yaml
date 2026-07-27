@@ -163,7 +163,10 @@ components:
       - name: AWS_STS_REGIONAL_ENDPOINTS
         value: regional
     podAnnotations:
-      checksum/config: "20260728-600s"
+      checksum/config: "20260728-prom-scrape-v1"
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "5000"
+      prometheus.io/path: "/metrics"
       io.opentelemetry.discovery.metrics/enabled: "true"
       io.opentelemetry.discovery.metrics/scraper: prometheus_simple
       io.opentelemetry.discovery.metrics/config: |
