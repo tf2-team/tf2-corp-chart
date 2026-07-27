@@ -19,6 +19,9 @@ mandate20EbsBackup:
 
 runtimeHardeningInventory:
   enabled: true
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  ttlSecondsAfterFinished: 1800
 
 # Mandate 17 activation is intentionally split into later, reversible PRs.
 networkPolicy:
@@ -633,6 +636,8 @@ components:
       certificateArn: "arn:aws:acm:us-east-1:493499579600:certificate/043175b8-99f5-492f-a258-ff280e0b9a75"
     autoscaling:
       minReplicas: 2
+    podAnnotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     # Preserve the critical MNG pin from values.yaml, but prefer separate AZs
     # and hosts. Hard spread prevents both ingress replicas sharing one node/AZ.
     schedulingRules: *directive03-hard-spread
@@ -700,6 +705,8 @@ components:
   # Scale back to 0 when tests stop to save Spot capacity.
   load-generator:
     replicas: 1
+    podAnnotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     # Keep shared storefront load tests running while Groq quota is constrained.
     # The matching task is tagged in the load-generator image.
     envOverrides:
@@ -740,12 +747,16 @@ components:
         service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
 
   load-generator-worker:
+    podAnnotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
     # Temporary test window profile: four distributed workers are enough for a
     # controlled 100-200 user Locust baseline without turning this into a stress test.
     replicas: 4
+    pdb:
+      minAvailable: 3
     autoscaling:
       enabled: false
 
@@ -765,6 +776,15 @@ prometheus:
       # The prod PVC was expanded during the AIOps long-run window. Kubernetes
       # forbids PVC shrink, so keep desired storage aligned with live capacity.
       size: 48Gi
+    resources:
+      # Live baseline under Locust/AIOps was far below the old 500m/4Gi request.
+      # Keep the 4Gi limit and PVC unchanged, but release critical-node binpack pressure.
+      requests:
+        cpu: 200m
+        memory: 2304Mi
+      limits:
+        cpu: 500m
+        memory: 4Gi
   kube-state-metrics:
     podAnnotations:
       linkerd.io/inject: disabled
@@ -774,6 +794,7 @@ prometheus:
 grafana:
   podAnnotations:
     linkerd.io/inject: disabled
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
   readinessProbe:
     initialDelaySeconds: 30
     periodSeconds: 10
@@ -794,6 +815,7 @@ grafana:
 metrics-server:
   podAnnotations:
     linkerd.io/inject: disabled
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
 
 prometheus-adapter:
   podAnnotations:
