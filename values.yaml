@@ -643,11 +643,6 @@ components:
         value: http://$(OTEL_COLLECTOR_NAME):4318
       - name: OTEL_LOGS_EXPORTER
         value: otlp
-      # local-* fault-injection flags must take effect immediately after an
-      # operator changes them in flagd-ui.  The Java RPC provider otherwise
-      # retains a stale LRU value when its flag-change event is missed.
-      - name: FLAGD_CACHE
-        value: "disabled"
     resources:
       # Raised cpu limit to 200m to prevent Java JVM/OTel agent startup probe timeouts
       requests:
@@ -1985,7 +1980,9 @@ components:
     enabled: true
     imageOverride:
       repository: "ghcr.io/open-feature/flagd"
-      tag: "v0.12.9"
+      # v0.14.0 serves flagd.evaluation.v2, required by the Java flagd
+      # provider used by ad. v0.12.9 returned UNIMPLEMENTED to that client.
+      tag: "v0.14.0"
     useDefault:
       env: true
     # Feature-flag control plane → Critical MNG
