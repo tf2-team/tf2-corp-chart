@@ -2168,6 +2168,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/component: otel-collector
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
       ports:
         - protocol: TCP
           port: 5000
