@@ -113,6 +113,8 @@ spec:
           {{- /* Default: REGISTRY/PROJECT/SERVICE:VERSION  |  Override: repository:tag as given */ -}}
           {{- if ((.imageOverride).digest) }}
           image: '{{ default .defaultValues.image.repository .imageOverride.repository }}/{{ .name }}@{{ .imageOverride.digest }}'
+          {{- else if .defaultValues.image.digest }}
+          image: '{{ .defaultValues.image.repository }}/{{ .name }}@{{ .defaultValues.image.digest }}'
           {{- else if ((.imageOverride).repository) }}
           image: '{{ .imageOverride.repository }}:{{ ((.imageOverride).tag) | default (default .Chart.AppVersion .defaultValues.image.tag) }}'
           {{- else }}

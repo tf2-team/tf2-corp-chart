@@ -15,7 +15,8 @@ externalSecrets:
 default:
   image:
     repository: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-dev-corp
-    # Replace with currently running tag before cutover (e.g. sha-a1b2c3d).
+    # Mandate 10: Immutable digest contract for dev services.
+    # Set digest field (e.g. digest: "sha256:...") to enforce immutable sha256 references across dev workloads.
     tag: "sha-547083b"
 
 components:
