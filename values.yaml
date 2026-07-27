@@ -2036,9 +2036,9 @@ components:
     enabled: true
     imageOverride:
       repository: "ghcr.io/open-feature/flagd"
-      # v0.14.0 serves flagd.evaluation.v2, required by the Java flagd
-      # provider used by ad. v0.12.9 returned UNIMPLEMENTED to that client.
-      tag: "v0.14.0"
+      # v0.15.0 serves flagd.evaluation.v2 required by Ad's Java provider,
+      # and fixes v0.14's EventStream serialization failure for flag updates.
+      tag: "v0.15.0"
     useDefault:
       env: true
     # Feature-flag control plane → Critical MNG
