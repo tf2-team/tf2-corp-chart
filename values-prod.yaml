@@ -754,6 +754,10 @@ prometheus:
       evaluation_interval: 30s
       scrape_timeout: 10s
     retention: 24h
+    persistentVolume:
+      # The prod PVC was expanded during the AIOps long-run window. Kubernetes
+      # forbids PVC shrink, so keep desired storage aligned with live capacity.
+      size: 48Gi
   kube-state-metrics:
     podAnnotations:
       linkerd.io/inject: disabled
