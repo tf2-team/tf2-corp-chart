@@ -207,6 +207,11 @@ runtimeHardeningInventory:
         - ADDED_CAPS
         - NON_ROOT
 
+# Mandate 20 is production opt-in so development volumes in the same AWS
+# account do not enter the production hourly backup selection.
+mandate20EbsBackup:
+  enabled: false
+
 default:
   storageClassName: gp3-encrypted
   rollout:

@@ -15,7 +15,11 @@ parameters:
   type: gp3
   encrypted: "true"
   fsType: ext4
+  # EBS CSI applies this only to newly provisioned production volumes.
+{{ if .Values.mandate20EbsBackup.enabled }}
+  tagSpecification_1: "Mandate20Backup=hourly"
+{{ end }}
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
-# Change trail: @hungxqt - 2026-07-22 - Add encrypted gp3 StorageClass for EBS CSI PVCs.
+# Change trail: @hungxqt - 2026-07-27 - Tag new production EBS volumes for Mandate 20 hourly backup.
