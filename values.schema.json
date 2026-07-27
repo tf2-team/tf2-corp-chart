@@ -294,6 +294,17 @@
         }
       }
     },
+    "mandate20EbsBackup": {
+      "type": "object",
+      "description": "Production opt-in tagging for EBS volumes selected by the Mandate 20 hourly AWS Backup plan",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["enabled"]
+    },
     "runtimeHardeningInventory": {
       "type": "object",
       "description": "Mandate 05 scheduled runtime-hardening drift scanner",
