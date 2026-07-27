@@ -1,0 +1,78 @@
+name: Chart CI
+
+on:
+  pull_request:
+    branches:
+      - techx-dev-corp
+      - main
+
+concurrency:
+  group: chart-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  helm-validation:
+    name: Helm lint and render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Build locked dependencies
+        run: |
+          set -euo pipefail
+          helm repo add opentelemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add jaeger https://jaegertracing.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana-community.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+          helm dependency build .
+
+      - name: Lint development values
+        run: helm lint . --strict -f values-dev.yaml
+
+      - name: Render development manifests
+        run: helm template techx-dev-corp . --namespace techx-dev-corp -f values-dev.yaml > /dev/null
+
+      - name: Lint production values
+        run: helm lint . --strict -f values-prod.yaml
+
+      - name: Render production manifests
+        run: helm template techx-corp-prod . --namespace techx-corp-prod -f values-prod.yaml > /dev/null
+
+  trivy-config:
+    name: Trivy configuration scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Scan chart and GitOps configuration
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  chart-ci-gate:
+    name: Chart CI gate
+    if: always()
+    needs:
+      - helm-validation
+      - trivy-config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce chart checks
+        env:
+          HELM_RESULT: ${{ needs.helm-validation.result }}
+          TRIVY_RESULT: ${{ needs.trivy-config.result }}
+        run: |
+          set -euo pipefail
+          if [[ "${HELM_RESULT}" != "success" || "${TRIVY_RESULT}" != "success" ]]; then
+            echo "::error::Chart checks failed: helm=${HELM_RESULT}, trivy=${TRIVY_RESULT}"
+            exit 1
+          fi
