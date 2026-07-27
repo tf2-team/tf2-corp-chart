@@ -699,6 +699,8 @@ components:
     # Keep shared storefront load tests running while Groq quota is constrained.
     # The matching task is tagged in the load-generator image.
     envOverrides:
+      - name: LOCUST_EXPECT_WORKERS
+        value: "4"
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
 
@@ -737,9 +739,9 @@ components:
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    # Keep workers off when no load test is running; operators raise this only
-    # during an approved Locust test window.
-    replicas: 0
+    # Temporary test window profile: four distributed workers are enough for a
+    # controlled 100-200 user Locust baseline without turning this into a stress test.
+    replicas: 4
     autoscaling:
       enabled: false
 
