@@ -163,7 +163,8 @@ components:
       - name: AWS_STS_REGIONAL_ENDPOINTS
         value: regional
     podAnnotations:
-      checksum/config: "20260728-prom-scrape-v1"
+      checksum/config: "20260728-linkerd-skip-v1"
+      config.linkerd.io/skip-inbound-ports: "5000"
       prometheus.io/scrape: "true"
       prometheus.io/port: "5000"
       prometheus.io/path: "/metrics"
