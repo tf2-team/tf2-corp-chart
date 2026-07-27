@@ -1415,9 +1415,9 @@ components:
     # (no load-generator-worker repo). name remaps the path segment; project + tag stay global.
     imageOverride:
       name: load-generator
-    # Workers on Karpenter Spot: pack onto one node first (cost), keep off storefront nodes.
+    # Workers on Karpenter Spot: keep synthetic load off storefront nodes, but
+    # spread workers so Locust latency is not biased by one saturated client node.
     # Affinity fully replaces default; restate preferred Spot capacity-type here.
-    # topologySpreadConstraints: [] opts out of default soft multi-node/AZ spreads.
     schedulingRules:
       nodeSelector:
         workload-class: spot-tolerant
@@ -1426,7 +1426,13 @@ components:
           operator: Equal
           value: spot-tolerant
           effect: NoSchedule
-      topologySpreadConstraints: []
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
       affinity:
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -1437,8 +1443,8 @@ components:
                     operator: In
                     values:
                       - spot
-        # Soft pack: prefer co-locating workers on the same hostname before new nodes.
-        podAffinity:
+        # Soft spread: prefer not to co-locate Locust workers on the same node.
+        podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
             - weight: 100
               podAffinityTerm:
@@ -1449,7 +1455,6 @@ components:
                       values:
                         - load-generator-worker
                 topologyKey: kubernetes.io/hostname
-        podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchExpressions:
@@ -1500,23 +1505,20 @@ components:
       - name: XDG_CONFIG_HOME
         value: /tmp/.config
     resources:
-      # Burstable QoS: cpu limit set to 100m for admission policy compliance
+      # Requests reflect observed 500-user worker load so Karpenter provisions
+      # enough client-side CPU instead of packing all workers on one t4g.large.
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 200m
+        memory: 192Mi
       limits:
-        cpu: 500m
-        memory: 256Mi
+        cpu: 750m
+        memory: 384Mi
     mountedEmptyDirs:
       - name: tmp-dir
         mountPath: /tmp
     # Fixed Worker Pool: Disable HPA to prevent scale-churn and socket disconnects during load tests.
     replicas: 10
-    # Workers use soft podAffinity to co-locate on one node (podAffinity + topologySpreadConstraints: []).
-    # When Karpenter consolidates that single node (WhenEmptyOrUnderutilized, consolidateAfter: 0s),
-    # all 10 workers are evicted simultaneously → mass disconnect from Locust master → user drops.
-    # PDB minAvailable: 9 limits Karpenter to evicting at most 1 worker at a time,
-    # preventing the simultaneous eviction that causes load-test user drops.
+    # PDB minAvailable: 9 limits voluntary disruption during a 10-worker load test.
     pdb:
       minAvailable: 9
     autoscaling:
