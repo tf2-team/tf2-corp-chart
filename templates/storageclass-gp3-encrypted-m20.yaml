@@ -1,21 +1,25 @@
+{{- if .Values.mandate20EbsBackup.enabled }}
 {{- /*
-  Encrypted gp3 StorageClass for EBS CSI dynamic provisioning.
-  parameters.encrypted forces at-rest encryption (alias/aws/ebs when account default KMS is used).
+  Mandate 20 StorageClass for newly provisioned production PVCs.
+  It intentionally coexists with gp3-encrypted: StorageClass parameters and
+  PVC storageClassName are immutable, so existing workloads migrate separately.
 */ -}}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: gp3-encrypted
+  name: gp3-encrypted-m20
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     app.kubernetes.io/part-of: techx-corp
+    mandate.techx.io/id: "20"
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
   encrypted: "true"
   fsType: ext4
+  tagSpecification_1: "Mandate20Backup=hourly"
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
-# Change trail: @hungxqt - 2026-07-27 - Keep immutable parameters aligned with the live StorageClass.
+{{- end }}
