@@ -753,7 +753,7 @@ components:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
     # Idle overnight; raise back to 4 for the next controlled Locust test window.
-    replicas: 0
+    replicas: 4
     pdb:
       minAvailable: 3
     autoscaling:
