@@ -19,6 +19,9 @@ spec:
     targetRevision: 3.2.1
     helm:
       releaseName: kubecost
+      # AppProject techx-corp intentionally does not allow CRD creation.
+      # Kubecost renders turndownschedules.kubecost.com even with clusterController disabled.
+      skipCrds: true
       valuesObject:
         global:
           clusterId: techx-tf2-prod
