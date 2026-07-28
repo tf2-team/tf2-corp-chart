@@ -1962,6 +1962,15 @@ spec:
               app.kubernetes.io/name: opentelemetry-collector
       ports:
         - { protocol: TCP, port: 8888 }
+    # Jaeger does not carry the chart-wide part-of label, so its native and
+    # Linkerd proxy metrics need an explicit same-namespace selector.
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jaeger
+      ports:
+        - { protocol: TCP, port: 8888 }
+        - { protocol: TCP, port: 4191 }
     - to:
         - namespaceSelector:
             matchLabels:
@@ -1971,6 +1980,24 @@ spec:
               app.kubernetes.io/name: karpenter
       ports:
         - { protocol: TCP, port: 8080 }
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aws-load-balancer-controller
+      ports:
+        - { protocol: TCP, port: 8080 }
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: TCP, port: 9153 }
     # Kubernetes discovery uses the in-cluster API Service.
     - to:
         - ipBlock:
@@ -1978,6 +2005,16 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    # The API server scrape job targets the private EKS EndpointSlice ENIs
+    # directly. Host CIDRs keep this exception limited to verified endpoints.
+    {{- range .Values.networkPolicy.kubernetesApiEndpointCidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . }}
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
     # Kubelet scrape stays inside the production VPC.
     - to:
         - ipBlock:

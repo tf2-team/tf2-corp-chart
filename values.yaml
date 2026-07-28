@@ -18,6 +18,12 @@ networkPolicy:
   # ClusterIP of default/kubernetes as a host CIDR. Keep separate from vpcCidr:
   # NetworkPolicy evaluates in-cluster API traffic against this Service IP.
   kubernetesApiCidr: 172.20.0.1/32
+  # Prometheus endpoint discovery resolves the EKS API EndpointSlices to the
+  # private control-plane ENIs rather than the kubernetes Service ClusterIP.
+  # Keep these as verified host CIDRs; update them if EKS rotates the endpoints.
+  kubernetesApiEndpointCidrs:
+    - 10.0.10.90/32
+    - 10.0.45.74/32
   albIngressCidrs:
     - 10.0.0.0/16
   # flagd keeps its existing BTC HTTP provider path and is not proxy-injected.
