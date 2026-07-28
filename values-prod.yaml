@@ -139,12 +139,12 @@ mem0:
     mountPath: /models/fastembed
 components:
   # OpenSearch is bound to an EBS volume in us-east-1b. Keep it on the
-  # transition reserve during the On-Demand role-pool migration; it cannot
+  # dedicated data-observability node; it cannot
   # share the observability-1a node with the AZ-bound Prometheus volume.
   opensearch:
     schedulingRules:
       nodeSelector:
-        workload-tier: transition-reserve
+        workload-tier: data-observability
       affinity: {}
       tolerations: []
       topologySpreadConstraints: []
