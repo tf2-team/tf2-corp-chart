@@ -40,7 +40,7 @@ export const options = {
   userAgent: "techx-directive-03-maintenance-validation/1.0",
 };
 
-const headers = { "Content-Type": "application/json" };
+const defaultHeaders = { "Content-Type": "application/json" };
 const fallbackProductId = __ENV.PRODUCT_ID || "OLJCESPC7Z";
 const ledgerEnabled = (__ENV.LEDGER_ENABLED || "false").toLowerCase() === "true";
 const faultId = __ENV.FAULT_ID || "baseline";
@@ -51,8 +51,9 @@ function traceContext(requestId) {
   return {
     traceId,
     headers: {
-      ...headers,
+      ...defaultHeaders,
       traceparent: `00-${traceId}-${spanId}-01`,
+      "x-test-request-id": requestId,
       "x-mandate21-request-id": requestId,
     },
   };
@@ -111,6 +112,7 @@ export default function () {
   const cartOk = check(cart, { "cart HTTP 200": (r) => r.status === 200 });
   cartSuccess.add(cartOk);
 
+  const startedAt = new Date().toISOString();
   const checkout = http.post(
     `${baseUrl}/api/checkout`,
     JSON.stringify({
@@ -133,6 +135,7 @@ export default function () {
     }),
     { headers: trace.headers, tags: { flow: "checkout" } },
   );
+  const completedAt = new Date().toISOString();
   const orderId = extractOrderId(checkout);
   const checkoutOk = check(checkout, {
     "checkout HTTP 200 with order": (r) => r.status === 200 && orderId !== null,
@@ -142,15 +145,18 @@ export default function () {
     ? "accepted"
     : (checkout.status === 0 || checkout.status >= 500 ? "ambiguous" : "rejected");
   writeLedger({
-    schema_version: 1,
-    fault_id: faultId,
-    request_id: requestId,
-    trace_id: trace.traceId,
-    timestamp: new Date().toISOString(),
-    http_status: checkout.status,
-    latency_ms: checkout.timings.duration,
-    order_id: orderId,
+    schemaVersion: "1",
+    phase: __ENV.PHASE || "drill",
+    faultId,
+    testRequestId: requestId,
+    traceId: trace.traceId,
+    startedAt,
+    completedAt,
+    httpStatus: checkout.status,
+    durationMs: Math.round(checkout.timings.duration),
     outcome,
+    orderId: orderId || "",
+    errorClass: checkoutOk ? "" : (checkout.status === 0 ? "timeout" : `HTTP_${checkout.status}`),
   });
 
   sleep(Number(__ENV.SLEEP || 0.2));

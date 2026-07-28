@@ -1,0 +1,79 @@
+# Kubecost FinOps dashboard - private operator path:
+#   https://internal.hungtran.id.vn/kubecost/
+#
+# Exposed only through frontend-proxy on the internal ALB / Client VPN path.
+# CloudFront must block /kubecost for the public storefront edge.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubecost
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: techx-corp
+
+  source:
+    repoURL: public.ecr.aws/kubecost
+    chart: kubecost
+    targetRevision: 3.2.1
+    helm:
+      releaseName: kubecost
+      # Cluster Controller/Turndown is disabled below. Do not render its
+      # cluster-scoped CRD into the least-privilege techx-corp AppProject.
+      skipCrds: true
+      valuesObject:
+        global:
+          clusterId: techx-tf2-prod
+          acknowledged: true
+          defaultStorageClass: gp3-encrypted
+          notifications:
+            alertConfigs:
+              frontendUrl: https://internal.hungtran.id.vn/kubecost
+        ingress:
+          enabled: false
+        httpRoute:
+          enabled: false
+        frontend:
+          service:
+            type: ClusterIP
+            port: 9090
+        localStore:
+          persistentVolume:
+            storageClass: gp3-encrypted
+            size: 32Gi
+        aggregator:
+          aggregatorDbStorage:
+            storageClass: gp3-encrypted
+            storageRequest: 32Gi
+          persistentConfigsStorage:
+            storageClass: gp3-encrypted
+            storageRequest: 1Gi
+        cloudCost:
+          persistentConfigsStorage:
+            storageClass: gp3-encrypted
+            size: 1Gi
+        networkCosts:
+          enabled: false
+        forecasting:
+          enabled: false
+        clusterController:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubecost
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Do NOT enable ServerSideApply in v1 baseline.
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

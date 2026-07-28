@@ -388,6 +388,18 @@ spec:
       ports:
         - protocol: TCP
           port: 3000
+    # Kubecost FinOps UI (separate prod Application in kubecost NS; path /kubecost on frontend-proxy)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kubecost
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend
+              app.kubernetes.io/instance: kubecost
+      ports:
+        - protocol: TCP
+          port: 9090
     - to:
         - podSelector:
             matchLabels:

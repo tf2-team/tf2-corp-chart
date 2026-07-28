@@ -25,6 +25,9 @@ Assert-True ($wrapper -match 'Get-Random') "wrapper selects the live AZ at runti
 Assert-True ($wrapper -match 'start-experiment') "wrapper starts an AWS FIS experiment"
 Assert-True ($wrapper -match 'RUN-M21-FIS') "wrapper requires an explicit live confirmation token"
 Assert-True ($wrapper -notmatch '(?im)\bkubectl\b.*\b(cordon|drain|delete)\b') "wrapper never cordons, drains, or deletes Kubernetes resources"
+Assert-True ($wrapper -match 'describe-alarms') "wrapper verifies every FIS stop alarm is OK"
+Assert-True ($wrapper -match 'RecoveryMinutes') "wrapper enforces a measured recovery window"
+Assert-True ($wrapper -match 'reconciliation-report\.txt') "wrapper persists Person 2 reconciliation output"
 
 $contract = Read-RepoFile "scripts/mandate21-fis-contract.example.json" | ConvertFrom-Json
 Assert-True ($contract.schemaVersion -eq 1) "example contract uses schema version 1"
@@ -35,11 +38,14 @@ foreach ($zone in $contract.zones.PSObject.Properties) {
 }
 
 $loadTest = Read-RepoFile "scripts/maintenance-load-test.js"
-foreach ($field in @("request_id", "trace_id", "timestamp", "http_status", "latency_ms", "order_id", "outcome")) {
+foreach ($field in @("testRequestId", "traceId", "startedAt", "completedAt", "httpStatus", "durationMs", "orderId", "outcome")) {
     Assert-True ($loadTest.Contains($field)) "k6 ledger contains $field"
 }
 Assert-True ($loadTest -match 'LEDGER_ENABLED') "k6 ledger is explicitly opt-in"
 Assert-True ($loadTest -notmatch 'console\.log\([^)]*(creditCard|email|address)') "k6 never logs customer or payment payload"
+
+$kubecost = Read-RepoFile "gitops/clusters/prod/kubecost-application.yaml"
+Assert-True ($kubecost -match '(?m)^\s*skipCrds:\s*true\s*$') "Kubecost omits disabled Turndown CRDs from the least-privilege AppProject"
 
 $dashboardPath = Join-Path $repo "grafana/provisioning/dashboards/mandate-21-az-failover.json"
 $dashboard = Get-Content -LiteralPath $dashboardPath -Raw | ConvertFrom-Json -Depth 100
@@ -65,6 +71,12 @@ $manifest = $rendered -join "`n"
 
 Assert-True ($manifest -match '(?ms)kind: Deployment.*?name: accounting.*?replicas: 2') "rendered Accounting Deployment has two replicas"
 Assert-True ($manifest -match '(?ms)kind: PodDisruptionBudget.*?name: accounting.*?maxUnavailable: 1') "rendered Accounting PDB uses maxUnavailable 1"
+Assert-True ($manifest -match '(?ms)kind: Job.*?name: accounting-migration.*?activeDeadlineSeconds: 300') "Accounting migration fails closed after five minutes"
+$migrationJob = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?ms)kind:\s+Job.*?name:\s+accounting-migration'
+})[0]
+Assert-True ($migrationJob -match 'DB_CONNECTION_STRING') "Accounting migration receives its database credential"
+Assert-True ($migrationJob -notmatch '(?m)^\s*-\s+name:\s+(KAFKA_ADDR|CHECKOUT_OUTBOX_TABLE)\s*$') "Accounting migration cannot start Kafka or the outbox reconciler"
 Assert-True ($manifest -match 'yace\.techx-corp-prod\.svc\.cluster\.local:5000') "Prometheus directly scrapes YACE"
 Assert-True ($manifest -match '(?ms)name: yace.*?app\.kubernetes\.io/name: prometheus.*?port: 5000') "YACE NetworkPolicy admits Prometheus"
 Assert-True ($manifest -match 'aws_applicationelb_healthy_host_count_minimum|HealthyHostCount') "rendered configuration includes ALB healthy-target metrics"

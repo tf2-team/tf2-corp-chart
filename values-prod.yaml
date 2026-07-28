@@ -138,6 +138,19 @@ mem0:
     archiveName: fastembed-paraphrase-multilingual-MiniLM-L12-v2-faf4aa422582.tar.gz
     mountPath: /models/fastembed
 components:
+  accounting:
+    replicas: 2
+  # OpenSearch is bound to an EBS volume in us-east-1b. Keep it on the
+  # dedicated data-observability node; it cannot
+  # share the observability-1a node with the AZ-bound Prometheus volume.
+  opensearch:
+    schedulingRules:
+      nodeSelector:
+        workload-tier: data-observability
+      affinity: {}
+      tolerations: []
+      topologySpreadConstraints: []
+
   yace:
     enabled: true
     replicas: 1
@@ -583,7 +596,40 @@ components:
       minReplicas: 2
     schedulingRules: *directive03-hard-spread
   email:
-    replicas: 2
+    # The Ruby email service reached its previous 128Mi limit and both pods
+    # were repeatedly OOMKilled during the 1,000-user checkout load test.
+    # Keep a two-pod HA floor and allow CPU-driven horizontal scaling while
+    # preserving enough memory headroom for Ruby, OpenTelemetry, and bursts.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 60
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 30
+            - type: Percent
+              value: 100
+              periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+          selectPolicy: Max
     schedulingRules: *directive03-hard-spread
 
   flagd:
@@ -803,6 +849,8 @@ components:
 # Arrays replace under Helm merge — keep the full attributes list.
 prometheus:
   server:
+    nodeSelector:
+      workload-tier: observability
     podAnnotations:
       linkerd.io/inject: disabled
     global:
@@ -827,9 +875,13 @@ prometheus:
     podAnnotations:
       linkerd.io/inject: disabled
     nodeSelector:
-      workload-class: critical
+      workload-tier: observability
 
 grafana:
+  # The existing EBS-backed PVC is bound to us-east-1b, so Grafana must run
+  # on the data-observability pool in the same Availability Zone.
+  nodeSelector:
+    workload-tier: data-observability
   podAnnotations:
     linkerd.io/inject: disabled
     cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -860,6 +912,9 @@ prometheus-adapter:
     linkerd.io/inject: disabled
 
 jaeger:
+  jaeger:
+    nodeSelector:
+      workload-tier: observability
   podAnnotations:
     linkerd.io/inject: disabled
 
@@ -967,4 +1022,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-27 - Widen YACE managed metric lookback window to two periods.
+# Change trail: @hungxqt - 2026-07-28 - Set Accounting replicas to 2 in production values-prod.yaml.

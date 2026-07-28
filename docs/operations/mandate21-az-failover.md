@@ -69,8 +69,9 @@ k6 run --log-format raw \
   scripts/maintenance-load-test.js
 ```
 
-Each checkout record contains only `request_id`, `trace_id`, `order_id`, time,
-HTTP status, latency, fault ID, and outcome. It never contains card data,
+Each checkout record follows the Person 2 reconciler contract:
+`testRequestId`, `traceId`, `orderId`, `startedAt`, `completedAt`,
+`httpStatus`, `durationMs`, fault ID, and outcome. It never contains card data,
 credentials, email, address, or customer payload. `ambiguous` means the caller
 cannot prove whether a request with no usable response was accepted; Person 2's
 checker must resolve every such record from durable state.
@@ -88,10 +89,19 @@ All gates must be documented before this command:
    experiment.
 
 ```powershell
+# Build Person 2's reviewed Go reconciler before the change window.
+Push-Location ../tf2-corp-platform/tools/mandate21-reconcile
+go build -o ../../../tf2-corp-chart/bin/mandate21-reconcile.exe .
+Pop-Location
+
 ./scripts/mandate21-fis-drill.ps1 `
   -ContractPath ./scripts/mandate21-fis-contract.json `
   -EvidenceDirectory ./evidence/mandate21 `
-  -ReconcilerPath ../tf2-corp-platform/scripts/mandate21-reconcile.ps1 `
+  -ReconcilerPath ./bin/mandate21-reconcile.exe `
+  -LedgerPath ./evidence/mandate21/ledger.jsonl `
+  -DynamoDbTable $env:CHECKOUT_OUTBOX_TABLE `
+  -PostgresConnectionString $env:DB_CONNECTION_STRING `
+  -JaegerUrl $env:JAEGER_QUERY_URL `
   -Execute `
   -CapacityApproved `
   -CostApproved `

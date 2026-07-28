@@ -47,7 +47,7 @@ egressProxy:
     - product-reviews
     - shopping-copilot
     - yace
-  noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana"
+  noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana,kubecost,kubecost-frontend"
   allowedDomains:
     # Envoy matches the CONNECT target, which includes the destination port.
     - api.groq.com:443
@@ -1186,6 +1186,7 @@ components:
         - /loadgen
         - /feature
         - /argocd
+        - /kubecost
         # /otlp-http and /flagservice are not listed: public browser OTLP + flagd EventStream
     podAnnotations:
       io.opentelemetry.discovery.metrics/enabled: "true"
@@ -1216,6 +1217,11 @@ components:
         value: grafana
       - name: GRAFANA_PORT
         value: "80"
+      # Kubecost FinOps UI (separate Argo CD Application in kubecost NS).
+      - name: KUBECOST_HOST
+        value: kubecost-frontend.kubecost.svc.cluster.local
+      - name: KUBECOST_PORT
+        value: "9090"
       - name: IMAGE_PROVIDER_HOST
         value: image-provider
       - name: IMAGE_PROVIDER_PORT

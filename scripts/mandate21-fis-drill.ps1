@@ -8,7 +8,13 @@ param(
     [switch]$DurabilityApproved,
     [switch]$ChangeApproved,
     [string]$ConfirmationToken = "",
-    [string]$ReconcilerPath = ""
+    [string]$ReconcilerPath = "",
+    [string]$LedgerPath = "",
+    [string]$DynamoDbTable = "",
+    [string]$PostgresConnectionString = "",
+    [string]$JaegerUrl = "",
+    [ValidateRange(1, 60)]
+    [int]$RecoveryMinutes = 15
 )
 
 $ErrorActionPreference = "Stop"
@@ -118,8 +124,28 @@ function Assert-FisTemplate {
     Assert-True ($TemplateId -match '^EXT[A-Za-z0-9]+$') "$Zone has a real FIS experiment-template ID"
     $response = Invoke-Json aws @("fis", "get-experiment-template", "--region", $Region, "--id", $TemplateId, "--output", "json")
     $template = $response.experimentTemplate
-    Assert-True (@($template.stopConditions | Where-Object { $_.source -ne "none" }).Count -ge 3) "$Zone template has all three alarm stop conditions"
+    Assert-True (@($template.stopConditions | Where-Object { $_.source -ne "none" }).Count -ge 4) "$Zone template has all four alarm stop conditions"
     $encoded = $template | ConvertTo-Json -Depth 100 -Compress
+    foreach ($alarmName in @(
+        "storefront-healthy-hosts",
+        "storefront-5xx-ratio",
+        "accepted-order-durability-gap",
+        "immutable-audit-control-health"
+    )) {
+        Assert-True ($encoded -match [regex]::Escape($alarmName)) "$Zone template includes stop alarm $alarmName"
+    }
+    foreach ($condition in @($template.stopConditions | Where-Object { $_.source -ne "none" })) {
+        $alarmName = ($condition.source -split ":alarm:", 2)[1]
+        Assert-True (-not [string]::IsNullOrWhiteSpace($alarmName)) "$Zone stop condition has a valid CloudWatch alarm ARN"
+        $alarm = Invoke-Json aws @(
+            "cloudwatch", "describe-alarms",
+            "--region", $Region,
+            "--alarm-names", $alarmName,
+            "--output", "json"
+        )
+        Assert-True (@($alarm.MetricAlarms).Count -eq 1) "$Zone stop alarm $alarmName exists"
+        Assert-True ($alarm.MetricAlarms[0].StateValue -eq "OK") "$Zone stop alarm $alarmName is OK"
+    }
     Assert-True ($encoded -match [regex]::Escape($Zone)) "$Zone template targets the mapped availability zone"
     Assert-True ($encoded -match "aws:ec2:(stop|terminate)-instances") "$Zone template interrupts EC2 compute"
     Assert-True ($encoded -match "aws:network:disrupt-connectivity") "$Zone template disrupts subnet connectivity"
@@ -200,6 +226,12 @@ if (-not $Execute) {
 Assert-True ($CapacityApproved -and $CostApproved -and $DurabilityApproved -and $ChangeApproved) "capacity, cost, durability, and change approvals are explicit"
 Assert-True ($ConfirmationToken -ceq "RUN-M21-FIS") "confirmation token matches RUN-M21-FIS"
 Assert-True (-not [string]::IsNullOrWhiteSpace($ReconcilerPath)) "Person 2 reconciliation checker is supplied"
+Assert-True (-not [string]::IsNullOrWhiteSpace($LedgerPath)) "external k6 JSONL ledger path is supplied"
+Assert-True (-not [string]::IsNullOrWhiteSpace($DynamoDbTable)) "DynamoDB outbox table is supplied"
+Assert-True (-not [string]::IsNullOrWhiteSpace($PostgresConnectionString)) "PostgreSQL connection is supplied"
+Assert-True (-not [string]::IsNullOrWhiteSpace($JaegerUrl)) "Jaeger query URL is supplied"
+Assert-True (Test-Path -LiteralPath $ReconcilerPath) "Person 2 reconciliation checker exists"
+Assert-True (Test-Path -LiteralPath $LedgerPath) "external k6 JSONL ledger is already recording"
 
 $selectedZone = Get-Random -InputObject @($contract.zones.PSObject.Properties.Name)
 $rds = Invoke-Json aws @("rds", "describe-db-instances", "--region", $contract.region, "--db-instance-identifier", $contract.rdsInstanceIdentifier, "--output", "json")
@@ -253,6 +285,15 @@ do {
     Write-Host "FIS $experimentId state=$state"
 } while ($terminal -notcontains $state)
 
+Write-Host "FIS terminal state=$state. Waiting $RecoveryMinutes minute(s) for the measured recovery window."
+for ($minute = 1; $minute -le $RecoveryMinutes; $minute++) {
+    Start-Sleep -Seconds 60
+    if (($minute % 5) -eq 0 -or $minute -eq $RecoveryMinutes) {
+        Save-Snapshot -Name "recovery-$('{0:D2}' -f $minute)m.json" -Namespace $contract.namespace
+    }
+    Write-Host "Recovery minute $minute/$RecoveryMinutes"
+}
+
 Save-Snapshot -Name "after.json" -Namespace $contract.namespace
 $postPending = Invoke-Text kubectl @("get", "pods", "-A", "--field-selector=status.phase=Pending", "-o", "name")
 Assert-True ([string]::IsNullOrWhiteSpace($postPending)) "cleanup left no Pending pod"
@@ -263,9 +304,14 @@ Assert-True (@($postArgo.items | Where-Object { $_.status.sync.status -ne "Synce
 $postDeployments = Invoke-Json kubectl @("-n", $contract.namespace, "get", "deployments", "-o", "json")
 Assert-True (@($postDeployments.items | Where-Object { (Get-IntProperty $_.status "availableReplicas") -ne [int]$_.spec.replicas }).Count -eq 0) "all application Deployments recovered"
 
-Assert-True (Test-Path -LiteralPath $ReconcilerPath) "Person 2 reconciliation checker exists"
-& $ReconcilerPath -EvidenceDirectory $script:RunDirectory -FaultId $faultId
-if ($LASTEXITCODE -ne 0) { throw "Reconciliation failed with exit code $LASTEXITCODE" }
+$reconciliationOutput = & $ReconcilerPath `
+    -drill-log $LedgerPath `
+    -dynamodb-table $DynamoDbTable `
+    -pg-connstr $PostgresConnectionString `
+    -jaeger-url $JaegerUrl 2>&1
+$reconciliationExitCode = $LASTEXITCODE
+$reconciliationOutput | Set-Content -LiteralPath (Join-Path $script:RunDirectory "reconciliation-report.txt") -Encoding utf8
+if ($reconciliationExitCode -ne 0) { throw "Reconciliation failed with exit code $reconciliationExitCode" }
 
 Assert-True ($state -eq "completed") "FIS experiment completed without stop/failure"
 Write-Host "DRILL COMPLETE: evidence=$script:RunDirectory"
