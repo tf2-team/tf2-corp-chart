@@ -19,8 +19,8 @@ spec:
     targetRevision: 3.2.1
     helm:
       releaseName: kubecost
-      # Cluster Controller/Turndown is disabled below. Do not render its
-      # cluster-scoped CRD into the least-privilege techx-corp AppProject.
+      # AppProject techx-corp intentionally does not allow CRD creation.
+      # Kubecost renders turndownschedules.kubecost.com even with clusterController disabled.
       skipCrds: true
       valuesObject:
         global:
