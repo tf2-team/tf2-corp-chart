@@ -231,6 +231,15 @@
           "type": "string",
           "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/32$"
         },
+        "kubernetesApiEndpointCidrs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/32$"
+          }
+        },
         "albIngressCidrs": {
           "type": "array",
           "minItems": 1,
@@ -246,6 +255,7 @@
         "enforceEgress",
         "vpcCidr",
         "kubernetesApiCidr",
+        "kubernetesApiEndpointCidrs",
         "albIngressCidrs",
         "flagdSyncCidrs"
       ]
@@ -327,6 +337,10 @@
           "minimum": 0
         },
         "failedJobsHistoryLimit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ttlSecondsAfterFinished": {
           "type": "integer",
           "minimum": 0
         },
@@ -582,6 +596,23 @@
         "existingSecret": {
           "type": "string"
         },
+        "notificationSecretRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "key"
+          ]
+        },
         "service": {
           "type": "object",
           "additionalProperties": false,
@@ -677,9 +708,9 @@
             "policyMode": {
               "type": "string",
               "enum": [
+                "observe",
                 "dry-run",
-                "approval-required",
-                "live"
+                "live-approved"
               ]
             },
             "autoRunEnabled": {

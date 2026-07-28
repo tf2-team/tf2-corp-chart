@@ -19,6 +19,9 @@ mandate20EbsBackup:
 
 runtimeHardeningInventory:
   enabled: true
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  ttlSecondsAfterFinished: 1800
 
 # Mandate 17 activation is intentionally split into later, reversible PRs.
 networkPolicy:
@@ -163,6 +166,11 @@ components:
       - name: AWS_STS_REGIONAL_ENDPOINTS
         value: regional
     podAnnotations:
+      checksum/config: "20260728-linkerd-skip-v1"
+      config.linkerd.io/skip-inbound-ports: "5000"
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "5000"
+      prometheus.io/path: "/metrics"
       io.opentelemetry.discovery.metrics/enabled: "true"
       io.opentelemetry.discovery.metrics/scraper: prometheus_simple
       io.opentelemetry.discovery.metrics/config: |
@@ -224,43 +232,43 @@ components:
                   - name: CPUUtilization
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: DatabaseConnections
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: FreeableMemory
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: FreeStorageSpace
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: ReadIOPS
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: WriteIOPS
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: ReadLatency
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: WriteLatency
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkReceiveThroughput
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkTransmitThroughput
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
               - name: elasticache-cart-001
                 regions: [us-east-1]
                 namespace: AWS/ElastiCache
@@ -273,27 +281,27 @@ components:
                   - name: CPUUtilization
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: EngineCPUUtilization
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkBytesIn
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkBytesOut
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: CurrConnections
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: DatabaseMemoryUsagePercentage
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
               - name: elasticache-cart-002
                 regions: [us-east-1]
                 namespace: AWS/ElastiCache
@@ -306,27 +314,27 @@ components:
                   - name: CPUUtilization
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: EngineCPUUtilization
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkBytesIn
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkBytesOut
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: CurrConnections
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: DatabaseMemoryUsagePercentage
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
               # M21 current ALB target-group contract. If Terraform recreates
               # the ALB/TG, Person 1 must update these two dimensions from its
               # outputs before the drill preflight is allowed to pass.
@@ -344,11 +352,11 @@ components:
                   - name: HealthyHostCount
                     statistics: [Minimum]
                     period: 60
-                    length: 300
+                    length: 600
                   - name: UnHealthyHostCount
                     statistics: [Maximum]
                     period: 60
-                    length: 300
+                    length: 600
               - name: frontend-alb-1b
                 regions: [us-east-1]
                 namespace: AWS/ApplicationELB
@@ -372,39 +380,39 @@ components:
                   - name: CpuUser
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: CpuSystem
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: CpuIdle
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: MemoryUsed
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: KafkaDataLogsDiskUsed
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: BytesInPerSec
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: BytesOutPerSec
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkRxPackets
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
                   - name: NetworkTxPackets
                     statistics: [Average]
                     period: 300
-                    length: 300
+                    length: 600
               - name: kafka-broker-2
                 regions: [us-east-1]
                 namespace: AWS/Kafka
@@ -666,6 +674,8 @@ components:
       certificateArn: "arn:aws:acm:us-east-1:493499579600:certificate/043175b8-99f5-492f-a258-ff280e0b9a75"
     autoscaling:
       minReplicas: 2
+    podAnnotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     # Preserve the critical MNG pin and soft zone spread so replicas can collapse
     # into the surviving AZ. The M21 wrapper blocks the drill unless baseline
     # skew is <= 1; hostname spread remains hard.
@@ -734,9 +744,13 @@ components:
   # Scale back to 0 when tests stop to save Spot capacity.
   load-generator:
     replicas: 1
+    podAnnotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     # Keep shared storefront load tests running while Groq quota is constrained.
     # The matching task is tagged in the load-generator image.
     envOverrides:
+      - name: LOCUST_EXPECT_WORKERS
+        value: "4"
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
 
@@ -772,12 +786,15 @@ components:
         service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
 
   load-generator-worker:
+    podAnnotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    # Keep workers off when no load test is running; operators raise this only
-    # during an approved Locust test window.
-    replicas: 0
+    # Idle overnight; raise back to 4 for the next controlled Locust test window.
+    replicas: 4
+    pdb:
+      minAvailable: 3
     autoscaling:
       enabled: false
 
@@ -793,6 +810,19 @@ prometheus:
       evaluation_interval: 30s
       scrape_timeout: 10s
     retention: 24h
+    persistentVolume:
+      # The prod PVC was expanded during the AIOps long-run window. Kubernetes
+      # forbids PVC shrink, so keep desired storage aligned with live capacity.
+      size: 48Gi
+    resources:
+      # Live baseline under Locust/AIOps was far below the old 500m/4Gi request.
+      # Keep the 4Gi limit and PVC unchanged, but release critical-node binpack pressure.
+      requests:
+        cpu: 200m
+        memory: 2304Mi
+      limits:
+        cpu: 500m
+        memory: 4Gi
   kube-state-metrics:
     podAnnotations:
       linkerd.io/inject: disabled
@@ -802,6 +832,7 @@ prometheus:
 grafana:
   podAnnotations:
     linkerd.io/inject: disabled
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
   readinessProbe:
     initialDelaySeconds: 30
     periodSeconds: 10
@@ -822,6 +853,7 @@ grafana:
 metrics-server:
   podAnnotations:
     linkerd.io/inject: disabled
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
 
 prometheus-adapter:
   podAnnotations:
@@ -833,6 +865,8 @@ jaeger:
 
 
 opentelemetry-collector:
+  podAnnotations:
+    checksum/config: "20260728-receivers-v1"
   # Kafka observability follows MSK. Restate OpenSearch envs because Helm
   # replaces arrays in overlays.
   extraEnvs:
@@ -931,6 +965,6 @@ opentelemetry-collector:
     service:
       pipelines:
         metrics:
-          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds]
+          receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: AIO4 - 2026-07-26 - Collect managed Valkey and RDS PostgreSQL metrics in production.
+# Change trail: @hungxqt - 2026-07-27 - Widen YACE managed metric lookback window to two periods.

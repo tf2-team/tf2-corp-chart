@@ -1,0 +1,14 @@
+apiVersion: 1
+
+datasources:
+  # Uses Grafana's existing IRSA role. The role is granted only CloudWatch
+  # metric read access by default; Logs Insights access is added only when
+  # the Terraform Flow Logs diagnostic switch is enabled.
+  - name: CloudWatch Mandate 18
+    uid: mandate18-cloudwatch
+    type: cloudwatch
+    editable: false
+    isDefault: false
+    jsonData:
+      authType: default
+      defaultRegion: us-east-1

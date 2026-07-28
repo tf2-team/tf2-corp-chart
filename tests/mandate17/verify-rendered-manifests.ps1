@@ -172,6 +172,17 @@ if (
 ) {
     throw "OpenSearch and Jaeger datasources must be provisioned before dependent defaults"
 }
+$jaegerUserConfig = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/charts/jaeger/templates/jaeger/jaeger-user-config.yaml' -and
+    $_ -match '(?m)^kind: ConfigMap$'
+})
+if ($jaegerUserConfig.Count -ne 1) {
+    throw "full state must render one Jaeger user config ConfigMap"
+}
+$jaegerPrometheusReader = '(?ms)- pull:\s+exporter:\s+prometheus:\s+host: 0\.0\.0\.0\s+port: 8888'
+if ($jaegerUserConfig[0] -notmatch $jaegerPrometheusReader) {
+    throw "Jaeger must expose native metrics on 0.0.0.0:8888 for Prometheus"
+}
 $inventoryJob = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '# Source: techx-corp/templates/runtime-hardening-inventory.yaml' -and
     $_ -match '(?m)^kind: CronJob$'
@@ -249,6 +260,28 @@ foreach ($policyName in $apiConsumerPolicies) {
 $apiCidrRules = [regex]::Matches($fullText, 'cidr: 172\.20\.0\.1/32')
 if ($apiCidrRules.Count -ne $apiConsumerPolicies.Count) {
     throw "Kubernetes API CIDR must be granted only to the approved API consumers"
+}
+$prometheusPolicy = $full | Where-Object { $_ -match '(?m)^  name: prometheus$' }
+foreach ($endpointCidr in @('10.0.10.90/32', '10.0.45.74/32')) {
+    $endpointRule = '(?ms)cidr: ' + [regex]::Escape($endpointCidr) + '\s+ports:\s+- protocol: TCP\s+port: 443'
+    if ($prometheusPolicy -notmatch $endpointRule) {
+        throw "Prometheus must allow the verified EKS API endpoint on TCP 443: $endpointCidr"
+    }
+}
+foreach ($requiredScrapeRule in @(
+    '(?ms)app\.kubernetes\.io/name: jaeger\s+ports:\s+- \{ protocol: TCP, port: 8888 \}\s+- \{ protocol: TCP, port: 4191 \}',
+    '(?ms)app\.kubernetes\.io/name: aws-load-balancer-controller\s+ports:\s+- \{ protocol: TCP, port: 8080 \}',
+    '(?ms)k8s-app: kube-dns\s+ports:\s+- \{ protocol: TCP, port: 9153 \}'
+)) {
+    if ($prometheusPolicy -notmatch $requiredScrapeRule) {
+        throw "Prometheus is missing a restricted control-plane scrape egress rule: $requiredScrapeRule"
+    }
+}
+$jaegerPolicy = $full | Where-Object { $_ -match '(?m)^  name: jaeger$' }
+if ($jaegerPolicy.Count -ne 1) { throw "full state must render one jaeger policy" }
+$prometheusJaegerMetricsIngress = '(?ms)from:\s+- podSelector:\s+matchLabels:\s+app\.kubernetes\.io/name: prometheus\s+ports:\s+- protocol: TCP\s+port: 8888'
+if ($jaegerPolicy -notmatch $prometheusJaegerMetricsIngress) {
+    throw "Jaeger must allow Prometheus to scrape native metrics on TCP 8888"
 }
 if ($fullRendered -notmatch 'app.kubernetes.io/component: otel-collector') {
     throw "OTel collector pods are missing the selector label used by NetworkPolicy"

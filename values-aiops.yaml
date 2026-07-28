@@ -4,3 +4,7 @@ aiops:
   enabled: true
   # ESO provisions this Secret from techx-corp/production/aiops-grafana-webhook.
   existingSecret: techx-corp-aiops-grafana-webhook
+  # Reuse the ESO-managed Discord webhook for outbound incident summaries.
+  notificationSecretRef:
+    name: techx-corp-grafana-discord
+    key: webhook-url

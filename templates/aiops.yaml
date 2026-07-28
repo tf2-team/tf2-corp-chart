@@ -145,6 +145,15 @@ spec:
               value: /var/run/secrets/kubernetes.io/serviceaccount/token
             - name: AIOPS_KUBERNETES_CA_CERT_PATH
               value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            {{- with .Values.aiops.notificationSecretRef }}
+            {{- if .name }}
+            - name: AIOPS_NOTIFICATION_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .name | quote }}
+                  key: {{ .key | quote }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.egressProxy.enabled }}
             - name: HTTPS_PROXY
               value: {{ printf "http://egress-proxy:%v" .Values.egressProxy.port | quote }}

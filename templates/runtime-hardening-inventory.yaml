@@ -246,6 +246,7 @@ spec:
     spec:
       backoffLimit: {{ $inventory.backoffLimit }}
       activeDeadlineSeconds: {{ $inventory.activeDeadlineSeconds }}
+      ttlSecondsAfterFinished: {{ $inventory.ttlSecondsAfterFinished }}
       template:
         metadata:
           annotations:
