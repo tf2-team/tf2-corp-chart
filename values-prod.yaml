@@ -412,6 +412,7 @@ components:
                     value: "3"
                 metrics: *kafka_metrics
 
+components:
   # DIRECTIVE #3: keep at least two Ready instances for every stateless service
   # on the synchronous browse -> cart -> checkout path. HPA services use a
   # production floor of two; fixed-size services declare replicas explicitly.
@@ -504,6 +505,8 @@ components:
     initContainers: []
   
   accounting:
+    migration:
+      enabled: false
     serviceAccount:
       create: true
       name: accounting
@@ -952,4 +955,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION environment variable override to accounting in values-prod.yaml.
+# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION env override and set accounting.migration.enabled to false in values-prod.yaml.

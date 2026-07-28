@@ -1,5 +1,6 @@
 {{- if and .Values.components.accounting .Values.components.accounting.enabled }}
 {{- $acct := .Values.components.accounting }}
+{{- if eq (dig "migration" "enabled" false $acct) true }}
 {{- $config := set (deepCopy $acct) "Capabilities" $.Capabilities }}
 {{- $config := set $config "Template" $.Template }}
 {{- $config := set $config "name" "accounting" }}
@@ -52,5 +53,7 @@ spec:
               drop:
                 - ALL
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-28 - Include full pod env in accounting-migration job to supply KAFKA_ADDR and DB credentials. */}}
+{{- end }}
+{{/* Change trail: @hungxqt - 2026-07-28 - Support migration.enabled toggle to temporarily disable accounting-migration job. */}}
+
 

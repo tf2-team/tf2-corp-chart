@@ -51,9 +51,9 @@ In dev, `KAFKA_ADDR` renders as `kafka:9092` and `AWS_REGION` as `us-east-1`. In
 ## Files Changed
 
 **Templates & Values:**
-* `templates/accounting-migration-job.yaml` — Updated container `env` block to use `techx-corp.pod.env`.
-* `values-prod.yaml` — Added `AWS_REGION: us-east-1` to `accounting.envOverrides`.
-* `values.yaml` — Added `AWS_REGION: us-east-1` to `accounting.env`.
+* `templates/accounting-migration-job.yaml` — Updated container `env` block to use `techx-corp.pod.env` and added `migration.enabled` check to support temporarily disabling the Job.
+* `values-prod.yaml` — Added `AWS_REGION: us-east-1` to `accounting.envOverrides` and set `accounting.migration.enabled: false`.
+* `values.yaml` — Added `AWS_REGION: us-east-1` to `accounting.env` and set `accounting.migration.enabled: false`.
 
 **Documentation:**
 * `docs/changes/2026-07-28-fix-accounting-migration-kafka-addr-env.md` — This change record.
