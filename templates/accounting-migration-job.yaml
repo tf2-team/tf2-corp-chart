@@ -22,6 +22,7 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 3
+  activeDeadlineSeconds: 300
   ttlSecondsAfterFinished: 1800
   template:
     metadata:
@@ -40,7 +41,14 @@ spec:
           args:
             - "--migrate-only"
           env:
-            {{- include "techx-corp.pod.env" $config | nindent 12 }}
+            # Migration mode must not initialize Kafka or the outbox reconciler.
+            # If this container asks for KAFKA_ADDR, the promoted image does not
+            # contain the required --migrate-only entry point and must fail closed.
+            - name: DB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: techx-corp-postgresql-app
+                  key: accounting-db-connection-string
           resources:
             {{- toYaml ($acct.resources | default .Values.default.resources) | nindent 12 }}
           securityContext:
@@ -54,6 +62,4 @@ spec:
                 - ALL
 {{- end }}
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-28 - Support migration.enabled toggle to temporarily disable accounting-migration job. */}}
-
-
+{{/* Change trail: Person 3 - 2026-07-29 - Keep the migration.enabled guard while enforcing a DB-only PreSync migration. */}}

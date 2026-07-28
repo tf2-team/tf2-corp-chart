@@ -10,6 +10,11 @@ on:
       - "templates/component.yaml"
       - "scripts/mandate17-*.ps1"
       - "tests/mandate17/**"
+      - "scripts/mandate21-*.ps1"
+      - "scripts/maintenance-load-test.js"
+      - "tests/mandate21/**"
+      - "grafana/provisioning/dashboards/mandate-21-*.json"
+      - "gitops/linkerd/linkerd-control-plane.yaml"
       - "values.schema.json"
       - "values*.yaml"
   push:
@@ -22,6 +27,11 @@ on:
       - "templates/component.yaml"
       - "scripts/mandate17-*.ps1"
       - "tests/mandate17/**"
+      - "scripts/mandate21-*.ps1"
+      - "scripts/maintenance-load-test.js"
+      - "tests/mandate21/**"
+      - "grafana/provisioning/dashboards/mandate-21-*.json"
+      - "gitops/linkerd/linkerd-control-plane.yaml"
       - "values.schema.json"
       - "values*.yaml"
 
@@ -59,6 +69,9 @@ jobs:
       - name: Verify chaos script contracts
         shell: pwsh
         run: ./tests/mandate17/verify-chaos-scripts.ps1
+      - name: Verify Mandate 21 runtime drill contracts
+        shell: pwsh
+        run: ./tests/mandate21/verify-runtime.ps1
       - name: Validate Envoy proxy configuration
         run: |
           helm template techx-corp . \

@@ -44,6 +44,9 @@ spec:
         # -----------------------------------------------------------------------
         cniEnabled: true
         disableHeartBeat: true
+        # M21: all three controller Deployments use this replica count. The
+        # chart's anti-affinity keeps replicas off the same node; runtime
+        # preflight additionally proves that they span both production AZs.
         controllerReplicas: 2
         enablePodAntiAffinity: true
         enablePodDisruptionBudget: true

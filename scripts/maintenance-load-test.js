@@ -1,4 +1,5 @@
 import http from "k6/http";
+import crypto from "k6/crypto";
 import { check, fail, sleep } from "k6";
 import { Rate } from "k6/metrics";
 
@@ -41,14 +42,39 @@ export const options = {
 
 const defaultHeaders = { "Content-Type": "application/json" };
 const fallbackProductId = __ENV.PRODUCT_ID || "OLJCESPC7Z";
+const ledgerEnabled = (__ENV.LEDGER_ENABLED || "false").toLowerCase() === "true";
+const faultId = __ENV.FAULT_ID || "baseline";
 
-function generateHex(len) {
-  let result = "";
-  const chars = "0123456789abcdef";
-  for (let i = 0; i < len; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+function traceContext(requestId) {
+  const traceId = crypto.sha256(`${requestId}:trace`, "hex").slice(0, 32);
+  const spanId = crypto.sha256(`${requestId}:span`, "hex").slice(0, 16);
+  return {
+    traceId,
+    headers: {
+      ...defaultHeaders,
+      traceparent: `00-${traceId}-${spanId}-01`,
+      "x-test-request-id": requestId,
+      "x-mandate21-request-id": requestId,
+    },
+  };
+}
+
+function extractOrderId(response) {
+  try {
+    const body = response.json();
+    return body.orderId || body.order_id || (body.order && (body.order.id || body.order.orderId)) || null;
+  } catch (_) {
+    return null;
   }
-  return result;
+}
+
+function writeLedger(record) {
+  if (ledgerEnabled) {
+    // Run with --log-format raw --console-output <evidence>/ledger.jsonl.
+    // This intentionally contains correlation metadata only: no card, secret,
+    // address, email, or customer payload.
+    console.log(JSON.stringify(record));
+  }
 }
 
 function extractProductId(response) {
@@ -63,24 +89,13 @@ function extractProductId(response) {
   }
 }
 
-function extractOrderId(response) {
-  try {
-    const body = response.json();
-    return body && body.orderId ? body.orderId : (body && body.order_id ? body.order_id : "");
-  } catch (_) {
-    return "";
-  }
-}
-
 export default function () {
-  const userId = `directive-03-${__VU}-${__ITER}-${Date.now()}`;
-  const testRequestId = `m21-${__VU}-${__ITER}-${Date.now()}`;
-  const traceId = generateHex(32);
-  const spanId = generateHex(16);
-  const traceparent = `00-${traceId}-${spanId}-01`;
+  const requestId = `m21-${__VU}-${__ITER}-${Date.now()}`;
+  const userId = requestId;
+  const trace = traceContext(requestId);
 
-  const homepage = http.get(`${baseUrl}/`, { tags: { flow: "browse" } });
-  const products = http.get(`${baseUrl}/api/products`, { tags: { flow: "browse" } });
+  const homepage = http.get(`${baseUrl}/`, { headers: trace.headers, tags: { flow: "browse" } });
+  const products = http.get(`${baseUrl}/api/products`, { headers: trace.headers, tags: { flow: "browse" } });
   const browseOk = check(homepage, { "homepage HTTP 200": (r) => r.status === 200 })
     && check(products, { "products HTTP 200": (r) => r.status === 200 });
   browseSuccess.add(browseOk);
@@ -92,17 +107,12 @@ export default function () {
       userId,
       item: { productId, quantity: 1 },
     }),
-    { headers: defaultHeaders, tags: { flow: "cart" } },
+    { headers: trace.headers, tags: { flow: "cart" } },
   );
   const cartOk = check(cart, { "cart HTTP 200": (r) => r.status === 200 });
   cartSuccess.add(cartOk);
 
   const startedAt = new Date().toISOString();
-  const checkoutHeaders = Object.assign({}, defaultHeaders, {
-    traceparent: traceparent,
-    "x-test-request-id": testRequestId,
-  });
-
   const checkout = http.post(
     `${baseUrl}/api/checkout`,
     JSON.stringify({
@@ -123,32 +133,31 @@ export default function () {
         creditCardExpirationMonth: 1,
       },
     }),
-    { headers: checkoutHeaders, tags: { flow: "checkout" } },
+    { headers: trace.headers, tags: { flow: "checkout" } },
   );
-
   const completedAt = new Date().toISOString();
   const orderId = extractOrderId(checkout);
   const checkoutOk = check(checkout, {
-    "checkout HTTP 200 with order": (r) => r.status === 200 && orderId !== "",
+    "checkout HTTP 200 with order": (r) => r.status === 200 && orderId !== null,
   });
   checkoutSuccess.add(checkoutOk);
-
-  const drillRecord = {
+  const outcome = checkoutOk
+    ? "accepted"
+    : (checkout.status === 0 || checkout.status >= 500 ? "ambiguous" : "rejected");
+  writeLedger({
     schemaVersion: "1",
-    phase: "drill",
-    testRequestId: testRequestId,
-    traceId: traceId,
-    startedAt: startedAt,
-    completedAt: completedAt,
+    phase: __ENV.PHASE || "drill",
+    faultId,
+    testRequestId: requestId,
+    traceId: trace.traceId,
+    startedAt,
+    completedAt,
     httpStatus: checkout.status,
     durationMs: Math.round(checkout.timings.duration),
-    outcome: checkoutOk ? "success" : "failure",
-    orderId: orderId,
+    outcome,
+    orderId: orderId || "",
     errorClass: checkoutOk ? "" : (checkout.status === 0 ? "timeout" : `HTTP_${checkout.status}`),
-  };
-  console.log(JSON.stringify(drillRecord));
+  });
 
   sleep(Number(__ENV.SLEEP || 0.2));
 }
-
-// Change trail: @hungxqt - 2026-07-28 - Update load generator to inject traceparent and emit streaming JSONL drill records.
