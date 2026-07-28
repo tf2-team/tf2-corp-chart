@@ -632,6 +632,8 @@ components:
 
   accounting:
     enabled: true
+    migration:
+      enabled: false
     useDefault:
       env: true
     securityContext:
@@ -3437,4 +3439,4 @@ prometheus-adapter:
       memory: 512Mi
   replicas: 2
 
-# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION environment variable to accounting service config.
+# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION env and set accounting.migration.enabled to false to temporarily disable migration job.
