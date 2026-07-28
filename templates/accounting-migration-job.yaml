@@ -39,11 +39,7 @@ spec:
           args:
             - "--migrate-only"
           env:
-            - name: DB_CONNECTION_STRING
-              valueFrom:
-                secretKeyRef:
-                  name: techx-corp-postgresql-app
-                  key: accounting-db-connection-string
+            {{- include "techx-corp.pod.env" $config | nindent 12 }}
           resources:
             {{- toYaml ($acct.resources | default .Values.default.resources) | nindent 12 }}
           securityContext:
@@ -56,5 +52,5 @@ spec:
               drop:
                 - ALL
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-28 - Harden securityContext and resources for Accounting PreSync migration Job. */}}
+{{/* Change trail: @hungxqt - 2026-07-28 - Include full pod env in accounting-migration job to supply KAFKA_ADDR and DB credentials. */}}
 
