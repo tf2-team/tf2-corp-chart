@@ -6,6 +6,8 @@ kind: AppProject
 metadata:
   name: techx-corp
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -17,10 +19,14 @@ spec:
     - https://github.com/tf2-team/tf2-corp-chart.git/*
     - git@github.com:tf2-team/tf2-corp-chart.git
     - git@github.com:tf2-team/tf2-corp-chart.git/*
+    - public.ecr.aws/kubecost
+    - public.ecr.aws/kubecost/*
 
   destinations:
     - server: https://kubernetes.default.svc
       namespace: techx-corp-prod
+    - server: https://kubernetes.default.svc
+      namespace: kubecost
     # metrics-server subchart installs RoleBinding metrics-server-auth-reader here.
     - server: https://kubernetes.default.svc
       namespace: kube-system

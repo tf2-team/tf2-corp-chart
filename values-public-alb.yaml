@@ -13,11 +13,11 @@
 #   catch-all / → frontend-proxy
 #
 # CloudFront path blocking (edge): see techx-corp-infra docs/cloudfront.md
-#   BLOCKED at CF when enabled: /grafana, /jaeger, /loadgen, /feature, /argocd
+#   BLOCKED at CF when enabled: /grafana, /jaeger, /loadgen, /feature, /argocd, /kubecost
 #   (/otlp-http and /flagservice allowed at CF for browser OTLP + flagd)
 #
 # Operator admin access (private): AWS Client VPN → private DNS
-#   https://internal.hungtran.id.vn/<service> (e.g. /grafana/, /argocd/) → THIS ALB
+#   https://internal.hungtran.id.vn/<service> (e.g. /grafana/, /argocd/, /kubecost/) → THIS ALB
 #   (full path surface; Argo CD via frontend-proxy Envoy → argocd NS).
 #   Do not add a second admin Ingress.
 #   TLS: set certificateArn + listenPorts HTTP+HTTPS in values-prod (keep HTTP:80
