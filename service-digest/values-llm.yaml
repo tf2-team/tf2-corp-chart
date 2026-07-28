@@ -1,6 +1,6 @@
 # Managed by tf2-corp-platform secure delivery pipeline.
 # Change trail: @hungxqt - 2026-07-20 - Selective service digest promote into service-digest/.
 components:
-  ad:
+  llm:
     imageOverride:
-      digest: "sha256:33a4713f85609ca5bfa6e0b1965872fae8d55b52eb93752d22500e3167bd8659"
+      digest: "sha256:f7d94d8e8092f8aabc4c3c0702f2102304d33c6cb4b2b02c711db050bb074f8f"
