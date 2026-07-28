@@ -138,6 +138,17 @@ mem0:
     archiveName: fastembed-paraphrase-multilingual-MiniLM-L12-v2-faf4aa422582.tar.gz
     mountPath: /models/fastembed
 components:
+  # OpenSearch is bound to an EBS volume in us-east-1b. Keep it on the
+  # transition reserve during the On-Demand role-pool migration; it cannot
+  # share the observability-1a node with the AZ-bound Prometheus volume.
+  opensearch:
+    schedulingRules:
+      nodeSelector:
+        workload-tier: transition-reserve
+      affinity: {}
+      tolerations: []
+      topologySpreadConstraints: []
+
   yace:
     enabled: true
     replicas: 1
@@ -764,6 +775,8 @@ components:
 # Arrays replace under Helm merge — keep the full attributes list.
 prometheus:
   server:
+    nodeSelector:
+      workload-tier: observability
     podAnnotations:
       linkerd.io/inject: disabled
     global:
@@ -788,9 +801,11 @@ prometheus:
     podAnnotations:
       linkerd.io/inject: disabled
     nodeSelector:
-      workload-class: critical
+      workload-tier: observability
 
 grafana:
+  nodeSelector:
+    workload-tier: observability
   podAnnotations:
     linkerd.io/inject: disabled
     cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -821,6 +836,9 @@ prometheus-adapter:
     linkerd.io/inject: disabled
 
 jaeger:
+  jaeger:
+    nodeSelector:
+      workload-tier: observability
   podAnnotations:
     linkerd.io/inject: disabled
 
