@@ -1,0 +1,53 @@
+EV-07 — Internal unsigned image server-side admission test
+Captured at: 2026-07-29 00:53:34 +07:00
+Kubernetes context: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+Namespace: mandate10-validation
+Namespace label: policy.sigstore.dev/include=true
+Sigstore validating webhook failurePolicy: Ignore
+ClusterImagePolicy: ecr-signature-policy
+
+Unsigned internal image:
+493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:3c0c64d3690fcc569fa85c86288f8993548f0f617d7db60506a0972b285e7d6f
+
+ECR source lookup:
+- Repository: techx-prod-corp/accounting
+- Digest exists in Production ECR.
+- Pushed: 2026-07-29 00:15:34.533 +07:00
+- No image tag; this is a platform-specific manifest produced as part of the
+  multi-platform Accounting build.
+
+Exact cosign-artifacts lookup before test:
+- sha256-3c0c64d3690fcc569fa85c86288f8993548f0f617d7db60506a0972b285e7d6f.sig
+  result: ImageNotFound
+- sha256-3c0c64d3690fcc569fa85c86288f8993548f0f617d7db60506a0972b285e7d6f.att
+  result: ImageNotFound
+
+Manifest:
+docs/evidence/mandate-10/manifests/ev-07-unsigned-accounting-pod.yaml
+
+Command:
+kubectl apply --dry-run=server -f docs/evidence/mandate-10/manifests/ev-07-unsigned-accounting-pod.yaml -o name
+
+Result:
+Error from server (BadRequest): error when creating
+"docs/evidence/mandate-10/manifests/ev-07-unsigned-accounting-pod.yaml":
+admission webhook "policy.sigstore.dev" denied the request: validation failed:
+failed policy: ecr-signature-policy: spec.containers[0].image
+493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:3c0c64d3690fcc569fa85c86288f8993548f0f617d7db60506a0972b285e7d6f
+attestation key validation failed for authority kms-key-authority:
+no matching attestations
+
+Dry-run exit code:
+1
+
+Post-test command:
+kubectl get pods -n mandate10-validation
+
+Post-test result:
+No resources found in mandate10-validation namespace.
+
+Assessment:
+PASS — The opted-in validation namespace denied an internal digest for which
+the exact .sig and .att artifact tags were absent. The denial came from
+policy.sigstore.dev/ecr-signature-policy while failurePolicy remained Ignore,
+demonstrating that the webhook was reachable and enforcing the policy.

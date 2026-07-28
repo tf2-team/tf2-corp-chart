@@ -1,0 +1,104 @@
+{
+  "capturedAt": "2026-07-29T00:29:00+07:00",
+  "region": "us-east-1",
+  "accountId": "493499579600",
+  "sourceCommands": [
+    "aws ecr describe-repositories --region us-east-1 --repository-names <repository>",
+    "aws ecr get-lifecycle-policy --region us-east-1 --repository-name <repository>"
+  ],
+  "repositories": [
+    {
+      "repositoryName": "techx-prod-corp/frontend",
+      "imageTagMutability": "IMMUTABLE",
+      "scanOnPush": false,
+      "lastEvaluatedAt": "2026-07-28T19:40:13.714000+07:00",
+      "rules": [
+        {
+          "rulePriority": 1,
+          "description": "Expire buildcache images (keep 0; age-based, AWS min count is 1 day)",
+          "selection": {
+            "tagStatus": "tagged",
+            "tagPrefixList": [
+              "buildcache"
+            ],
+            "countType": "sinceImagePushed",
+            "countUnit": "days",
+            "countNumber": 1
+          },
+          "action": {
+            "type": "expire"
+          }
+        },
+        {
+          "rulePriority": 2,
+          "description": "Keep last 25 images",
+          "selection": {
+            "tagStatus": "any",
+            "countType": "imageCountMoreThan",
+            "countNumber": 25
+          },
+          "action": {
+            "type": "expire"
+          }
+        }
+      ]
+    },
+    {
+      "repositoryName": "techx-prod-corp/cosign-artifacts",
+      "imageTagMutability": "MUTABLE",
+      "scanOnPush": false,
+      "observedImageRecords": 249,
+      "lastEvaluatedAt": "2026-07-28T19:31:48.297000+07:00",
+      "rules": [
+        {
+          "rulePriority": 1,
+          "description": "Expire buildcache images (keep 0; age-based, AWS min count is 1 day)",
+          "selection": {
+            "tagStatus": "tagged",
+            "tagPrefixList": [
+              "buildcache"
+            ],
+            "countType": "sinceImagePushed",
+            "countUnit": "days",
+            "countNumber": 1
+          },
+          "action": {
+            "type": "expire"
+          }
+        },
+        {
+          "rulePriority": 2,
+          "description": "Keep last 1000 images",
+          "selection": {
+            "tagStatus": "any",
+            "countType": "imageCountMoreThan",
+            "countNumber": 1000
+          },
+          "action": {
+            "type": "expire"
+          }
+        }
+      ]
+    }
+  ],
+  "assessment": {
+    "status": "CONDITIONALLY_ACCEPTABLE",
+    "reason": "The artifact repository is below its 1000-record threshold, but application repositories currently retain only about five observed multi-architecture build sets. Failed workflows can leave pushed candidate records that consume this quota."
+  },
+  "applicationRepositorySamples": {
+    "capturedAt": "2026-07-29",
+    "observedRecordsPerBuildSet": 5,
+    "frontend": {
+      "recordCount": 20,
+      "retentionThreshold": 25,
+      "runningDigest": "sha256:d7d35299cfd6e83673fe479faea959326a66a0a0ce29d2e6de0910be284c2c11"
+    },
+    "accounting": {
+      "recordCount": 20,
+      "retentionThreshold": 25,
+      "desiredButFailingDigest": "sha256:8111cedb0588c80b213d0956c842c8c7ec00b9f6cd573948d542c57b3504b5cd",
+      "stableRollbackDigest": "sha256:2120bd0c4244f9768042fae69093c28c33f515baa7c4b181291db55fbb6cc7bd",
+      "risk": "The stable rollback digest is in the oldest observed five-record build set. One additional five-record build reaches 25; a subsequent build can cause the oldest set to expire."
+    }
+  }
+}
