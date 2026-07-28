@@ -11,7 +11,7 @@
     {
       "type": "stat", "title": "NAT Gateway active hours", "id": 2,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 1 },
       "fieldConfig": { "defaults": { "unit": "h", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT SUM(CAST(line_item_usage_amount AS double)) AS nat_gateway_hours\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway-Hours%'\n  AND $__timeFilter(line_item_usage_start_date)" }]
@@ -19,7 +19,7 @@
     {
       "type": "stat", "title": "NAT data processed", "description": "CUR usage amount for NatGateway-Bytes; shown in GB by AWS billing data.", "id": 3,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 1 },
       "fieldConfig": { "defaults": { "unit": "decgbytes", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT SUM(CAST(line_item_usage_amount AS double)) AS nat_processed_gb\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway-Bytes%'\n  AND $__timeFilter(line_item_usage_start_date)" }]
@@ -27,7 +27,7 @@
     {
       "type": "stat", "title": "Cross-AZ data transfer", "description": "Regional data transfer charged by AWS; shown in GB.", "id": 4,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 1 },
       "fieldConfig": { "defaults": { "unit": "decgbytes", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT SUM(CAST(line_item_usage_amount AS double)) AS cross_az_gb\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%'\n  AND $__timeFilter(line_item_usage_start_date)" }]
@@ -35,7 +35,7 @@
     {
       "type": "table", "title": "VPC Endpoint usage", "description": "Gateway endpoints such as S3 have no hourly charge. Interface endpoint usage, if introduced, is visible here.", "id": 5,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
       "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
       "options": { "showHeader": true, "footer": { "show": false, "reducer": [] } },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS usage_amount\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%VpcEndpoint%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2\nORDER BY 3 DESC" }]
@@ -43,7 +43,7 @@
     {
       "type": "timeseries", "title": "NAT and Cross-AZ data transfer trend", "id": 6,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
       "fieldConfig": { "defaults": { "unit": "decgbytes", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [
@@ -54,19 +54,19 @@
     {
       "type": "table", "title": "NAT Gateway usage by resource", "id": 7,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 22 },
       "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
       "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "usage_amount", "desc": true }] },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT COALESCE(NULLIF(line_item_resource_id, ''), 'not resource-tagged') AS resource_id,\n       line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS usage_amount\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2, 3\nORDER BY 4 DESC" }]
     },
     {
       "type": "row", "title": "2. Storage and Telemetry Usage", "id": 8,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "collapsed": false, "panels": []
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 }, "collapsed": false, "panels": []
     },
     {
       "type": "table", "title": "EBS volume usage by type", "description": "GB-month usage from CUR. gp2 should be zero after migration; gp3 is the expected persistent-volume type.", "id": 9,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
       "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
       "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "gb_month", "desc": true }] },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS gb_month\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%VolumeUsage%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2\nORDER BY 3 DESC" }]
@@ -74,7 +74,7 @@
     {
       "type": "table", "title": "EBS snapshot usage", "description": "Snapshot usage must have a finite AWS Backup lifecycle; this panel shows the retained GB-month consumption.", "id": 10,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
       "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
       "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "gb_month", "desc": true }] },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS gb_month\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND (line_item_usage_type LIKE '%SnapshotUsage%' OR line_item_usage_type LIKE '%SnapUsage%')\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2\nORDER BY 3 DESC" }]
@@ -82,7 +82,7 @@
     {
       "type": "timeseries", "title": "Telemetry export volume", "description": "Rates sent by OpenTelemetry Collector. A sustained increase is the signal to review sampling, retention and label cardinality.", "id": 11,
       "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 41 },
       "fieldConfig": { "defaults": { "unit": "ops", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [
@@ -93,12 +93,12 @@
     },
     {
       "type": "row", "title": "3. Top Cost Drivers Outside Compute", "id": 12,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 }, "collapsed": false, "panels": []
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 }, "collapsed": false, "panels": []
     },
     {
       "type": "table", "title": "Top non-compute usage drivers", "description": "Usage is ranked within its billing unit. GB, GB-month and hours are intentionally not added together. This is the evidence used to identify the largest driver before and after each Mandate 18 change.", "id": 13,
       "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 32 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 50 },
       "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
       "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "usage_amount", "desc": true }] },
       "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "WITH drivers AS (\n  SELECT CASE\n           WHEN line_item_usage_type LIKE '%NatGateway-Hours%' THEN 'NAT Gateway active time'\n           WHEN line_item_usage_type LIKE '%NatGateway-Bytes%' THEN 'NAT Gateway data processed'\n           WHEN line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%' THEN 'Cross-AZ data transfer'\n           WHEN line_item_usage_type LIKE '%VpcEndpoint%' THEN 'VPC Endpoint'\n           WHEN line_item_usage_type LIKE '%VolumeUsage%' THEN 'EBS volume storage'\n           WHEN line_item_usage_type LIKE '%SnapshotUsage%' OR line_item_usage_type LIKE '%SnapUsage%' THEN 'EBS snapshot storage'\n         END AS driver,\n         pricing_unit AS usage_unit,\n         SUM(CAST(line_item_usage_amount AS double)) AS usage_amount\n  FROM \"${cur_database}\".\"${cur_table}\"\n  WHERE line_item_line_item_type = 'Usage'\n    AND (line_item_usage_type LIKE '%NatGateway-Hours%'\n      OR line_item_usage_type LIKE '%NatGateway-Bytes%'\n      OR line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%'\n      OR line_item_usage_type LIKE '%VpcEndpoint%'\n      OR line_item_usage_type LIKE '%VolumeUsage%'\n      OR line_item_usage_type LIKE '%SnapshotUsage%'\n      OR line_item_usage_type LIKE '%SnapUsage%')\n    AND $__timeFilter(line_item_usage_start_date)\n  GROUP BY 1, 2\n)\nSELECT driver, usage_unit, usage_amount\nFROM drivers\nORDER BY usage_unit, usage_amount DESC" }]
@@ -117,5 +117,5 @@
   "timezone": "",
   "title": "Directive 18 — Cost Beyond Compute",
   "uid": "directive-18-cost-beyond-compute",
-  "version": 2
+  "version": 3
 }
