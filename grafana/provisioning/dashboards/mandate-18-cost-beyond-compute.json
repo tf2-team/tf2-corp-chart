@@ -90,6 +90,18 @@
         { "refId": "B", "expr": "sum(rate(otelcol_exporter_sent_spans[5m])) or vector(0)", "legendFormat": "Spans / s", "range": true },
         { "refId": "C", "expr": "sum(rate(otelcol_exporter_sent_metric_points[5m])) or vector(0)", "legendFormat": "Metric points / s", "range": true }
       ]
+    },
+    {
+      "type": "row", "title": "3. Top Cost Drivers Outside Compute", "id": 12,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 }, "collapsed": false, "panels": []
+    },
+    {
+      "type": "table", "title": "Top non-compute usage drivers", "description": "Usage is ranked within its billing unit. GB, GB-month and hours are intentionally not added together. This is the evidence used to identify the largest driver before and after each Mandate 18 change.", "id": 13,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 32 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "usage_amount", "desc": true }] },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "WITH drivers AS (\n  SELECT CASE\n           WHEN line_item_usage_type LIKE '%NatGateway-Hours%' THEN 'NAT Gateway active time'\n           WHEN line_item_usage_type LIKE '%NatGateway-Bytes%' THEN 'NAT Gateway data processed'\n           WHEN line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%' THEN 'Cross-AZ data transfer'\n           WHEN line_item_usage_type LIKE '%VpcEndpoint%' THEN 'VPC Endpoint'\n           WHEN line_item_usage_type LIKE '%VolumeUsage%' THEN 'EBS volume storage'\n           WHEN line_item_usage_type LIKE '%SnapshotUsage%' OR line_item_usage_type LIKE '%SnapUsage%' THEN 'EBS snapshot storage'\n         END AS driver,\n         pricing_unit AS usage_unit,\n         SUM(CAST(line_item_usage_amount AS double)) AS usage_amount\n  FROM \"${cur_database}\".\"${cur_table}\"\n  WHERE line_item_line_item_type = 'Usage'\n    AND (line_item_usage_type LIKE '%NatGateway-Hours%'\n      OR line_item_usage_type LIKE '%NatGateway-Bytes%'\n      OR line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%'\n      OR line_item_usage_type LIKE '%VpcEndpoint%'\n      OR line_item_usage_type LIKE '%VolumeUsage%'\n      OR line_item_usage_type LIKE '%SnapshotUsage%'\n      OR line_item_usage_type LIKE '%SnapUsage%')\n    AND $__timeFilter(line_item_usage_start_date)\n  GROUP BY 1, 2\n)\nSELECT driver, usage_unit, usage_amount\nFROM drivers\nORDER BY usage_unit, usage_amount DESC" }]
     }
   ],
   "refresh": "1h",
@@ -105,5 +117,5 @@
   "timezone": "",
   "title": "Directive 18 — Cost Beyond Compute",
   "uid": "directive-18-cost-beyond-compute",
-  "version": 1
+  "version": 2
 }
