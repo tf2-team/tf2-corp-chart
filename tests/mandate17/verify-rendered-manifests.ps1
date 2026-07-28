@@ -172,6 +172,17 @@ if (
 ) {
     throw "OpenSearch and Jaeger datasources must be provisioned before dependent defaults"
 }
+$jaegerUserConfig = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
+    $_ -match '# Source: techx-corp/charts/jaeger/templates/jaeger/jaeger-user-config.yaml' -and
+    $_ -match '(?m)^kind: ConfigMap$'
+})
+if ($jaegerUserConfig.Count -ne 1) {
+    throw "full state must render one Jaeger user config ConfigMap"
+}
+$jaegerPrometheusReader = '(?ms)- pull:\s+exporter:\s+prometheus:\s+host: 0\.0\.0\.0\s+port: 8888'
+if ($jaegerUserConfig[0] -notmatch $jaegerPrometheusReader) {
+    throw "Jaeger must expose native metrics on 0.0.0.0:8888 for Prometheus"
+}
 $inventoryJob = @(($fullRendered -split '(?m)^---\s*$') | Where-Object {
     $_ -match '# Source: techx-corp/templates/runtime-hardening-inventory.yaml' -and
     $_ -match '(?m)^kind: CronJob$'
