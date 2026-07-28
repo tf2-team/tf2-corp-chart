@@ -841,6 +841,18 @@
         "enabled": {
           "type": "boolean"
         },
+        "migration": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
         "serviceAccount": {
           "description": "SEC-03: per-component ServiceAccount for least-privilege identity. When omitted, the chart creates an identity named after the component.",
           "type": "object",
