@@ -35,8 +35,9 @@ acceptance path.
 
 ## Remaining external gate
 
-Person 2 must publish and promote an Accounting image built from Platform main
-that exits after `DatabaseMigrator.RunMigration` when invoked with
-`--migrate-only`. Live FIS remains prohibited until the PreSync Job completes,
-Argo is `Synced/Healthy`, the durability/audit alarms are `OK`, and the
-30-minute application gate passes.
+The fixed .NET 10 Accounting image is now promoted and the production digest is
+wired into the Chart branch. Live FIS remains prohibited until the PreSync Job
+completes, Argo is `Synced/Healthy`, all durability/audit alarms are `OK`, and
+the evidence-based application gate passes: five quiet rollout minutes followed
+by at least 15 minutes and 100 accepted checkouts under controlled load with
+zero `shipping_pkey`, SQLSTATE `23505`, or `order_parse_failed`.

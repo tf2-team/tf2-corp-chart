@@ -81,8 +81,11 @@ checker must resolve every such record from durable state.
 All gates must be documented before this command:
 
 1. Person 1: two-AZ NAT, single-AZ capacity, cost, FIS role/template and cleanup.
-2. Person 2: migration complete, no `shipping_pkey` error for 30 minutes, no
-   outbox item older than 60 seconds, durability tests pass.
+2. Person 2: migration/schema complete; after five quiet rollout minutes,
+   controlled load runs for at least 15 minutes and produces at least 100
+   accepted checkouts with zero `shipping_pkey`, SQLSTATE `23505`, or
+   `order_parse_failed`; no outbox item is older than 60 seconds and durability
+   tests pass. Extend the load window when the minimum volume is not reached.
 3. Person 3: chart Synced/Healthy, placement preview passes, dashboard and
    external k6 are recording.
 4. Team change approval is open. The mentor reviews evidence; the team runs the
