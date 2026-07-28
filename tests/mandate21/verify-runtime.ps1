@@ -96,6 +96,14 @@ Assert-True ($migrationJob -match 'DB_CONNECTION_STRING') "Accounting migration 
 Assert-True ($migrationJob -notmatch '(?m)^\s*-\s+name:\s+(KAFKA_ADDR|CHECKOUT_OUTBOX_TABLE)\s*$') "Accounting migration cannot start Kafka or the outbox reconciler"
 Assert-True ($migrationJob -match '(?m)^\s*linkerd\.io/inject:\s+disabled\s*$') "Accounting migration is not held open by a Linkerd sidecar"
 Assert-True ($migrationJob -match '(?m)^\s*restartPolicy:\s+Never\s*$') "Accounting migration retries with fresh Pods"
+$migrationPolicy = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?ms)kind:\s+NetworkPolicy.*?name:\s+accounting-migration-postgresql-egress'
+})[0]
+Assert-True ($migrationPolicy -match '(?m)^\s*argocd\.argoproj\.io/hook:\s+PreSync\s*$') "Accounting migration egress policy is a PreSync hook"
+Assert-True ($migrationPolicy -match '(?m)^\s*argocd\.argoproj\.io/sync-wave:\s+["'']?-1["'']?\s*$') "Accounting migration egress policy is created before the Job"
+Assert-True ($migrationPolicy -match '(?ms)podSelector:.*?app\.kubernetes\.io/component:\s+accounting-migration') "Accounting migration egress policy selects only the migration Pod"
+Assert-True ($migrationPolicy -match '(?ms)ipBlock:.*?cidr:\s+10\.0\.0\.0/16.*?protocol:\s+TCP.*?port:\s+5432') "Accounting migration egress is limited to PostgreSQL in the VPC"
+Assert-True ($migrationPolicy -notmatch '0\.0\.0\.0/0') "Accounting migration has no unrestricted egress"
 Assert-True ($manifest -match 'yace\.techx-corp-prod\.svc\.cluster\.local:5000') "Prometheus directly scrapes YACE"
 Assert-True ($manifest -match '(?ms)name: yace.*?app\.kubernetes\.io/name: prometheus.*?port: 5000') "YACE NetworkPolicy admits Prometheus"
 Assert-True ($manifest -match 'aws_applicationelb_healthy_host_count_minimum|HealthyHostCount') "rendered configuration includes ALB healthy-target metrics"
