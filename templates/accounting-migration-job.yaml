@@ -29,6 +29,9 @@ spec:
         app.kubernetes.io/component: accounting-migration
     spec:
       restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: accounting-migration
           image: '{{ include "techx-corp.containerImage" $config }}'
@@ -41,8 +44,17 @@ spec:
                 secretKeyRef:
                   name: techx-corp-postgresql-app
                   key: accounting-db-connection-string
+          resources:
+            {{- toYaml ($acct.resources | default .Values.default.resources) | nindent 12 }}
           securityContext:
+            runAsNonRoot: true
             runAsUser: 10001
             runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
 {{- end }}
-{{/* Change trail: @hungxqt - 2026-07-28 - Add Accounting PreSync migration Job. */}}
+{{/* Change trail: @hungxqt - 2026-07-28 - Harden securityContext and resources for Accounting PreSync migration Job. */}}
+
