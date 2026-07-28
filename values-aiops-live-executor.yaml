@@ -1,0 +1,7 @@
+# Opt-in overlay for the self-heal live executor.
+# Only enable in a dev/demo namespace approved for `Deployment/product-catalog`.
+aiopsLiveExecutor:
+  enabled: true
+  auth:
+    existingSecret: aiops-live-executor-token
+    tokenKey: token

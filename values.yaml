@@ -469,6 +469,53 @@ aiops:
       cpu: 500m
       memory: 512Mi
 
+# Self-heal live executor is disabled by default. It must only be enabled in a
+# dev/demo namespace approved for the golden `scale_product_catalog` action.
+aiopsLiveExecutor:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    port: 8080
+    containerPort: 8000
+    annotations: {}
+  serviceAccount:
+    create: true
+    name: aiops-live-executor
+    annotations: {}
+  rbac:
+    create: true
+    targetDeployment: product-catalog
+  auth:
+    existingSecret: aiops-live-executor-token
+    tokenKey: token
+  persistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: gp2
+    accessMode: ReadWriteOnce
+    size: 1Gi
+  config:
+    environment: techx-corp-prod
+    storePath: /app/state/live_executor.sqlite3
+    policyId: phase3-scale-policy-v1
+    policyExpiresAt: "2026-08-31T23:59:59Z"
+    allowLiveApply: "false"
+  networkPolicy:
+    enabled: true
+    allowFrom:
+      - aiops-runtime
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
 # SEC-03 least-privilege: any component may declare its OWN serviceAccount to get
 # a distinct, auditable identity instead of sharing the global one above. Fallback
 # rules:
