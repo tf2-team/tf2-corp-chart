@@ -804,8 +804,10 @@ prometheus:
       workload-tier: observability
 
 grafana:
+  # The existing EBS-backed PVC is bound to us-east-1b, so Grafana must run
+  # on the data-observability pool in the same Availability Zone.
   nodeSelector:
-    workload-tier: observability
+    workload-tier: data-observability
   podAnnotations:
     linkerd.io/inject: disabled
     cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
