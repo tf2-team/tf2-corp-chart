@@ -65,12 +65,19 @@ Assert-True ($null -ne $helm) "helm is installed"
 $rendered = & helm template techx-corp $repo --namespace techx-corp-prod `
     -f (Join-Path $repo "values.yaml") `
     -f (Join-Path $repo "values-public-alb.yaml") `
-    -f (Join-Path $repo "values-prod.yaml") 2>&1
+    -f (Join-Path $repo "values-prod.yaml") `
+    -f (Join-Path $repo "service-digest/values-accounting.yaml") 2>&1
 if ($LASTEXITCODE -ne 0) { throw "helm template failed:`n$($rendered -join "`n")" }
 $manifest = $rendered -join "`n"
 
 Assert-True ($manifest -match '(?ms)kind: Deployment.*?name: accounting.*?replicas: 2') "rendered Accounting Deployment has two replicas"
 Assert-True ($manifest -match '(?ms)kind: PodDisruptionBudget.*?name: accounting.*?maxUnavailable: 1') "rendered Accounting PDB uses maxUnavailable 1"
+$accountingDigest = [regex]::Match(
+    (Read-RepoFile "service-digest/values-accounting.yaml"),
+    'sha256:[0-9a-f]{64}'
+).Value
+Assert-True (-not [string]::IsNullOrWhiteSpace($accountingDigest)) "Accounting production digest is present"
+Assert-True ($manifest -match [regex]::Escape("accounting@$accountingDigest")) "Accounting Deployment and migration Job use the promoted immutable digest"
 Assert-True ($manifest -match '(?ms)kind: Job.*?name: accounting-migration.*?activeDeadlineSeconds: 300') "Accounting migration fails closed after five minutes"
 $migrationJob = @($manifest -split '(?m)^---\s*$' | Where-Object {
     $_ -match '(?ms)kind:\s+Job.*?name:\s+accounting-migration'
