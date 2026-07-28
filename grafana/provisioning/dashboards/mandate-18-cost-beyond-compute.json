@@ -1,0 +1,109 @@
+{
+  "annotations": { "list": [] },
+  "description": "Mandate 18 usage dashboard. Uses CUR usage units rather than cost because the account is credit-backed.",
+  "editable": true,
+  "id": null,
+  "panels": [
+    {
+      "type": "row", "title": "1. Data Transfer — NAT Gateway, VPC Endpoint and Cross-AZ", "id": 1,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false, "panels": []
+    },
+    {
+      "type": "stat", "title": "NAT Gateway active hours", "id": 2,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "h", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT SUM(CAST(line_item_usage_amount AS double)) AS nat_gateway_hours\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway-Hours%'\n  AND $__timeFilter(line_item_usage_start_date)" }]
+    },
+    {
+      "type": "stat", "title": "NAT data processed", "description": "CUR usage amount for NatGateway-Bytes; shown in GB by AWS billing data.", "id": 3,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "decgbytes", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT SUM(CAST(line_item_usage_amount AS double)) AS nat_processed_gb\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway-Bytes%'\n  AND $__timeFilter(line_item_usage_start_date)" }]
+    },
+    {
+      "type": "stat", "title": "Cross-AZ data transfer", "description": "Regional data transfer charged by AWS; shown in GB.", "id": 4,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "decgbytes", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT SUM(CAST(line_item_usage_amount AS double)) AS cross_az_gb\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%'\n  AND $__timeFilter(line_item_usage_start_date)" }]
+    },
+    {
+      "type": "table", "title": "VPC Endpoint usage", "description": "Gateway endpoints such as S3 have no hourly charge. Interface endpoint usage, if introduced, is visible here.", "id": 5,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true, "footer": { "show": false, "reducer": [] } },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS usage_amount\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%VpcEndpoint%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2\nORDER BY 3 DESC" }]
+    },
+    {
+      "type": "timeseries", "title": "NAT and Cross-AZ data transfer trend", "id": 6,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "decgbytes", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "format": 0, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT date_trunc('day', line_item_usage_start_date) AS time,\n       SUM(CAST(line_item_usage_amount AS double)) AS nat_processed_gb\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway-Bytes%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1\nORDER BY 1" },
+        { "refId": "B", "format": 0, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT date_trunc('day', line_item_usage_start_date) AS time,\n       SUM(CAST(line_item_usage_amount AS double)) AS cross_az_gb\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%DataTransfer-Regional-Bytes%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1\nORDER BY 1" }
+      ]
+    },
+    {
+      "type": "table", "title": "NAT Gateway usage by resource", "id": 7,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "usage_amount", "desc": true }] },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT COALESCE(NULLIF(line_item_resource_id, ''), 'not resource-tagged') AS resource_id,\n       line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS usage_amount\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%NatGateway%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2, 3\nORDER BY 4 DESC" }]
+    },
+    {
+      "type": "row", "title": "2. Storage and Telemetry Usage", "id": 8,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "collapsed": false, "panels": []
+    },
+    {
+      "type": "table", "title": "EBS volume usage by type", "description": "GB-month usage from CUR. gp2 should be zero after migration; gp3 is the expected persistent-volume type.", "id": 9,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "gb_month", "desc": true }] },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS gb_month\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND line_item_usage_type LIKE '%VolumeUsage%'\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2\nORDER BY 3 DESC" }]
+    },
+    {
+      "type": "table", "title": "EBS snapshot usage", "description": "Snapshot usage must have a finite AWS Backup lifecycle; this panel shows the retained GB-month consumption.", "id": 10,
+      "datasource": { "type": "grafana-athena-datasource", "uid": "finops-athena-cur" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "fieldConfig": { "defaults": { "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true, "footer": { "show": false, "reducer": [] }, "sortBy": [{ "displayName": "gb_month", "desc": true }] },
+      "targets": [{ "refId": "A", "format": 1, "table": "${cur_table}", "connectionArgs": { "catalog": "__default", "database": "__default", "region": "__default", "resultReuseEnabled": true, "resultReuseMaxAgeInMinutes": 60 }, "rawSQL": "SELECT line_item_usage_type AS usage_type,\n       pricing_unit AS unit,\n       SUM(CAST(line_item_usage_amount AS double)) AS gb_month\nFROM \"${cur_database}\".\"${cur_table}\"\nWHERE line_item_line_item_type = 'Usage'\n  AND (line_item_usage_type LIKE '%SnapshotUsage%' OR line_item_usage_type LIKE '%SnapUsage%')\n  AND $__timeFilter(line_item_usage_start_date)\nGROUP BY 1, 2\nORDER BY 3 DESC" }]
+    },
+    {
+      "type": "timeseries", "title": "Telemetry export volume", "description": "Rates sent by OpenTelemetry Collector. A sustained increase is the signal to review sampling, retention and label cardinality.", "id": 11,
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 23 },
+      "fieldConfig": { "defaults": { "unit": "ops", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(otelcol_exporter_sent_log_records{exporter=\"opensearch\"}[5m])) or vector(0)", "legendFormat": "Logs to OpenSearch / s", "range": true },
+        { "refId": "B", "expr": "sum(rate(otelcol_exporter_sent_spans[5m])) or vector(0)", "legendFormat": "Spans / s", "range": true },
+        { "refId": "C", "expr": "sum(rate(otelcol_exporter_sent_metric_points[5m])) or vector(0)", "legendFormat": "Metric points / s", "range": true }
+      ]
+    }
+  ],
+  "refresh": "1h",
+  "schemaVersion": 39,
+  "tags": ["mandate-18", "finops", "storage", "data-transfer"],
+  "templating": {
+    "list": [
+      { "type": "constant", "name": "cur_database", "label": "CUR database", "query": "finops_cur", "hide": 2, "current": { "selected": true, "text": "finops_cur", "value": "finops_cur" } },
+      { "type": "textbox", "name": "cur_table", "label": "CUR table", "query": "data", "description": "Update if the Glue crawler creates another CUR table.", "current": { "selected": true, "text": "data", "value": "data" } }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timezone": "",
+  "title": "Directive 18 — Cost Beyond Compute",
+  "uid": "directive-18-cost-beyond-compute",
+  "version": 1
+}
