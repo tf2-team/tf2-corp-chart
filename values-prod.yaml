@@ -512,6 +512,8 @@ components:
     envOverrides:
       - name: CHECKOUT_OUTBOX_TABLE
         value: techx-prod-tf2-checkout-outbox
+      - name: AWS_REGION
+        value: us-east-1
       - name: OUTBOX_RECONCILE_INTERVAL_SECONDS
         value: "300"
       - name: OUTBOX_PUBLISHED_STALE_SECONDS
@@ -950,4 +952,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-28 - Set Accounting replicas to 2 in production values-prod.yaml.
+# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION environment variable override to accounting in values-prod.yaml.
