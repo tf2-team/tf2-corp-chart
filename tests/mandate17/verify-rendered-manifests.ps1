@@ -266,6 +266,12 @@ foreach ($requiredScrapeRule in @(
         throw "Prometheus is missing a restricted control-plane scrape egress rule: $requiredScrapeRule"
     }
 }
+$jaegerPolicy = $full | Where-Object { $_ -match '(?m)^  name: jaeger$' }
+if ($jaegerPolicy.Count -ne 1) { throw "full state must render one jaeger policy" }
+$prometheusJaegerMetricsIngress = '(?ms)from:\s+- podSelector:\s+matchLabels:\s+app\.kubernetes\.io/name: prometheus\s+ports:\s+- protocol: TCP\s+port: 8888'
+if ($jaegerPolicy -notmatch $prometheusJaegerMetricsIngress) {
+    throw "Jaeger must allow Prometheus to scrape native metrics on TCP 8888"
+}
 if ($fullRendered -notmatch 'app.kubernetes.io/component: otel-collector') {
     throw "OTel collector pods are missing the selector label used by NetworkPolicy"
 }
