@@ -512,6 +512,8 @@ components:
     envOverrides:
       - name: CHECKOUT_OUTBOX_TABLE
         value: techx-prod-tf2-checkout-outbox
+      - name: AWS_REGION
+        value: us-east-1
       - name: OUTBOX_RECONCILE_INTERVAL_SECONDS
         value: "300"
       - name: OUTBOX_PUBLISHED_STALE_SECONDS
@@ -632,12 +634,19 @@ components:
 
   frontend:
     optionalDependencyTimeoutMs: 500
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
     autoscaling:
       # Keep enough storefront headroom for a node drain without letting noisy
       # RPS metrics drive the Deployment past the current Karpenter envelope.
       minReplicas: 3
       maxReplicas: 18
-      targetCPUUtilizationPercentage: 80
+      targetCPUUtilizationPercentage: 70
       # Spanmetrics counts all frontend server spans; production incidents saw
       # the previous 80 RPS/pod target double desired replicas into Pending.
       # 180 keeps the target aligned with observed 150-200 user steady load.
@@ -983,4 +992,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-28 - Set Accounting replicas to 2 in production values-prod.yaml.
+# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION environment variable override to accounting in values-prod.yaml.

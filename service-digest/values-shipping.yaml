@@ -3,5 +3,4 @@
 components:
   shipping:
     imageOverride:
-      # sha-2928c9b is the latest retained multi-arch production image.
-      digest: "sha256:c93d219007ffb22e43ba4edab863b76990e3d0ddfe34ef042778353a9f1ca699"
+      digest: "sha256:db8d7aa363ca6060b4d58483118c1fcece73af1114fd6897879ceff8f224047c"
