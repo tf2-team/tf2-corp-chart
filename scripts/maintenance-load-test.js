@@ -39,8 +39,17 @@ export const options = {
   userAgent: "techx-directive-03-maintenance-validation/1.0",
 };
 
-const headers = { "Content-Type": "application/json" };
+const defaultHeaders = { "Content-Type": "application/json" };
 const fallbackProductId = __ENV.PRODUCT_ID || "OLJCESPC7Z";
+
+function generateHex(len) {
+  let result = "";
+  const chars = "0123456789abcdef";
+  for (let i = 0; i < len; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 function extractProductId(response) {
   try {
@@ -54,8 +63,21 @@ function extractProductId(response) {
   }
 }
 
+function extractOrderId(response) {
+  try {
+    const body = response.json();
+    return body && body.orderId ? body.orderId : (body && body.order_id ? body.order_id : "");
+  } catch (_) {
+    return "";
+  }
+}
+
 export default function () {
   const userId = `directive-03-${__VU}-${__ITER}-${Date.now()}`;
+  const testRequestId = `m21-${__VU}-${__ITER}-${Date.now()}`;
+  const traceId = generateHex(32);
+  const spanId = generateHex(16);
+  const traceparent = `00-${traceId}-${spanId}-01`;
 
   const homepage = http.get(`${baseUrl}/`, { tags: { flow: "browse" } });
   const products = http.get(`${baseUrl}/api/products`, { tags: { flow: "browse" } });
@@ -70,10 +92,16 @@ export default function () {
       userId,
       item: { productId, quantity: 1 },
     }),
-    { headers, tags: { flow: "cart" } },
+    { headers: defaultHeaders, tags: { flow: "cart" } },
   );
   const cartOk = check(cart, { "cart HTTP 200": (r) => r.status === 200 });
   cartSuccess.add(cartOk);
+
+  const startedAt = new Date().toISOString();
+  const checkoutHeaders = Object.assign({}, defaultHeaders, {
+    traceparent: traceparent,
+    "x-test-request-id": testRequestId,
+  });
 
   const checkout = http.post(
     `${baseUrl}/api/checkout`,
@@ -95,12 +123,32 @@ export default function () {
         creditCardExpirationMonth: 1,
       },
     }),
-    { headers, tags: { flow: "checkout" } },
+    { headers: checkoutHeaders, tags: { flow: "checkout" } },
   );
+
+  const completedAt = new Date().toISOString();
+  const orderId = extractOrderId(checkout);
   const checkoutOk = check(checkout, {
-    "checkout HTTP 200 with order": (r) => r.status === 200 && r.body.includes("orderId"),
+    "checkout HTTP 200 with order": (r) => r.status === 200 && orderId !== "",
   });
   checkoutSuccess.add(checkoutOk);
 
+  const drillRecord = {
+    schemaVersion: "1",
+    phase: "drill",
+    testRequestId: testRequestId,
+    traceId: traceId,
+    startedAt: startedAt,
+    completedAt: completedAt,
+    httpStatus: checkout.status,
+    durationMs: Math.round(checkout.timings.duration),
+    outcome: checkoutOk ? "success" : "failure",
+    orderId: orderId,
+    errorClass: checkoutOk ? "" : (checkout.status === 0 ? "timeout" : `HTTP_${checkout.status}`),
+  };
+  console.log(JSON.stringify(drillRecord));
+
   sleep(Number(__ENV.SLEEP || 0.2));
 }
+
+// Change trail: @hungxqt - 2026-07-28 - Update load generator to inject traceparent and emit streaming JSONL drill records.
