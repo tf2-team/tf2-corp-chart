@@ -1,0 +1,85 @@
+{
+  "capturedAt": "2026-07-29T01:27:46+07:00",
+  "kubernetesContext": "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod",
+  "runtime": {
+    "namespace": "techx-corp-prod",
+    "pod": "accounting-6bb98c8b56-ws9cv",
+    "phase": "Running",
+    "podReady": "2/2",
+    "startedAt": "2026-07-28T17:28:16Z",
+    "container": "accounting",
+    "containerReady": true,
+    "restarts": 0,
+    "image": "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420",
+    "imageID": "493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420"
+  },
+  "ecrImage": {
+    "repository": "techx-prod-corp/accounting",
+    "digest": "sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420",
+    "tag": "sha-a4bf78f",
+    "pushedAt": "2026-07-29T00:15:35.244+07:00"
+  },
+  "source": {
+    "repository": "tf2-team/tf2-corp-platform",
+    "commit": "a4bf78f9d761d8f5a3e7985ddadcbaecb5da4b6c",
+    "pullRequest": 121,
+    "pullRequestTitle": "fix(accounting): complete .NET 10 SDK alignment",
+    "approvedBy": "MinhKhoa2209",
+    "workflowRun": 30381424503,
+    "workflowRunUrl": "https://github.com/tf2-team/tf2-corp-platform/actions/runs/30381424503",
+    "securityScans": {
+      "semgrep": "pass",
+      "trivyIac": "pass",
+      "trivyImage": "pass",
+      "trufflehog": "pass"
+    }
+  },
+  "chartPromotion": {
+    "repository": "tf2-team/tf2-corp-chart",
+    "pullRequest": 356,
+    "promotionCommit": "c4b0a89178a775aa5a77a34104292b2b33ea429a",
+    "mergeCommit": "65d6240cc396407de1204c54ae80bb70f9bf86b4",
+    "valuesFile": "service-digest/values-accounting.yaml",
+    "digest": "sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420"
+  },
+  "signature": {
+    "artifactRepository": "techx-prod-corp/cosign-artifacts",
+    "tag": "sha256-91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420.sig",
+    "artifactDigest": "sha256:5eff773f0f499c524dbed81b4840b98dcb0c22ec7f8d8338783e54b17e0a9839",
+    "payloadLayerDigest": "sha256:466fa74f39668541be10d9560c51503296edd645f48d28697fceb3211e8ac637",
+    "payloadType": "cosign container image signature",
+    "signedImageDigest": "sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420",
+    "verifiedBy": "ecr-signature-policy fail-closed admission ALLOW"
+  },
+  "sbom": {
+    "artifactTag": "sha256-91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420.att",
+    "artifactDigest": "sha256:a2380fba0d5f56c58a18988add1c4e1cb42c82f44990bcc6c7766421b8c0c37b",
+    "layerDigest": "sha256:2ac077038f85e12ad749cf01a7579b1fc9e6de90f8f8f3dda38f15ff46aa284a",
+    "predicateType": "https://cyclonedx.org/bom",
+    "format": "CycloneDX",
+    "specVersion": "1.6",
+    "serialNumber": "urn:uuid:fbf34f26-9bda-49e1-8610-9f18f1329f76",
+    "components": 3841,
+    "dependencies": 127,
+    "subjectDigest": "sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420"
+  },
+  "provenance": {
+    "layerDigest": "sha256:43e698600f770c455ce1b03f1ae867e2c1ca07f3329923c46ed6138e8e356b8b",
+    "predicateType": "https://techx-corp.dev/attestations/provenance/v1",
+    "subjectDigest": "sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420",
+    "commit": "a4bf78f9d761d8f5a3e7985ddadcbaecb5da4b6c",
+    "pullRequest": 121,
+    "approvedBy": "MinhKhoa2209",
+    "workflowRunUrl": "https://github.com/tf2-team/tf2-corp-platform/actions/runs/30381424503",
+    "signer": "awskms:///alias/tf2-cosign-signing-key"
+  },
+  "kms": {
+    "alias": "alias/tf2-cosign-signing-key",
+    "keyId": "f96d445c-43c3-49d3-b508-7243e07c4f27",
+    "arn": "arn:aws:kms:us-east-1:493499579600:key/f96d445c-43c3-49d3-b508-7243e07c4f27",
+    "enabled": true,
+    "keyState": "Enabled",
+    "keyUsage": "SIGN_VERIFY",
+    "keySpec": "ECC_NIST_P256"
+  }
+}

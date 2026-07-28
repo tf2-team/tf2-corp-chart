@@ -1,14 +1,14 @@
 # Mandate 10 — Secure Delivery, Image Integrity & KMS Cosign Evidence Report
 
-- Trạng thái: **IN PROGRESS**
-- Ngày rà soát gần nhất: 2026-07-28
+- Trạng thái: **IN PROGRESS — TECHNICAL CONTROLS PASS; ACCEPTANCE PENDING**
+- Ngày rà soát gần nhất: 2026-07-29
 - Phạm vi: image ứng dụng do đội ngũ tự xây dựng bằng `tf2-corp-platform` và lưu
   trong `techx-prod-corp/**`
 - Ngoài phạm vi: image do nhà cung cấp bên ngoài phát hành, không do platform
   build
 
-> Không chuyển báo cáo này sang `PASS` cho đến khi hoàn tất kiểm kê ECR,
-> admission test, rollout Production và truy vết từ một Pod thực tế.
+> Chưa chuyển báo cáo sang `PASS` cho đến khi chốt Production opt-in/no-match,
+> ECR retention và owner/reviewer/rollback assignment.
 
 ## 1. Phạm vi và tiêu chí nghiệm thu
 
@@ -25,10 +25,6 @@ dụng do đội ngũ tự xây dựng:
 5. Có thể truy vết từ Pod đang chạy về digest, CI run, Git commit, PR/reviewer,
    chữ ký, SBOM và provenance.
 
-Required Status Checks của GitHub Branch Protection không nằm trong phạm vi
-nghiệm thu hiện tại. Báo cáo chỉ chứng minh pipeline có cơ chế fail khi Trivy
-phát hiện HIGH/CRITICAL; không khẳng định GitHub luôn chặn merge một PR đỏ.
-
 Các image do nhà cung cấp bên ngoài phát hành, như BusyBox, Envoy, Postgres hoặc
 Valkey, không nằm trong yêu cầu digest, KMS signature, SBOM hay provenance của
 Mandate 10. Trước khi opt-in một namespace có container sử dụng các image bên
@@ -41,23 +37,22 @@ ngoài glob `techx-prod-corp/**`.
 |---|:---:|---|
 | Gỡ Trivy bypass của `shopping-copilot` | DONE | Workflow không còn ngoại lệ `exit-code: 0` |
 | Production build và security scan 24 release services | DONE | GitHub Actions run `30370423129` đã xanh |
-| Push, resolve digest, ký KMS và tạo attestations | DONE ở cấp pipeline | Cần kiểm kê từng digest trong ECR để hoàn tất evidence |
-| Tạo production digest PR | DONE | `tf2-corp-chart` PR `#351` đã merge |
+| Push, resolve digest, ký KMS và tạo attestations | DONE | Current Production coverage: signature/SBOM/provenance `24/24` |
+| Production digest promotion | DONE | PR `#351` promote full set; PR `#356` promote Accounting digest hiện hành |
 | Production rollout các digest mới | DONE | EV-05 xác nhận Argo Synced/Healthy và Accounting chạy đúng digest mới |
 | `supply-chain` application và policy controller | READY | Application Synced/Healthy; policy controller và policy Ready |
-| Webhook `failurePolicy` | CHANGE PREPARED | Live vẫn là `Ignore`; local đã chuẩn bị diff một dòng sang `Fail` |
-| Namespace Production opt-in | NOT STARTED | Chưa gán `policy.sigstore.dev/include=true` |
+| Webhook `failurePolicy` | DONE | PR `#359` đã merge; live webhook là `Fail` |
+| Production admission scope | PENDING | Namespace chưa opt-in; phải chốt `no-match-policy` trước |
 | Signed ALLOW / unsigned DENY | DONE | EV-06 ALLOW và EV-07 DENY đều `CAPTURED / PASS` |
-| Chuyển `failurePolicy: Fail` | LOCAL READY | Server-side validation pass; chưa commit, push, merge hoặc deploy |
-| Pod supply-chain traceability | PENDING | Chờ Pod chạy digest mới |
-| Required Status Checks chặn merge | OUT OF SCOPE | Không tuyên bố đã bật |
+| Chuyển `failurePolicy: Fail` | DONE | Argo Synced/Healthy; signed ALLOW và unsigned DENY đã retest dưới fail-closed |
+| Pod supply-chain traceability | DONE | EV-09 `CAPTURED / PASS` |
 
 Lưu ý về AIOps: production pipeline đã build/sign AIOps trong tập 24 artifacts.
 Việc AIOps có phải workload đang active trên Production hay không phải được xác
 nhận từ danh sách Argo value files và manifest render thực tế; không suy luận chỉ
 từ file digest được tạo.
 
-## 3. Evidence đã có thể thu thập
+## 3. Evidence đã thu thập
 
 Với evidence lấy từ Terminal/AWS CLI, nên lưu thêm output thô tương ứng trong
 `raw/` để reviewer có thể tìm kiếm và đối chiếu. Với ảnh chụp giao diện GitHub
@@ -72,19 +67,6 @@ Khi có output thô, nội dung cần ghi:
 - câu lệnh đã chạy.
 
 Không đưa token, AWS credential, kubeconfig hoặc dữ liệu bí mật vào ảnh/output.
-
-### EV-00 — PR có CI thất bại
-
-Trạng thái: **SUPPORTING EVIDENCE**
-
-![Pull request with failed CI checks and merge disabled](./images/00-pr-failed-checks-merge-disabled.png)
-
-*Hình EV-00: PR `#80` có 6 checks thất bại và nút Merge đang bị khóa. GitHub
-hiển thị nguyên nhân khóa là thiếu ít nhất một approving review; vì vậy ảnh này
-chứng minh PR có CI đỏ nhưng không tự chứng minh các failed checks đã được cấu
-hình làm Required Status Checks.*
-
-
 
 ### EV-01 — Production workflow build, scan, sign và attest
 
@@ -128,13 +110,7 @@ Mở `tf2-corp-chart` PR `#351`, chụp:
 *Hình EV-02: PR `tf2-corp-chart#351` đã merge vào `main`, cập nhật 24 file
 production service digest.*
 
-
-Chú thích evidence:
-
-> Production digest configuration was merged. Runtime rollout verification was
-> still pending at the time of capture.
-
-### EV-03 — Policy controller readiness trong safe mode
+### EV-03 — Policy controller readiness trước khi bật fail-closed
 
 Trạng thái: **CAPTURED**
 
@@ -166,7 +142,7 @@ if ([string]::IsNullOrWhiteSpace($label)) {
 
 Ảnh evidence:
 
-![Policy controller ready in safe mode](./images/03-policy-ready-failure-policy-ignore.png)
+![Policy controller ready before fail-closed](./images/03-policy-ready-failure-policy-ignore.png)
 
 Kết quả quan sát lúc `2026-07-28 23:49:34 +07:00`:
 
@@ -180,14 +156,14 @@ Kết quả quan sát lúc `2026-07-28 23:49:34 +07:00`:
   `policy.sigstore.dev/include=<not-set>`.
 
 *Hình EV-03: Sigstore Policy Controller và policy đã sẵn sàng trên cluster
-Production, nhưng webhook vẫn ở safe mode và namespace Production chưa được
-đưa vào phạm vi admission policy.*
+Production; tại thời điểm chụp webhook còn dùng `Ignore` và namespace Production
+chưa được đưa vào phạm vi admission policy.*
 
 Đây là bằng chứng pre-enforcement readiness, chưa phải bằng chứng Fail-Closed.
 
 ### EV-04 — Kiểm kê KMS signature, SBOM và provenance trong ECR
 
-Trạng thái: **ARTIFACT PRESENCE CONFIRMED**
+Trạng thái: **CAPTURED / PASS — CURRENT COVERAGE 24/24**
 
 AWS ECR Production repository
 `techx-prod-corp/cosign-artifacts` có các Cosign signature (`.sig`) và
@@ -205,24 +181,27 @@ run `30370423129`.
 *Hình EV-04B: Cùng Production ECR repository có nhiều tag `.att`, image digest,
 thời điểm tạo và kích thước attestation artifact.*
 
-Kết hợp với EV-01, evidence này chứng minh Production pipeline đã thực thi 24
-job sign-and-attest và lưu signature/attestation artifacts vào ECR Production.
+AWS CLI đã đối chiếu từng digest hiện hành trong 24 file
+`service-digest/values-*.yaml` với exact artifact tags. Kết quả:
 
-Giới hạn của evidence:
+```text
+services=24
+signature=24
+cyclonedx=24
+provenance=24
+ecr_batch_failures=0
+```
 
-- ảnh AWS Console chứng minh artifact tồn tại nhưng không tự phân biệt nội dung
-  `.att` là CycloneDX SBOM hay provenance;
-- repository có thể chứa artifact của nhiều release nên không dùng tổng số
-  `.sig`/`.att` để tuyên bố coverage `24/24`;
-- xác minh mật mã thực tế sẽ được chứng minh bằng Signed ALLOW và internal
-  unsigned DENY của Policy Controller;
-- nếu audit yêu cầu kiểm chứng độc lập từng digest, phải bổ sung output Cosign
-  hoặc một verification job tương đương.
+Mỗi `.sig` manifest có Cosign signature; mỗi `.att` manifest có hai DSSE layers
+với predicate CycloneDX và custom provenance. Policy Controller fail-closed
+ALLOW/DENY cung cấp verification behavior; EV-09 giải mã payload của Accounting
+để nối artifact về digest, source, workflow và KMS key.
 
-## 4. Helm digest và ECR lifecycle — không được bỏ qua
+Raw coverage: `raw/04-current-production-artifact-coverage.txt`.
 
-Trạng thái: **CONFIGURATION VERIFIED — RUNTIME EVIDENCE READY TO CAPTURE;
-RETENTION ACCEPTANCE PENDING**
+## 4. Helm digest và ECR lifecycle
+
+Trạng thái: **DIGEST/RUNTIME VERIFIED; RETENTION ACCEPTANCE PENDING**
 
 Hai phần này giải quyết hai rủi ro khác nhau:
 
@@ -251,26 +230,10 @@ Khi có digest, tag bị bỏ qua. Cách này:
 - cho phép đối chiếu runtime `imageID` với digest trong PR.
 
 Digest chỉ chứng minh danh tính artifact, không chứng minh ứng dụng chạy đúng.
-Accounting digest `8111cedb...` là ví dụ lịch sử: chart pin đúng digest nhưng
-container vẫn `CrashLoopBackOff` do lỗi runtime. Digest này đã được thay bằng
-`91a01e9a...`; kiểm tra ngày 2026-07-29 cho thấy Accounting Pod mới Running
-`2/2`, restart 0 và hai ReplicaSet cũ đều Desired 0.
-
-Trạng thái hiện tại:
-
-- PR `#351` đã cập nhật production digest overlays;
-- Argo Production chỉ nạp các overlay được liệt kê trong
-  `gitops/clusters/prod/application.yaml`;
-- AIOps được pipeline build nhưng overlay AIOps không nằm trong production
-  `valueFiles` đang active;
-- `techx-corp` và `supply-chain` hiện đều `Synced/Healthy`;
-- EV-05 đã đối chiếu Accounting runtime `imageID` với digest mới và đạt PASS.
-
-Evidence:
-
-```text
-images/05-argo-production-digest-rollout.png
-```
+EV-05 đã xác nhận Accounting Pod chạy digest `91a01e9a...`; digest
+`8111cedb...` trước đó dù được pin đúng vẫn lỗi runtime. Chỉ các overlay được
+liệt kê trong `gitops/clusters/prod/application.yaml` mới được Argo Production
+nạp; việc pipeline tạo file digest không tự làm workload active.
 
 ### 4.2 ECR lifecycle thực tế
 
@@ -288,21 +251,18 @@ ecr_keep_last_n_images = 25
 cosign-artifacts.keep_last_n_images = 1000
 ```
 
-Module thực tế chỉ tạo hai rule, không phải ba rule. Với
-`imageCountMoreThan`, ECR sắp xếp theo thời điểm push và expire các records cũ
-vượt quá ngưỡng. Lifecycle không biết digest nào còn được Helm hoặc rollback
+Với `imageCountMoreThan`, ECR sắp xếp theo thời điểm push và expire các records
+cũ vượt quá ngưỡng. Lifecycle không biết digest nào còn được Helm hoặc rollback
 tham chiếu.
 
-Một multi-architecture release có thể chiếm nhiều ECR records như image index,
-platform manifests và metadata. Do đó:
+Một multi-architecture release có thể chiếm nhiều records, nên:
 
 ```text
 keep 25 records ≠ keep 25 releases
 ```
 
-IaC hiện ước lượng 25 records giữ khoảng năm multi-architecture releases. Mức
-này chỉ chấp nhận được nếu rollback window chính thức không vượt quá số release
-thực tế còn giữ và lifecycle preview không đánh dấu current/rollback digests.
+Mức 25 chỉ chấp nhận được khi rollback window thực tế còn nằm trong số release
+được giữ và lifecycle preview không đánh dấu current/rollback digests.
 
 ### 4.2.1 Ảnh hưởng của workflow thất bại sau khi push
 
@@ -310,37 +270,20 @@ Pipeline có thể build và push một service thành công, sau đó toàn wor
 bại ở service khác hoặc ở bước sign/attest/release-ready. Image đã push không tự
 được rollback khỏi ECR và vẫn được lifecycle tính vào `imageCountMoreThan`.
 
-Kiểm tra thực tế ngày 2026-07-29:
-
-| Repository mẫu | Records hiện có | Ngưỡng | Records quan sát trên mỗi build | Headroom |
-|---|---:|---:|---:|---:|
-| `techx-prod-corp/frontend` | 20 | 25 | khoảng 5 | khoảng 1 build trước khi đạt ngưỡng |
-| `techx-prod-corp/accounting` | 20 | 25 | khoảng 5 | khoảng 1 build trước khi đạt ngưỡng |
-
-Accounting minh họa trực tiếp rủi ro:
-
-- digest đang phục vụ ổn định `2120bd0c...` thuộc nhóm records cũ nhất;
-- digest rollout lỗi `8111cedb...` và các build mới hơn vẫn chiếm records;
-- thêm một build khoảng 5 records đưa repository lên 25;
-- build tiếp theo có thể đưa tổng lên 30, khiến Rule 2 expire khoảng 5 records cũ
-  nhất, trong đó có thể có digest rollback `2120bd0c...`.
-
-Vì vậy tăng từ 5 lên 25 đã khắc phục nguy cơ xóa gần như ngay sau một build mới,
-nhưng **không đủ để bảo đảm an toàn trước nhiều workflow thất bại liên tiếp**.
-Đánh giá hiện tại là `CONDITIONALLY ACCEPTABLE`, không phải `SAFE
-UNCONDITIONALLY`.
+Quan sát ngày 2026-07-29 cho thấy `frontend` và `accounting` đều có 20/25
+records, khoảng năm records cho mỗi build. Một build nữa có thể chạm ngưỡng;
+build tiếp theo có thể expire records cũ, kể cả digest cần rollback. Tăng từ 5
+lên 25 giảm rủi ro xóa sớm nhưng chưa bảo đảm an toàn trước nhiều workflow thất
+bại liên tiếp.
 
 Các lựa chọn tăng an toàn, theo thứ tự ưu tiên:
 
-1. Chỉ promote/copy image vào Production repository sau khi toàn bộ release gate
-   đạt; candidate images nằm ở repository staging riêng.
-2. Gắn tag riêng cho digest đã promote và thiết kế lifecycle bảo vệ một số
-   release Production/rollback, tách khỏi candidate builds.
-3. Nếu chưa thay pipeline/policy, tăng buffer count dựa trên số build thất bại
-   cần chịu được. Với quan sát khoảng 5 records/build, ngưỡng 100 tương đương
-   khoảng 20 build sets thay vì khoảng 5; vẫn phải xác nhận bằng lifecycle
-   preview và chi phí lưu trữ.
-4. Theo dõi số records và cảnh báo trước khi đạt 80% ngưỡng.
+1. Tách candidate build khỏi Production repository, chỉ promote sau release
+   gate.
+2. Bảo vệ các digest current/rollback bằng retention rule phù hợp.
+3. Nếu chưa đổi pipeline, tăng buffer theo số build thất bại cần chịu được và
+   xác nhận bằng lifecycle preview.
+4. Cảnh báo khi số records đạt 80% ngưỡng.
 
 Raw evidence:
 
@@ -370,12 +313,9 @@ Xem
 ECR lifecycle có thể dẫn đến `ImagePullBackOff` theo chuỗi sau:
 
 1. Helm vẫn tham chiếu `repository@sha256:<digest>`.
-2. Lifecycle của service repository xóa image manifest/digest đó vì nó đã vượt
-   quá ngưỡng giữ lại.
-3. Một Pod mới cần được tạo do rollout, restart, scale-out, eviction, node
-   replacement hoặc rollback.
-4. Node mới hoặc node không có image cache yêu cầu ECR trả đúng digest.
-5. ECR không còn manifest đó; lần pull thất bại thành `ErrImagePull`, sau đó
+2. Lifecycle đã xóa digest đó.
+3. Pod phải tạo lại trên node không có image cache.
+4. ECR không còn manifest; pull thất bại thành `ErrImagePull`, sau đó
    `ImagePullBackOff`.
 
 Pod đang chạy không bị dừng ngay khi ECR xóa image. Pod chỉ gặp rủi ro khi phải
@@ -392,10 +332,8 @@ Phân biệt các failure mode:
 | Runtime image còn, `.sig/.att` bị xóa | Sau khi namespace opt-in, admission DENY; Pod không được tạo, không phải `ImagePullBackOff` |
 | Cả runtime image và chứng thư bị xóa | Admission có thể DENY trước; nếu không bị policy chặn thì image pull vẫn thất bại |
 
-AWS cũng lưu ý reference artifacts có thể được tự động dọn trong vòng 24 giờ sau
-khi subject image bị xóa trong cùng repository. Với thiết kế hiện tại,
-`cosign-artifacts` là repository tập trung riêng, nên retention của nó phải được
-quản lý và kiểm tra độc lập với từng service repository.
+`cosign-artifacts` là repository tập trung riêng, nên retention của chứng thư
+phải được kiểm tra độc lập với từng service repository.
 
 ### 4.4 Điều kiện PASS cho mục 4
 
@@ -412,7 +350,7 @@ Chỉ đánh dấu PASS khi:
 7. Retention có đủ headroom cho số workflow thất bại liên tiếp mà team chấp nhận,
    hoặc candidate images không còn được push trực tiếp vào Production repository.
 
-## 5. Evidence phải chờ Production ổn định
+## 5. Runtime và admission evidence
 
 ### EV-05 — Argo rollout và image digest thực tế
 
@@ -535,7 +473,7 @@ Raw output: `raw/06-signed-image-allow.txt`.
 
 ### EV-07 — Internal unsigned image DENY
 
-Trạng thái: **CAPTURED / PASS**
+Trạng thái: **CAPTURED**
 
 Đã chọn một platform-specific manifest digest của Accounting tồn tại trong
 `techx-prod-corp/accounting`:
@@ -595,105 +533,93 @@ kubectl delete namespace mandate10-validation
 
 ### EV-08 — Chuyển webhook sang `failurePolicy: Fail`
 
-Trạng thái: **LOCAL CHANGE PREPARED / NOT DEPLOYED**
+Trạng thái: **CAPTURED**
 
-Preflight lúc `2026-07-29 01:00:02 +07:00` xác nhận:
+PR `#359` đổi duy nhất `failurePolicy: Ignore` thành `Fail`. Sau Argo reconcile:
 
-- `supply-chain` và `techx-corp` đều Synced/Healthy;
-- `policy-controller-webhook` Ready/Available `1/1`;
-- EV-06 signed ALLOW và EV-07 unsigned DENY đều đạt;
-- Production namespace chưa opt-in;
-- toàn cluster không có namespace nào mang
-  `policy.sigstore.dev/include=true`.
+![Live fail-closed webhook, healthy controller and no opted-in namespaces](./images/08-failure-policy-fail.png)
 
-Đã chuẩn bị đúng một thay đổi runtime:
+*Hình EV-08: Live validating webhook `policy.sigstore.dev` đã dùng
+`failurePolicy=Fail`; `policy-controller-webhook` Ready/Up-to-date/Available
+`1/1/1`; sau khi dọn namespace validation không còn namespace nào mang label
+opt-in.*
 
-```diff
--            failurePolicy: Ignore
-+            failurePolicy: Fail
-```
+Raw output: `raw/08-failure-policy-fail.txt`.
 
-Server-side validation:
+Verification lúc `2026-07-29 01:18:33 +07:00`:
 
-```powershell
-kubectl apply --dry-run=server `
-  -f gitops/clusters/prod/supply-chain-application.yaml `
-  -o name
-```
+- PR `#359` đã merge vào main tại
+  `e7ca67aa9c9fa5624543586e32d3bde54184811f`;
+- `supply-chain` Synced/Healthy, operation Succeeded;
+- live `policy.sigstore.dev` báo `failurePolicy=Fail`;
+- signed Accounting dry-run ALLOW, exit code `0`;
+- unsigned internal Accounting dry-run DENY bởi `ecr-signature-policy`, exit
+  code `1`;
+- không tạo Pod thật; namespace validation đã được xóa;
+- sau cleanup không còn namespace nào opt-in.
 
-Kết quả:
+Preflight raw: `raw/08-failure-policy-fail-preflight.txt`.
 
-```text
-application.argoproj.io/supply-chain
-```
+Production namespace vẫn chưa opt-in. Trước khi bật label phải cấu hình và test
+`no-match-policy` cho image ngoài `techx-prod-corp/**`.
 
-`git diff --check` pass; runtime diff là `1 file changed, 1 insertion,
-1 deletion`. Thay đổi chưa được commit, push, merge hoặc reconcile nên live
-webhook vẫn là `Ignore`.
+## 6. EV-09 — Pod supply-chain traceability
 
-Vì hiện không có namespace opt-in, merge riêng thay đổi fail-closed này chưa
-đưa workload hiện tại vào signature policy. Quyết định `no-match-policy`, kiểm
-kê toàn bộ container/initContainer/sidecar và named rollback operator là điều
-kiện bắt buộc trước khi opt-in namespace Production, không phải lý do để mở rộng
-diff EV-08.
+Trạng thái: **CAPTURED**
 
-Sau khi merge, chờ Argo Synced/Healthy và chạy lại EV-06/EV-07.
-
-Evidence preflight:
-
-```text
-raw/08-failure-policy-fail-preflight.txt
-```
-
-Evidence sau deploy:
-
-```text
-images/08-failure-policy-fail.png
-raw/08-failure-policy-fail.txt
-```
-
-Không opt-in namespace Production trước khi đánh giá toàn bộ container,
-initContainer và sidecar trong namespace đó.
-
-## 6. Pod supply-chain traceability
-
-Trạng thái: **PENDING**
-
-Chọn một Pod ứng dụng do đội ngũ tự xây dựng đang chạy digest mới và ghi nhận:
+Đã truy vết container `accounting` trong running Pod Production tới đúng source,
+workflow, chart promotion và các OCI security artifacts:
 
 | Mắt xích | Giá trị thực tế | Nguồn kiểm chứng |
 |---|---|---|
-| Running Pod | PENDING | `kubectl get pod` |
-| Runtime `imageID` | PENDING | Pod status JSONPath |
-| Release digest | PENDING | PR `#351` và ECR |
-| Production workflow | `30370423129` | GitHub Actions |
-| Git commit | PENDING | Provenance predicate |
-| PR và reviewer | PENDING | Provenance/GitHub |
-| KMS signature | PENDING | `cosign verify` |
-| CycloneDX SBOM | PENDING | `cosign verify-attestation --type cyclonedx` |
-| Provenance | PENDING | Custom provenance attestation |
+| Running Pod | `accounting-6bb98c8b56-ws9cv`, `Running`, Pod `2/2`, Accounting Ready, restart `0` | Kubernetes API |
+| Runtime `imageID` | `techx-prod-corp/accounting@sha256:91a01e9a...ab420` | Container status |
+| ECR release identity | tag `sha-a4bf78f`, push `2026-07-29 00:15:35 +07:00` | ECR image metadata |
+| Source commit | `a4bf78f9d761d8f5a3e7985ddadcbaecb5da4b6c` | Provenance và platform Git |
+| Source PR/reviewer | Platform PR `#121`, approved by `MinhKhoa2209` | Provenance predicate |
+| Production workflow | `30381424503` | Provenance `workflow_run_url` |
+| Chart promotion | chart PR `#356`, promotion `c4b0a89`, merge `65d6240` | Chart Git history |
+| KMS signature | `.sig` artifact `sha256:5eff773f...`; signed payload trỏ đúng runtime digest | ECR artifact và fail-closed admission ALLOW |
+| KMS key | `f96d445c-...`, Enabled, `SIGN_VERIFY`, ECC P-256 | AWS KMS và ClusterImagePolicy |
+| CycloneDX SBOM | CycloneDX `1.6`, 3.841 components, 127 dependencies, subject khớp runtime digest | `.att` SBOM DSSE payload |
+| Provenance | predicate `https://techx-corp.dev/attestations/provenance/v1`, subject/commit/PR/workflow khớp | `.att` provenance DSSE payload |
 
-Không dùng Pod name, commit, PR hoặc digest minh họa làm evidence thực tế.
+Accounting Pod có Linkerd sidecar do nhà cung cấp bên ngoài phát hành. EV-09 chỉ
+truy vết container ứng dụng `accounting` thuộc scope Mandate 10; sidecar được
+ghi nhận nhưng không bị trình bày sai là artifact do platform build/sign.
 
-Lưu:
+Evidence:
 
-```text
-images/11-pod-provenance-traceability.png
-raw/11-pod-provenance-traceability.json
-```
+![Accounting Pod runtime image and immutable digest](./images/09a-pod-runtime-digest.png)
+
+*Hình EV-09a: Running Accounting Pod trên Production sử dụng image ứng dụng và
+runtime `imageID` cùng trỏ tới digest bất biến
+`sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420`.
+Linkerd sidecar xuất hiện riêng và nằm ngoài phạm vi artifact do platform
+build/sign.*
+
+![Accounting provenance, workflow, KMS and SBOM trace](./images/09b-provenance-sbom-kms.png)
+
+*Hình EV-09b: Runtime digest được nối tới ECR tag `sha-a4bf78f`, source commit,
+platform PR/reviewer, workflow Production, chart PR, KMS key Enabled,
+CycloneDX 1.6 và custom provenance predicate.*
+
+Raw trace: `raw/09-pod-provenance-traceability.json`.
 
 ## 7. Outcome matrix
 
 | Outcome | Tiêu chí hoàn tất | Trạng thái |
 |---|---|:---:|
-| CI security gate | 24 release services pass Trivy blocking mode | DONE |
-| Required merge checks | Branch protection bắt buộc CI xanh | OUT OF SCOPE |
-| KMS signature và attestations | Production pipeline tạo/lưu `.sig`/`.att`; policy ALLOW signed digest và DENY digest thiếu artifact | SIGNED ALLOW / UNSIGNED DENY PASS |
-| Immutable Helm references | Workload ứng dụng active trên Production render bằng digest đã merge | PASS — EV-05 CAPTURED |
-| Admission policy readiness | Controller/policy Ready, safe mode `Ignore` | DONE |
+| CI security gate | 24 release services pass Trivy blocking mode | PASS |
+| KMS signature và attestations | 24/24 current digests có signature, CycloneDX và provenance | PASS |
+| Immutable Helm references | 24 digest overlays đã promote; Accounting runtime sample khớp digest ở EV-05 | PASS |
+| Admission policy readiness | Controller/policy Ready, webhook `failurePolicy: Fail` | PASS |
 | Admission policy behavior | Signed ALLOW, internal unsigned DENY trong validation namespace | PASS |
-| Webhook fail-closed | `failurePolicy: Fail`, Argo Healthy, regression tests pass | NOT STARTED |
-| Runtime traceability | Pod → digest → workflow/commit/PR → KMS/SBOM/provenance | PENDING |
+| Webhook fail-closed | `failurePolicy: Fail`, Argo Healthy, regression tests pass | PASS |
+| Runtime traceability | Accounting Pod → digest → workflow/commit/PR → KMS/SBOM/provenance | PASS |
+| Production admission scope | Explicit `no-match-policy` và Production opt-in | PENDING |
+| ECR retention acceptance | Rollback window và current/rollback digests được bảo vệ | PENDING |
+| Approval | Technical Lead/Security Owner, CDO Reviewer, Rollback Operator | PENDING |
 
-Mandate 10 chỉ được đánh dấu **PASS** khi tất cả mục trong scope, ngoại trừ mục
-được ghi rõ `OUT OF SCOPE`, đã có evidence thực tế và reviewer chấp thuận.
+Mandate 10 chỉ được đánh dấu **PASS** khi các mục còn `PENDING` được xử lý và
+reviewer chấp thuận.
