@@ -4,6 +4,8 @@
 
 Updated `templates/accounting-migration-job.yaml` to include the full component pod environment variable set (`{{- include "techx-corp.pod.env" $config | nindent 12 }}`) instead of hardcoding `DB_CONNECTION_STRING` alone. Also added `AWS_REGION` (`us-east-1`) to `accounting` configuration in `values-prod.yaml` and `values.yaml`. This supplies `KAFKA_ADDR`, `AWS_REGION`, and associated Kafka/MSK configuration to the `accounting` workload and `accounting-migration` PreSync Job pod, preventing `System.InvalidOperationException: The KAFKA_ADDR environment variable is not set.` and `AmazonClientException: No RegionEndpoint or ServiceURL configured` errors.
 
+The strict Helm values schema now declares the `migration.enabled` boolean control, preventing Argo CD manifest generation from rejecting `components.accounting.migration`.
+
 ## Context
 
 When the `accounting-migration` Job executed during Argo CD PreSync, the pod failed with unhandled exceptions due to missing environment variables (`KAFKA_ADDR` and `AWS_REGION`).
@@ -51,9 +53,12 @@ In dev, `KAFKA_ADDR` renders as `kafka:9092` and `AWS_REGION` as `us-east-1`. In
 ## Files Changed
 
 **Templates & Values:**
-* `templates/accounting-migration-job.yaml` — Updated container `env` block to use `techx-corp.pod.env`.
-* `values-prod.yaml` — Added `AWS_REGION: us-east-1` to `accounting.envOverrides`.
-* `values.yaml` — Added `AWS_REGION: us-east-1` to `accounting.env`.
+* `templates/accounting-migration-job.yaml` — Updated container `env` block to use `techx-corp.pod.env` and added `migration.enabled` check to support temporarily disabling the Job.
+* `values-prod.yaml` — Added `AWS_REGION: us-east-1` to `accounting.envOverrides` and set `accounting.migration.enabled: false`.
+* `values.yaml` — Added `AWS_REGION: us-east-1` to `accounting.env` and set `accounting.migration.enabled: false`.
+* `values.schema.json` — Declared the strict `migration.enabled` component contract required by the configured values.
+
+Change trail exception for `values.schema.json`: strict JSON does not support comments; attribution is recorded here for `@hungxqt`.
 
 **Documentation:**
 * `docs/changes/2026-07-28-fix-accounting-migration-kafka-addr-env.md` — This change record.
@@ -84,6 +89,7 @@ In dev, `KAFKA_ADDR` renders as `kafka:9092` and `AWS_REGION` as `us-east-1`. In
 |---|---|---|
 | Helm Template (Prod) | `helm template techx-corp ./techx-corp-chart --namespace techx-corp-prod -f ./techx-corp-chart/values-public-alb.yaml -f ./techx-corp-chart/values-prod.yaml -s templates/accounting-migration-job.yaml` | ✅ Pass (renders `KAFKA_ADDR`, `AWS_REGION`, `DB_CONNECTION_STRING`) |
 | Helm Template (Dev) | `helm template techx-corp ./techx-corp-chart --namespace techx-corp-dev -s templates/accounting-migration-job.yaml` | ✅ Pass (renders `KAFKA_ADDR`, `AWS_REGION`, `DB_CONNECTION_STRING`) |
+| Argo CD values stack | `helm template . --name-template techx-corp --namespace techx-corp-prod --kube-version 1.36 --values values.yaml --values values-public-alb.yaml --values values-prod.yaml --values service-digest/values-accounting.yaml --include-crds` | ✅ Pass; schema accepts `components.accounting.migration` |
 
 ### Manual Verification
 
@@ -107,4 +113,4 @@ None. Auto-synced by Argo CD upon commit.
 
 Revert commit in `techx-corp-chart`.
 
-<!-- Change trail: @hungxqt - 2026-07-28 - Add change document for accounting migration KAFKA_ADDR and AWS_REGION environment variable fix. -->
+<!-- Change trail: @hungxqt - 2026-07-28 - Document the accounting migration environment and Helm schema fixes. -->

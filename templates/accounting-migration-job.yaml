@@ -1,5 +1,6 @@
 {{- if and .Values.components.accounting .Values.components.accounting.enabled }}
 {{- $acct := .Values.components.accounting }}
+{{- if eq (dig "migration" "enabled" false $acct) true }}
 {{- $config := set (deepCopy $acct) "Capabilities" $.Capabilities }}
 {{- $config := set $config "Template" $.Template }}
 {{- $config := set $config "name" "accounting" }}
@@ -60,4 +61,5 @@ spec:
               drop:
                 - ALL
 {{- end }}
-{{/* Change trail: Person 3 - 2026-07-28 - Keep PreSync migration DB-only and fail closed on stale images. */}}
+{{- end }}
+{{/* Change trail: Person 3 - 2026-07-29 - Keep the migration.enabled guard while enforcing a DB-only PreSync migration. */}}

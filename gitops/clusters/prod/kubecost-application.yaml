@@ -22,14 +22,14 @@ spec:
       # AppProject techx-corp intentionally does not allow CRD creation.
       # Kubecost renders turndownschedules.kubecost.com even with clusterController disabled.
       skipCrds: true
+      # The chart test pod has no resources override and is blocked by runtime hardening.
+      skipTests: true
       valuesObject:
         global:
           clusterId: techx-tf2-prod
           acknowledged: true
+          imageRegistry: public.ecr.aws
           defaultStorageClass: gp3-encrypted
-          notifications:
-            alertConfigs:
-              frontendUrl: https://internal.hungtran.id.vn/kubecost
         ingress:
           enabled: false
         httpRoute:
@@ -38,11 +38,32 @@ spec:
           service:
             type: ClusterIP
             port: 9090
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
         localStore:
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
           persistentVolume:
             storageClass: gp3-encrypted
             size: 32Gi
         aggregator:
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
           aggregatorDbStorage:
             storageClass: gp3-encrypted
             storageRequest: 32Gi
@@ -50,9 +71,19 @@ spec:
             storageClass: gp3-encrypted
             storageRequest: 1Gi
         cloudCost:
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
           persistentConfigsStorage:
             storageClass: gp3-encrypted
             size: 1Gi
+        finopsagent:
+          image:
+            repository: kubecost/agent
         networkCosts:
           enabled: false
         forecasting:

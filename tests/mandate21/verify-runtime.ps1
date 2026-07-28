@@ -37,6 +37,16 @@ foreach ($zone in $contract.zones.PSObject.Properties) {
     Assert-True ($null -ne $zone.Value.primaryOutsideZoneTemplateId) "$($zone.Name) maps the RDS-primary-outside-zone template"
 }
 
+$liveContract = Read-RepoFile "scripts/mandate21-fis-contract.json" | ConvertFrom-Json
+$liveTemplateIds = @()
+foreach ($zone in $liveContract.zones.PSObject.Properties) {
+    foreach ($templateId in @($zone.Value.primaryInZoneTemplateId, $zone.Value.primaryOutsideZoneTemplateId)) {
+        Assert-True ($templateId -match '^EXT[A-Za-z0-9]+$') "$($zone.Name) uses a concrete FIS experiment template ID"
+        $liveTemplateIds += $templateId
+    }
+}
+Assert-True (@($liveTemplateIds | Sort-Object -Unique).Count -eq 4) "live FIS contract maps four distinct template variants"
+
 $loadTest = Read-RepoFile "scripts/maintenance-load-test.js"
 foreach ($field in @("testRequestId", "traceId", "startedAt", "completedAt", "httpStatus", "durationMs", "orderId", "outcome")) {
     Assert-True ($loadTest.Contains($field)) "k6 ledger contains $field"

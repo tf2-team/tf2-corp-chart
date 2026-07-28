@@ -537,6 +537,10 @@ components:
     initContainers: []
   
   accounting:
+    migration:
+      # The promoted .NET 10 image handles --migrate-only before Kafka startup.
+      # Keep this enabled until the order_id primary-key migration has succeeded.
+      enabled: true
     # M21: Accounting persists the durable order path and must survive either AZ.
     replicas: 2
     pdb:
@@ -672,12 +676,19 @@ components:
 
   frontend:
     optionalDependencyTimeoutMs: 500
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
     autoscaling:
       # Keep enough storefront headroom for a node drain without letting noisy
       # RPS metrics drive the Deployment past the current Karpenter envelope.
       minReplicas: 3
       maxReplicas: 18
-      targetCPUUtilizationPercentage: 80
+      targetCPUUtilizationPercentage: 70
       # Spanmetrics counts all frontend server spans; production incidents saw
       # the previous 80 RPS/pod target double desired replicas into Pending.
       # 180 keeps the target aligned with observed 150-200 user steady load.
@@ -1024,4 +1035,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION environment variable override to accounting in values-prod.yaml.
+# Change trail: Person 3 - 2026-07-29 - Re-enable the DB-only Accounting migration after the fixed .NET 10 image promotion.
