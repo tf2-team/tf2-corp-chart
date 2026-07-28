@@ -640,6 +640,8 @@ components:
     env:
       - name: KAFKA_ADDR
         value: kafka:9092
+      - name: AWS_REGION
+        value: us-east-1
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4318
       # SEC-05: sourced from ESO-synced Secret (see secrets-chart / docs/operations/external-secrets.md)
@@ -3435,4 +3437,4 @@ prometheus-adapter:
       memory: 512Mi
   replicas: 2
 
-# Change trail: @hungxqt - 2026-07-24 - Raise otel-collector agent memory after OTLP refuse/checkout latency.
+# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION environment variable to accounting service config.
