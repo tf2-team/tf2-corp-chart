@@ -135,8 +135,17 @@ function Assert-FisTemplate {
         Assert-True ($encoded -match [regex]::Escape($alarmName)) "$Zone template includes stop alarm $alarmName"
     }
     foreach ($condition in @($template.stopConditions | Where-Object { $_.source -ne "none" })) {
-        $alarmName = ($condition.source -split ":alarm:", 2)[1]
-        Assert-True (-not [string]::IsNullOrWhiteSpace($alarmName)) "$Zone stop condition has a valid CloudWatch alarm ARN"
+        # FIS returns the stop-condition type in `source` and the CloudWatch
+        # alarm ARN in `value`. Keep a source fallback for older fixture data,
+        # but validate the ARN before indexing it.
+        $alarmArn = if ($condition.PSObject.Properties["value"]) {
+            [string]$condition.value
+        } else {
+            [string]$condition.source
+        }
+        $alarmArnParts = @($alarmArn -split ":alarm:", 2)
+        Assert-True ($alarmArnParts.Count -eq 2 -and -not [string]::IsNullOrWhiteSpace($alarmArnParts[1])) "$Zone stop condition has a valid CloudWatch alarm ARN"
+        $alarmName = $alarmArnParts[1]
         $alarm = Invoke-Json aws @(
             "cloudwatch", "describe-alarms",
             "--region", $Region,
