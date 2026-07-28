@@ -94,6 +94,8 @@ $migrationJob = @($manifest -split '(?m)^---\s*$' | Where-Object {
 })[0]
 Assert-True ($migrationJob -match 'DB_CONNECTION_STRING') "Accounting migration receives its database credential"
 Assert-True ($migrationJob -notmatch '(?m)^\s*-\s+name:\s+(KAFKA_ADDR|CHECKOUT_OUTBOX_TABLE)\s*$') "Accounting migration cannot start Kafka or the outbox reconciler"
+Assert-True ($migrationJob -match '(?m)^\s*linkerd\.io/inject:\s+disabled\s*$') "Accounting migration is not held open by a Linkerd sidecar"
+Assert-True ($migrationJob -match '(?m)^\s*restartPolicy:\s+Never\s*$') "Accounting migration retries with fresh Pods"
 Assert-True ($manifest -match 'yace\.techx-corp-prod\.svc\.cluster\.local:5000') "Prometheus directly scrapes YACE"
 Assert-True ($manifest -match '(?ms)name: yace.*?app\.kubernetes\.io/name: prometheus.*?port: 5000') "YACE NetworkPolicy admits Prometheus"
 Assert-True ($manifest -match 'aws_applicationelb_healthy_host_count_minimum|HealthyHostCount') "rendered configuration includes ALB healthy-target metrics"

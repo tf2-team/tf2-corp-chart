@@ -29,8 +29,13 @@ spec:
       labels:
         app.kubernetes.io/part-of: techx-corp
         app.kubernetes.io/component: accounting-migration
+      annotations:
+        # A PreSync migration is a one-shot database client. A mesh sidecar
+        # would keep the Pod alive after the migrator exits and can intercept
+        # the initial PostgreSQL connection before the proxy is ready.
+        linkerd.io/inject: disabled
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -62,4 +67,4 @@ spec:
                 - ALL
 {{- end }}
 {{- end }}
-{{/* Change trail: Person 3 - 2026-07-29 - Keep the migration.enabled guard while enforcing a DB-only PreSync migration. */}}
+{{/* Change trail: Person 3 - 2026-07-29 - Keep the DB-only PreSync migration out of the Linkerd data plane. */}}
