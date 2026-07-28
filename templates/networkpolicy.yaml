@@ -2051,6 +2051,15 @@ spec:
       ports:
         - protocol: TCP
           port: 4317
+    # Prometheus scrapes Jaeger's native metrics endpoint. Keep the ingress
+    # limited to Prometheus pods in this namespace.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8888
     - from:
         {{- range .Values.networkPolicy.albIngressCidrs }}
         - ipBlock:
