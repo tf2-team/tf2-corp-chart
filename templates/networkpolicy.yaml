@@ -1948,6 +1948,7 @@ spec:
         # to Prometheus and chart-managed pods; no application workload gains
         # egress access to port 4191.
         - { protocol: TCP, port: 4191 }
+        - { protocol: TCP, port: 5000 }
     - to:
         - podSelector:
             matchLabels:
