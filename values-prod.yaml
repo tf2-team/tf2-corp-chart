@@ -556,7 +556,40 @@ components:
       minReplicas: 2
     schedulingRules: *directive03-hard-spread
   email:
-    replicas: 2
+    # The Ruby email service reached its previous 128Mi limit and both pods
+    # were repeatedly OOMKilled during the 1,000-user checkout load test.
+    # Keep a two-pod HA floor and allow CPU-driven horizontal scaling while
+    # preserving enough memory headroom for Ruby, OpenTelemetry, and bursts.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 60
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 30
+            - type: Percent
+              value: 100
+              periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+          selectPolicy: Max
     schedulingRules: *directive03-hard-spread
 
   flagd:
