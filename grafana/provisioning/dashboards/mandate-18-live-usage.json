@@ -1,0 +1,66 @@
+{
+  "annotations": { "list": [] },
+  "description": "Near-real-time usage evidence for Mandate 18. NAT metrics arrive from CloudWatch at one-minute granularity; telemetry is read directly from Prometheus. CUR remains a separate historical billing audit.",
+  "editable": true,
+  "id": null,
+  "panels": [
+    {
+      "type": "row", "title": "1. Live NAT Gateway Usage", "id": 1,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false, "panels": []
+    },
+    {
+      "type": "timeseries", "title": "NAT data processed by gateway (one-minute bytes)", "id": 2,
+      "description": "Each series is the sum of bytes sent from a NAT gateway to its destination and returned to its source during one CloudWatch minute. Compare an equal before/after window after moving AWS traffic to a VPC endpoint.",
+      "datasource": { "type": "cloudwatch", "uid": "mandate18-cloudwatch" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "region": "us-east-1", "namespace": "AWS/NATGateway", "metricName": "BytesOutToDestination", "dimensions": { "NatGatewayId": "nat-0b043c6cb1b44c240" }, "statistics": ["Sum"], "period": "60", "matchExact": true, "alias": "nat-1a to destination" },
+        { "refId": "B", "region": "us-east-1", "namespace": "AWS/NATGateway", "metricName": "BytesOutToSource", "dimensions": { "NatGatewayId": "nat-0b043c6cb1b44c240" }, "statistics": ["Sum"], "period": "60", "matchExact": true, "alias": "nat-1a to source" },
+        { "refId": "C", "region": "us-east-1", "namespace": "AWS/NATGateway", "metricName": "BytesOutToDestination", "dimensions": { "NatGatewayId": "nat-0f857f477664c05af" }, "statistics": ["Sum"], "period": "60", "matchExact": true, "alias": "nat-1b to destination" },
+        { "refId": "D", "region": "us-east-1", "namespace": "AWS/NATGateway", "metricName": "BytesOutToSource", "dimensions": { "NatGatewayId": "nat-0f857f477664c05af" }, "statistics": ["Sum"], "period": "60", "matchExact": true, "alias": "nat-1b to source" }
+      ]
+    },
+    {
+      "type": "text", "title": "How to use this evidence", "id": 3,
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 10 },
+      "options": { "mode": "markdown", "content": "1. Keep the same controlled workload for two equal windows.\\n2. Record the NAT chart before the route/endpoint change, then record the next 15–30 minutes.\\n3. A lower byte total under the same workload is the immediate usage evidence. CUR is kept only to reconcile billing later.\\n\\nThe S3 gateway endpoint has no hourly endpoint charge; its proof is the route-table change plus the reduced NAT byte series." }
+    },
+    {
+      "type": "row", "title": "2. Live Telemetry Export Volume", "id": 4,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 }, "collapsed": false, "panels": []
+    },
+    {
+      "type": "timeseries", "title": "OpenTelemetry Collector records exported", "id": 5,
+      "description": "Immediate volume entering telemetry storage. Use this with retention and sampling changes; a zero line while the system is active indicates a telemetry fault, not zero cost.",
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "editorMode": "code", "expr": "sum(rate(otelcol_exporter_sent_log_records_total[$__rate_interval])) or vector(0)", "legendFormat": "Logs / s", "range": true },
+        { "refId": "B", "editorMode": "code", "expr": "sum(rate(otelcol_exporter_sent_spans_total[$__rate_interval])) or vector(0)", "legendFormat": "Spans / s", "range": true },
+        { "refId": "C", "editorMode": "code", "expr": "sum(rate(otelcol_exporter_sent_metric_points_total[$__rate_interval])) or vector(0)", "legendFormat": "Metric points / s", "range": true }
+      ]
+    },
+    {
+      "type": "row", "title": "3. Optional Cross-AZ Investigation", "id": 6,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }, "collapsed": false, "panels": []
+    },
+    {
+      "type": "text", "title": "VPC Flow Logs are off during normal operation", "id": 7,
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 26 },
+      "options": { "mode": "markdown", "content": "VPC Flow Logs are not an always-on component. Set `vpc_flow_logs_enabled = true` for a bounded investigation; Terraform creates `/aws/vpc/techx-prod-tf2-vpc/flow-logs` with seven-day retention.\\n\\nThe records contain interface, source/destination address, AZ, direction and bytes. They are used to identify a cross-AZ traffic pair with the related ENI/subnet information, then the switch is returned to `false`." }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["mandate-18", "finops", "live-usage", "nat"],
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": { "refresh_intervals": ["10s", "30s", "1m"] },
+  "timezone": "browser",
+  "title": "Directive 18 — Live Usage Evidence",
+  "uid": "directive-18-live-usage",
+  "version": 1
+}
