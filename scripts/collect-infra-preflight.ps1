@@ -140,8 +140,8 @@ $evidenceObj | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $OutputPath -
 $markdown = @"
 # Mandate 21 Infrastructure Preflight Report
 
-**Collected At:** $($evidenceObj.collectedAt)  
-**Region:** $Region  
+**Collected At:** $($evidenceObj.collectedAt)
+**Region:** $Region
 **Overall Status:** $(if ($allPass) { 'PASS' } else { 'FAIL' })
 
 ## Validation Summary

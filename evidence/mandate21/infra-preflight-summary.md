@@ -1,8 +1,8 @@
 ﻿# Mandate 21 Infrastructure Preflight Report
 
-**Collected At:** 2026-07-29T13:25:10.1915846Z  
-**Region:** us-east-1  
-**Overall Status:** PASS  
+**Collected At:** 2026-07-29T13:25:10.1915846Z
+**Region:** us-east-1
+**Overall Status:** PASS
 
 ## Validation Summary
 
@@ -28,4 +28,3 @@
 | MSK cluster techx-prod-tf2-msk has >=2 broker nodes across AZs | PASS |
 
 <!-- Change trail: @hungxqt - 2026-07-29 - Generated fail-closed infrastructure preflight summary report. -->
-
