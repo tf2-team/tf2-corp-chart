@@ -25,6 +25,9 @@ spec:
         - values.yaml
         - values-public-alb.yaml
         - values-prod.yaml
+        # Self-heal executor is enabled in prod in guarded mode
+        # (AIOPS_LIVE_EXECUTOR_ALLOW_LIVE_APPLY=false).
+        - values-aiops-live-executor.yaml
         # Selective immutable digests from platform secure-delivery promote.
         - service-digest/values-accounting.yaml
         - service-digest/values-ad.yaml
