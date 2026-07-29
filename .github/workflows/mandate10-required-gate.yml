@@ -23,6 +23,14 @@ jobs:
         with:
           version: v3.18.4
 
+      - name: Add pinned dependency repositories
+        run: |
+          helm repo add opentelemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add jaeger https://jaegertracing.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana-community.github.io/helm-charts
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+
       - name: Build pinned chart dependencies
         run: helm dependency build .
 
