@@ -502,7 +502,12 @@ aiopsLiveExecutor:
     annotations: {}
   rbac:
     create: true
-    targetDeployment: product-catalog
+    targetDeployments:
+      - product-catalog
+      - frontend-proxy
+      - frontend
+      - checkout
+      - cart
   auth:
     existingSecret: aiops-live-executor-token
     tokenKey: token
@@ -520,6 +525,8 @@ aiopsLiveExecutor:
     policyExpiresAt: "2026-08-31T23:59:59Z"
     allowLiveApply: "false"
     cooldownSeconds: 900
+    actionBudgetWindowSeconds: 3600
+    actionBudgetMaxExecutions: 10
   networkPolicy:
     enabled: true
     allowFrom:
