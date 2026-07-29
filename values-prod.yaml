@@ -1001,7 +1001,6 @@ opentelemetry-collector:
     repository: index.docker.io/otel/opentelemetry-collector-contrib
     tag: "0.151.0@sha256:d57bfe8eee2378f31cb1193239fbcac521d54a5a071fca2bfc106916a32b892d"
   podAnnotations:
-    checksum/config: "20260728-receivers-v1"
   # Kafka observability follows MSK. Restate OpenSearch envs because Helm
   # replaces arrays in overlays.
   extraEnvs:
