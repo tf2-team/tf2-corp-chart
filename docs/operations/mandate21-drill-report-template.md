@@ -1,94 +1,48 @@
-# Mandate 21 drill report
+# Mandate 21 FIS skip-all report
 
-## Identity and revisions
+## Identity and revision bindings
 
-- Fault ID:
-- UTC baseline start:
-- UTC FIS start/end:
-- Randomly selected AZ:
-- FIS experiment/template ID:
-- RDS primary AZ before/after:
-- Infra commit/Terraform plan:
-- Platform commit/image:
-- Chart commit/Argo revision:
-- Operators:
-- Reviewers:
+- Run ID:
+- AWS account / region:
+- Cluster context:
+- Chart Git SHA:
+- Infra Git SHA:
+- Contract SHA-256:
+- Approval reference / approver / expiry:
+- Infra preflight SHA-256:
+- Capacity `1a-to-1b` SHA-256:
+- Capacity `1b-to-1a` SHA-256:
+- Audit evidence SHA-256 and complete evaluation window:
 
 ## Entry gates
 
-| Gate | Evidence | Result |
-|---|---|---|
-| Directive 20 sign-off | | |
-| Audit alarms `OK` | | |
-| Weekly forecast ≤ 300 USD | | |
-| Same-AZ NAT routes | | |
-| Single-AZ capacity | | |
-| No Accounting errors for 30 min | | |
-| No outbox item older than 60 sec | | |
-| Argo Synced/Healthy and all Deployments Available | | |
-| Required controllers/workloads span both AZs | | |
-| External k6 and ledger active | | |
+| Gate | Required result | Evidence | Result |
+|---|---|---|---|
+| Infrastructure preflight | `PASS` | | |
+| Capacity `1a-to-1b` | `PASS` | | |
+| Capacity returned disabled | `PASS` | | |
+| Capacity `1b-to-1a` | `PASS` | | |
+| Capacity final state disabled | `PASS` | | |
+| Three immutable-audit alarms | `OK` for full window | | |
+| `CapacityApproved` | `PASS` | | |
+| `ChangeApproved` | `PASS` | | |
 
-## Timeline and RTO
+## Four-template skip-all execution
 
-| UTC time | Event | Evidence |
-|---|---|---|
-| | Baseline began | |
-| | FIS began | |
-| | Rolling SLO first violated | |
-| | ALB removed failed-AZ targets | |
-| | RDS/Valkey transition | |
-| | First recovered one-minute window | |
-| | Third consecutive recovered window | |
-| | FIS completed | |
-| | Reconciliation completed | |
+| Order | Variant | Template ID | Revision SHA-256 / AWS timestamp | Experiment ID | Start / terminal UTC | Terminal state | Resolved target summary | Stop alarms | Cleanup |
+|---:|---|---|---|---|---|---|---|---|---|
+| 1 | `1a-primary-in` | | | | | | | | `NOT_APPLICABLE` |
+| 2 | `1a-primary-outside` | | | | | | | | `NOT_APPLICABLE` |
+| 3 | `1b-primary-in` | | | | | | | | `NOT_APPLICABLE` |
+| 4 | `1b-primary-outside` | | | | | | | | `NOT_APPLICABLE` |
 
-Measured RTO:
-
-## SLO and durability result
-
-| Acceptance | Observed | Result |
-|---|---:|---|
-| Browse success ≥ 99.5% | | |
-| Cart success ≥ 99.5% | | |
-| Checkout success ≥ 99% | | |
-| Storefront p95 < 1 second | | |
-| Dropped iterations = 0 | | |
-| `charged = unique accepted = durable = persisted` | | |
-| Duplicate order/charge = 0 | | |
-| Unresolved ambiguous request = 0 | | |
-
-## Cleanup
-
-- Cleanup status: `PASS` / `FAIL` / `NOT_APPLICABLE`
-- `cleanup-state.json` path:
-- Failed checks (if any):
-- FIS terminal state:
-- FIS-managed NACL removed:
-- Stopped instances recovered/replaced:
-- No cordoned node:
-- No Pending pod:
-- Argo has no drift:
-- Outbox has no stale item:
-- Locust worker returned to zero/not used:
-
-## Evidence index
-
-- Wrapper preflight and snapshots:
-- FIS log/timeline:
-- Runtime cleanup state (`cleanup-state.json`):
-- k6 raw summary and JSONL ledger:
-- Person 2 reconciliation report:
-- Dashboard export/screenshots:
-- RDS/Valkey/DynamoDB/MSK API evidence:
-- Cost and cleanup report:
+Aggregate result is `PASS` only when all four rows are present in this order, each FIS state is `completed`, and every cleanup value is `NOT_APPLICABLE`.
 
 ## Decision
 
-- Team result: `PASS` / `FAIL`
-- Known limitations:
-- Follow-up:
-- Team signatures:
-- Mentor/CDO review:
+- Aggregate result: `PASS` / `FAIL`
+- Failed variant or gate:
+- Remaining verification before any live fault:
+- Approver signatures:
 
-<!-- Change trail: @hungxqt - 2026-07-29 - Added cleanup status, failed checks, and cleanup-state.json path to drill report template. -->
+<!-- Change trail: @hungxqt - 2026-07-29 - Replaced the single-fault report with revision-bound four-template skip-all evidence. -->

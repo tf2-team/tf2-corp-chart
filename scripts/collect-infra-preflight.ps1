@@ -1,162 +1,98 @@
 [CmdletBinding()]
 param(
     [string]$Region = "us-east-1",
-    [string]$VpcId = "",
+    [string]$ClusterName = "techx-tf2-prod",
+    [Parameter(Mandatory)][ValidatePattern("^[0-9A-Za-z._/-]{7,128}$")][string]$Revision,
     [string]$RdsIdentifier = "techx-prod-tf2-postgresql",
     [string]$ValkeyReplicationGroupId = "techx-prod-tf2-cart",
     [string]$DynamoDbTable = "techx-prod-tf2-checkout-outbox",
     [string]$MskClusterName = "techx-prod-tf2-msk",
-    [string]$OutputPath = "",
-    [string]$SummaryPath = ""
+    [string]$OutputPath = (Join-Path $PSScriptRoot "../evidence/mandate21/infra-preflight.json"),
+    [string]$SummaryPath = (Join-Path $PSScriptRoot "../evidence/mandate21/infra-preflight-summary.md")
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
-
-$scriptDirectory = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
-    $PSScriptRoot
-} else {
-    Split-Path -Parent $MyInvocation.MyCommand.Path
-}
-if ([string]::IsNullOrWhiteSpace($OutputPath)) {
-    $OutputPath = Join-Path $scriptDirectory "../evidence/mandate21/infra-preflight.json"
-}
-if ([string]::IsNullOrWhiteSpace($SummaryPath)) {
-    $SummaryPath = Join-Path $scriptDirectory "../evidence/mandate21/infra-preflight-summary.md"
-}
-
-function Invoke-Text {
-    param([Parameter(Mandatory)][string]$File, [Parameter(Mandatory)][string[]]$Arguments)
-    $output = & $File @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "$File $($Arguments -join ' ') failed:`n$($output -join "`n")"
-    }
-    return ($output -join "`n")
-}
+Import-Module (Join-Path $PSScriptRoot "mandate21-evidence.psm1") -Force
 
 function Invoke-Json {
-    param([Parameter(Mandatory)][string]$File, [Parameter(Mandatory)][string[]]$Arguments)
-    return (Invoke-Text -File $File -Arguments $Arguments | ConvertFrom-Json)
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $output = & aws @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "AWS read failed: $($Arguments[0..1] -join ' ')" }
+    try { return (($output -join "`n") | ConvertFrom-Json -Depth 100) }
+    catch { throw "AWS returned invalid JSON for $($Arguments[0..1] -join ' ')" }
 }
 
-function Assert-Check {
-    param([bool]$Condition, [string]$Message, [ref]$Checks)
-    $status = if ($Condition) { "PASS" } else { "FAIL" }
-    $Checks.Value += [pscustomobject]@{ check = $Message; status = $status }
-    if (-not $Condition) {
-        Write-Warning "[PREFLIGHT FAIL] $Message"
-    } else {
-        Write-Host "[PREFLIGHT PASS] $Message"
+function Require-One {
+    param([object[]]$Items, [string]$Name)
+    $bounded = @($Items)
+    if ($bounded.Count -ne 1) { throw "$Name must resolve exactly once; found $($bounded.Count)." }
+    return $bounded[0]
+}
+
+$startedAt = (Get-Date).ToUniversalTime()
+$identity = Invoke-Json @("sts", "get-caller-identity", "--output", "json")
+if ([string]::IsNullOrWhiteSpace([string]$identity.Account)) { throw "AWS account identity is missing." }
+$clusterResponse = Invoke-Json @("eks", "describe-cluster", "--region", $Region, "--name", $ClusterName, "--output", "json")
+$cluster = $clusterResponse.cluster
+if ($null -eq $cluster -or $cluster.status -ne "ACTIVE") { throw "Configured EKS cluster is missing or not ACTIVE." }
+$vpcId = [string]$cluster.resourcesVpcConfig.vpcId
+$subnetIds = @($cluster.resourcesVpcConfig.subnetIds)
+if ([string]::IsNullOrWhiteSpace($vpcId) -or $subnetIds.Count -eq 0) { throw "EKS VPC/subnet contract is incomplete." }
+$subnetResponse = Invoke-Json (@("ec2", "describe-subnets", "--region", $Region, "--subnet-ids") + $subnetIds + @("--output", "json"))
+if (@($subnetResponse.Subnets).Count -ne $subnetIds.Count) { throw "Not every EKS subnet resolved." }
+
+$routeEvidence = @()
+foreach ($subnet in @($subnetResponse.Subnets)) {
+    if ($subnet.VpcId -ne $vpcId) { throw "EKS subnet VPC mismatch." }
+    $explicit = Invoke-Json @("ec2", "describe-route-tables", "--region", $Region, "--filters", "Name=association.subnet-id,Values=$($subnet.SubnetId)", "--output", "json")
+    $tables = @($explicit.RouteTables)
+    if ($tables.Count -eq 0) {
+        $main = Invoke-Json @("ec2", "describe-route-tables", "--region", $Region, "--filters", "Name=vpc-id,Values=$vpcId", "Name=association.main,Values=true", "--output", "json")
+        $tables = @($main.RouteTables)
+    }
+    $table = Require-One $tables "Route table for subnet $($subnet.SubnetId)"
+    $defaults = @($table.Routes | Where-Object { $_.DestinationCidrBlock -eq "0.0.0.0/0" -and -not [string]::IsNullOrWhiteSpace([string]$_.NatGatewayId) })
+    $nat = $null
+    if ($defaults.Count -eq 1) {
+        $natResponse = Invoke-Json @("ec2", "describe-nat-gateways", "--region", $Region, "--nat-gateway-ids", $defaults[0].NatGatewayId, "--output", "json")
+        $nat = Require-One @($natResponse.NatGateways) "NAT gateway $($defaults[0].NatGatewayId)"
+        $natSubnetResponse = Invoke-Json @("ec2", "describe-subnets", "--region", $Region, "--subnet-ids", $nat.SubnetId, "--output", "json")
+        $natSubnet = Require-One @($natSubnetResponse.Subnets) "NAT subnet $($nat.SubnetId)"
+    }
+    $routeEvidence += [pscustomobject]@{
+        id = $subnet.SubnetId
+        availabilityZone = $subnet.AvailabilityZone
+        routeTableId = $table.RouteTableId
+        defaultRoutes = @($defaults | ForEach-Object { [pscustomobject]@{ natGatewayId = $_.NatGatewayId; state = $_.State } })
+        natGateway = if ($null -eq $nat) { $null } else { [pscustomobject]@{ id = $nat.NatGatewayId; state = $nat.State; availabilityZone = $natSubnet.AvailabilityZone; subnetId = $nat.SubnetId } }
     }
 }
 
-$checks = @()
+$rdsResponse = Invoke-Json @("rds", "describe-db-instances", "--region", $Region, "--db-instance-identifier", $RdsIdentifier, "--output", "json")
+$rds = @($rdsResponse.DBInstances | ForEach-Object { [pscustomobject]@{ id = $_.DBInstanceIdentifier; status = $_.DBInstanceStatus; multiAz = $_.MultiAZ; storageEncrypted = $_.StorageEncrypted; deletionProtection = $_.DeletionProtection; backupRetentionDays = $_.BackupRetentionPeriod } })
+$valkeyResponse = Invoke-Json @("elasticache", "describe-replication-groups", "--region", $Region, "--replication-group-id", $ValkeyReplicationGroupId, "--output", "json")
+$valkey = @($valkeyResponse.ReplicationGroups | ForEach-Object { [pscustomobject]@{ id = $_.ReplicationGroupId; status = $_.Status; multiAz = $_.MultiAZ; automaticFailover = $_.AutomaticFailover; transitEncryption = $_.TransitEncryptionEnabled; atRestEncryption = $_.AtRestEncryptionEnabled } })
+$ddbResponse = Invoke-Json @("dynamodb", "describe-table", "--region", $Region, "--table-name", $DynamoDbTable, "--output", "json")
+$pitrResponse = Invoke-Json @("dynamodb", "describe-continuous-backups", "--region", $Region, "--table-name", $DynamoDbTable, "--output", "json")
+$dynamo = if ($null -eq $ddbResponse.Table) { @() } else { @([pscustomobject]@{ name = $ddbResponse.Table.TableName; status = $ddbResponse.Table.TableStatus; deletionProtection = $ddbResponse.Table.DeletionProtectionEnabled; sseStatus = $ddbResponse.Table.SSEDescription.Status; sseType = $ddbResponse.Table.SSEDescription.SSEType; kmsKeyArn = $ddbResponse.Table.SSEDescription.KMSMasterKeyArn; pitrStatus = $pitrResponse.ContinuousBackupsDescription.PointInTimeRecoveryDescription.PointInTimeRecoveryStatus }) }
+$mskResponse = Invoke-Json @("kafka", "list-clusters-v2", "--region", $Region, "--cluster-name-filter", $MskClusterName, "--output", "json")
+$msk = @($mskResponse.ClusterInfoList | Where-Object { $_.ClusterName -eq $MskClusterName } | ForEach-Object { [pscustomobject]@{ name = $_.ClusterName; arn = $_.ClusterArn; status = $_.State; brokerCount = $_.Provisioned.NumberOfBrokerNodes; clientBrokerEncryption = $_.Provisioned.EncryptionInfo.EncryptionInTransit.ClientBroker } })
 
-# 1. Route / NAT Gateway
-if ([string]::IsNullOrWhiteSpace($VpcId)) {
-    $vpcs = Invoke-Json aws @("ec2", "describe-vpcs", "--region", $Region, "--filters", "Name=is-default,Values=false", "--output", "json")
-    if ($null -ne $vpcs.Vpcs -and $vpcs.Vpcs.Count -gt 0) {
-        $VpcId = $vpcs.Vpcs[0].VpcId
-    }
+$snapshot = [pscustomobject]@{
+    cluster = [pscustomobject]@{ name = $cluster.name; arn = $cluster.arn; status = $cluster.status; vpcId = $vpcId; subnetIds = $subnetIds }
+    subnets = $routeEvidence
+    stores = [pscustomobject]@{ rds = $rds; valkey = $valkey; dynamoDb = $dynamo; msk = $msk }
 }
+$evaluation = Test-InfraPreflightSnapshot -Snapshot $snapshot
+$evidence = [ordered]@{ schemaVersion = 2; startedAt = $startedAt.ToString("o"); completedAt = (Get-Date).ToUniversalTime().ToString("o"); accountId = [string]$identity.Account; region = $Region; cluster = [pscustomobject]@{ name = $cluster.name; arn = $cluster.arn; vpcId = $vpcId }; revision = $Revision; resourceIds = [pscustomobject]@{ rds = $RdsIdentifier; valkey = $ValkeyReplicationGroupId; dynamoDb = $DynamoDbTable; msk = $MskClusterName }; observedStores = $snapshot.stores; overallStatus = $evaluation.status; privateRouteEvidence = $evaluation.privateRouteEvidence; checks = $evaluation.checks }
+foreach ($target in @($OutputPath, $SummaryPath)) { $parent = Split-Path -Parent $target; if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null } }
+$evidence | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $OutputPath -Encoding utf8
+$lines = @("# Mandate 21 Infrastructure Preflight", "", "Account: $($evidence.accountId)", "Region: $Region", "Cluster: $ClusterName", "Revision: $Revision", "Status: $($evaluation.status)", "", "| Check | Status | Detail |", "|---|---|---|")
+foreach ($check in $evaluation.checks) { $lines += "| $($check.check) | $($check.status) | $($check.detail) |" }
+$lines += ""; $lines += "<!-- Change trail: @hungxqt - 2026-07-29 - Generated revision-bound fail-closed infrastructure preflight evidence. -->"
+$lines | Set-Content -LiteralPath $SummaryPath -Encoding utf8
+Write-Host "Preflight evidence: $OutputPath ($($evaluation.status))"
+if ($evaluation.status -ne "PASS") { exit 1 }
 
-$subnets = Invoke-Json aws @("ec2", "describe-subnets", "--region", $Region, "--filters", "Name=vpc-id,Values=$VpcId", "--output", "json")
-$routeTables = Invoke-Json aws @("ec2", "describe-route-tables", "--region", $Region, "--filters", "Name=vpc-id,Values=$VpcId", "--output", "json")
-$natGateways = Invoke-Json aws @("ec2", "describe-nat-gateways", "--region", $Region, "--filter", "Name=vpc-id,Values=$VpcId", "Name=state,Values=available", "--output", "json")
-
-$natByAz = @{}
-foreach ($nat in $natGateways.NatGateways) {
-    $subnetId = $nat.SubnetId
-    $subnet = @($subnets.Subnets | Where-Object { $_.SubnetId -eq $subnetId })
-    if ($subnet.Count -gt 0) {
-        $natByAz[$subnet[0].AvailabilityZone] = $nat
-    }
-}
-
-$privateSubnetCount = 0
-foreach ($s in $subnets.Subnets) {
-    $isPrivate = $s.MapPublicIpOnLaunch -ne $true
-    if ($isPrivate) {
-        $privateSubnetCount++
-        $az = $s.AvailabilityZone
-        $hasNatInAz = $natByAz.ContainsKey($az)
-        Assert-Check ($hasNatInAz) "Private subnet $($s.SubnetId) in $az has available NAT Gateway in same AZ" ([ref]$checks)
-    }
-}
-
-# 2. RDS
-$rds = Invoke-Json aws @("rds", "describe-db-instances", "--region", $Region, "--db-instance-identifier", $RdsIdentifier, "--output", "json")
-$dbInst = $rds.DBInstances[0]
-Assert-Check ($dbInst.DBInstanceStatus -eq "available") "RDS $RdsIdentifier is available" ([ref]$checks)
-Assert-Check ([bool]$dbInst.MultiAZ) "RDS $RdsIdentifier is Multi-AZ" ([ref]$checks)
-Assert-Check ([bool]$dbInst.StorageEncrypted) "RDS $RdsIdentifier storage encryption is enabled" ([ref]$checks)
-Assert-Check ([bool]$dbInst.DeletionProtection) "RDS $RdsIdentifier deletion protection is enabled" ([ref]$checks)
-Assert-Check ($dbInst.BackupRetentionPeriod -ge 7) "RDS $RdsIdentifier backup retention is >=7 days" ([ref]$checks)
-
-# 3. Valkey
-$valkeyResp = Invoke-Json aws @("elasticache", "describe-replication-groups", "--region", $Region, "--replication-group-id", $ValkeyReplicationGroupId, "--output", "json")
-if ($null -ne $valkeyResp.ReplicationGroups -and $valkeyResp.ReplicationGroups.Count -gt 0) {
-    $rg = $valkeyResp.ReplicationGroups[0]
-    Assert-Check ($rg.Status -eq "available") "Valkey $ValkeyReplicationGroupId status is available" ([ref]$checks)
-    Assert-Check ($rg.AutomaticFailover -eq "enabled") "Valkey $ValkeyReplicationGroupId automatic failover is enabled" ([ref]$checks)
-    Assert-Check ([bool]$rg.AtRestEncryptionEnabled) "Valkey $ValkeyReplicationGroupId at-rest encryption is enabled" ([ref]$checks)
-    Assert-Check ([bool]$rg.TransitEncryptionEnabled) "Valkey $ValkeyReplicationGroupId transit encryption is enabled" ([ref]$checks)
-}
-
-# 4. DynamoDB
-$ddb = Invoke-Json aws @("dynamodb", "describe-table", "--region", $Region, "--table-name", $DynamoDbTable, "--output", "json")
-$tbl = $ddb.Table
-Assert-Check ($tbl.TableStatus -eq "ACTIVE") "DynamoDB table $DynamoDbTable status is ACTIVE" ([ref]$checks)
-Assert-Check ([bool]$tbl.DeletionProtectionEnabled) "DynamoDB table $DynamoDbTable deletion protection is enabled" ([ref]$checks)
-$pitr = Invoke-Json aws @("dynamodb", "describe-continuous-backups", "--region", $Region, "--table-name", $DynamoDbTable, "--output", "json")
-Assert-Check ($pitr.ContinuousBackupsDescription.PointInTimeRecoveryDescription.PointInTimeRecoveryStatus -eq "ENABLED") "DynamoDB table $DynamoDbTable PITR is ENABLED" ([ref]$checks)
-
-# 5. MSK Cluster
-$mskClusters = Invoke-Json aws @("kafka", "list-clusters", "--region", $Region, "--output", "json")
-$mskCluster = @($mskClusters.ClusterInfoList | Where-Object { $_.ClusterName -eq $MskClusterName })
-if ($mskCluster.Count -gt 0) {
-    Assert-Check ($mskCluster[0].State -eq "ACTIVE") "MSK cluster $MskClusterName status is ACTIVE" ([ref]$checks)
-    Assert-Check ($mskCluster[0].NumberOfBrokerNodes -ge 2) "MSK cluster $MskClusterName has >=2 broker nodes across AZs" ([ref]$checks)
-}
-
-$allPass = @($checks | Where-Object { $_.status -ne "PASS" }).Count -eq 0
-
-$evidenceObj = [ordered]@{
-    schemaVersion = 1
-    collectedAt = (Get-Date).ToUniversalTime().ToString("o")
-    region = $Region
-    vpcId = $VpcId
-    overallStatus = if ($allPass) { "PASS" } else { "FAIL" }
-    checks = $checks
-}
-
-$parentDir = Split-Path -Parent $OutputPath
-if (-not (Test-Path -LiteralPath $parentDir)) {
-    New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
-}
-
-$evidenceObj | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $OutputPath -Encoding utf8
-
-$markdown = @"
-# Mandate 21 Infrastructure Preflight Report
-
-**Collected At:** $($evidenceObj.collectedAt)
-**Region:** $Region
-**Overall Status:** $(if ($allPass) { 'PASS' } else { 'FAIL' })
-
-## Validation Summary
-
-| Check | Status |
-|---|---|
-"@
-
-foreach ($c in $checks) {
-    $markdown += "`n| $($c.check) | $($c.status) |"
-}
-
-$markdown += "`n`n<!-- Change trail: @hungxqt - 2026-07-29 - Generated fail-closed infrastructure preflight summary report. -->`n"
-Set-Content -LiteralPath $SummaryPath -Value $markdown -Encoding utf8
-
-Write-Host "Preflight collection complete: Output=$OutputPath, Summary=$SummaryPath, Status=$($evidenceObj.overallStatus)"
-
-# Change trail: @hungxqt - 2026-07-29 - Created fail-closed infrastructure preflight collector for Route/NAT, RDS, Valkey, DynamoDB, and MSK.
+# Change trail: @hungxqt - 2026-07-29 - Derive and validate fail-closed infrastructure evidence from the configured EKS cluster.

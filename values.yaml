@@ -3515,6 +3515,9 @@ prometheus-adapter:
 
 capacityProbe:
   enabled: false
+  runId: disabled
+  evidenceId: disabled
+  sourceRevision: pending
   targetZone: us-east-1b
   replicas: 2
   resources:
@@ -3525,4 +3528,4 @@ capacityProbe:
       cpu: "2000m"
       memory: "4Gi"
 
-# Change trail: @hungxqt - 2026-07-29 - Add Karpenter capacityProbe configuration section for Mandate 21 AZ failover drills.
+# Change trail: @hungxqt - 2026-07-29 - Added traceable run and revision fields for capacity evidence.

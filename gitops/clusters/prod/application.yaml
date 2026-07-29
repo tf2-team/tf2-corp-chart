@@ -52,6 +52,8 @@ spec:
         - service-digest/values-recommendation.yaml
         - service-digest/values-shipping.yaml
         - service-digest/values-shopping-copilot.yaml
+        # Loaded last so the resting disabled state wins by default.
+        - values-capacity-probe.yaml
         # Keep values-aiops-long-run-1000.yaml out of the default prod path.
         # Re-add it only for an approved Locust/AIOps long-run test window.
       releaseName: techx-corp
@@ -87,4 +89,4 @@ spec:
       kind: PersistentVolumeClaim
       jsonPointers:
         - /spec/volumeName
-# Change trail: @hungxqt - 2026-07-22 - RespectIgnoreDifferences so PVC volumeName is not applied.
+# Change trail: @hungxqt - 2026-07-29 - Load the resting disabled capacity-probe overlay last in production.
