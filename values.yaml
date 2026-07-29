@@ -488,6 +488,7 @@ aiops:
 aiopsLiveExecutor:
   enabled: false
   replicaCount: 1
+  podAnnotations: {}
   image:
     repository: ""
     tag: ""
