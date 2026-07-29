@@ -914,7 +914,7 @@ prometheus:
           regex: techx-corp-prod
         - source_labels: [__name__]
           action: keep
-          regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|fs_reads_bytes_total|fs_writes_bytes_total|network_receive_bytes_total|network_transmit_bytes_total)
+          regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|oom_events_total|fs_reads_bytes_total|fs_writes_bytes_total|network_receive_bytes_total|network_transmit_bytes_total)
   server:
     image:
       tag: "v3.11.3@sha256:c0b857aead0d5793aa566adb8f49a9983d6f6031652098759d521a330cfa050f"
@@ -1102,4 +1102,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: Person 3 - 2026-07-29 - Re-enable the DB-only Accounting migration after the fixed .NET 10 image promotion.
+# Change trail: @hungxqt - 2026-07-29 - Retain container_oom_events_total in cAdvisor metric allowlist.
