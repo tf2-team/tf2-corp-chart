@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mandate10-live-signed-canary
+  namespace: techx-corp-prod
+  labels:
+    app.kubernetes.io/name: mandate10-live-signed-canary
+    app.kubernetes.io/part-of: mandate10-evidence
+  annotations:
+    linkerd.io/inject: disabled
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  activeDeadlineSeconds: 60
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: signed-internal-canary
+      image: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator@sha256:d530fc1cc84fbe5c8c0a1a7ab4662bdcae391a34e654042179824d211d72ddbe
+      imagePullPolicy: IfNotPresent
+      command:
+        - python
+        - -c
+        - print("mandate10 signed internal canary passed")
+      securityContext:
+        allowPrivilegeEscalation: false
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

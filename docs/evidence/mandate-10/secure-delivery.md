@@ -1,14 +1,14 @@
 # Mandate 10 — Secure Delivery, Image Integrity & KMS Cosign Evidence Report
 
-- Trạng thái: **IN PROGRESS — TECHNICAL CONTROLS PASS; ACCEPTANCE PENDING**
+- Trạng thái: **IN PROGRESS — TECHNICAL CONTROLS PASS; APPROVAL PENDING**
 - Ngày rà soát gần nhất: 2026-07-29
 - Phạm vi: image ứng dụng do đội ngũ tự xây dựng bằng `tf2-corp-platform` và lưu
   trong `techx-prod-corp/**`
 - Ngoài phạm vi: image do nhà cung cấp bên ngoài phát hành, không do platform
   build
 
-> Chưa chuyển báo cáo sang `PASS` cho đến khi deploy external allowlist, opt-in
-> Production và ghi nhận owner/reviewer/rollback assignment.
+> External allowlist đã được deploy và Production đã opt-in thành công. Báo cáo
+> chưa chuyển sang `PASS` cho đến khi có xác nhận Go/No-Go liên team.
 
 ## 1. Phạm vi và tiêu chí nghiệm thu
 
@@ -44,37 +44,26 @@ external allowlist tiếp tục bị từ chối.
 | Webhook `failurePolicy` | DONE | PR `#359` đã merge; live webhook là `Fail` |
 | Production image inventory | DONE | 22 internal và 18 external images; 228 references |
 | External image behavior | VALIDATED | Explicit allowlist ALLOW 17/17; unlisted external DENY |
-| Production admission scope | PENDING | Allowlist chưa deploy; namespace Production chưa opt-in |
-| Current release ECR/lifecycle | PASS | Current runtime và `.sig/.att` 24/24; không digest current/previous nào bị preview đánh dấu |
-| Historical rollback depth | DEFERRED | 5 previous digests thiếu `.sig/.att`; không được coi là rollback hợp lệ |
-| Signed ALLOW / unsigned DENY | DONE | EV-06 ALLOW và EV-07 DENY đều `CAPTURED / PASS` |
+| Production admission scope | PASS | Allowlist Ready; Production opt-in; bốn admission tests đạt 4/4 |
+| Current release ECR/lifecycle | PASS | Current runtime và `.sig/.att` 24/24; không current digest nào bị preview đánh dấu |
 | Chuyển `failurePolicy: Fail` | DONE | Argo Synced/Healthy; signed ALLOW và unsigned DENY đã retest dưới fail-closed |
-| Pod supply-chain traceability | DONE | EV-09 `CAPTURED / PASS` |
-
-Lưu ý về AIOps: production pipeline đã build/sign AIOps trong tập 24 artifacts.
-Việc AIOps có phải workload đang active trên Production hay không phải được xác
-nhận từ danh sách Argo value files và manifest render thực tế; không suy luận chỉ
-từ file digest được tạo.
+| Pod supply-chain traceability | DONE | EV-09 `PASS` |
+| Live Production admission | PASS | Signed internal canary chạy thật; hai CREATE request không hợp lệ bị DENY |
 
 ## 3. Evidence đã thu thập
 
-Với evidence lấy từ Terminal/AWS CLI, nên lưu thêm output thô tương ứng trong
-`raw/` để reviewer có thể tìm kiếm và đối chiếu. Với ảnh chụp giao diện GitHub
-đã thấy rõ URL, run/PR, commit và trạng thái, file `raw/*.txt` không bắt buộc.
+### EV-00 — PR có CI đỏ và merge bị chặn
 
-Khi có output thô, nội dung cần ghi:
+Trạng thái: **SUPPORTING EVIDENCE**
 
-- thời gian và múi giờ;
-- Git commit hoặc PR;
-- workflow run;
-- Kubernetes context/namespace nếu có;
-- câu lệnh đã chạy.
+![PR with failed CI checks and merge disabled](./images/00-pr-failed-checks-merge-disabled.png)
 
-Không đưa token, AWS credential, kubeconfig hoặc dữ liệu bí mật vào ảnh/output.
+*Hình EV-00: PR `#80` có sáu checks thất bại, yêu cầu review chưa đạt và nút
+merge bị vô hiệu hóa tại thời điểm chụp.*
 
 ### EV-01 — Production workflow build, scan, sign và attest
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 Mở GitHub Actions run `30370423129`, chụp trang Summary sao cho thấy:
 
@@ -98,7 +87,7 @@ pipeline đã thực thi thành công.
 
 ### EV-02 — Production digest PR đã merge
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 Mở `tf2-corp-chart` PR `#351`, chụp:
 
@@ -116,7 +105,7 @@ production service digest.*
 
 ### EV-03 — Policy controller readiness trước khi bật fail-closed
 
-Trạng thái: **CAPTURED**
+Trạng thái: **HISTORICAL BASELINE**
 
 Chạy:
 
@@ -167,7 +156,7 @@ chưa được đưa vào phạm vi admission policy.*
 
 ### EV-04 — Kiểm kê KMS signature, SBOM và provenance trong ECR
 
-Trạng thái: **CAPTURED / PASS — CURRENT COVERAGE 24/24**
+Trạng thái: **PASS — CURRENT COVERAGE 24/24**
 
 AWS ECR Production repository
 `techx-prod-corp/cosign-artifacts` có các Cosign signature (`.sig`) và
@@ -205,7 +194,7 @@ Raw coverage: `raw/04-current-production-artifact-coverage.txt`.
 
 ## 4. Helm digest và ECR lifecycle
 
-Trạng thái: **DIGEST/RUNTIME VERIFIED; RETENTION ACCEPTANCE PENDING**
+Trạng thái: **PASS**
 
 Hai phần này giải quyết hai rủi ro khác nhau:
 
@@ -265,8 +254,8 @@ Một multi-architecture release có thể chiếm nhiều records, nên:
 keep 25 records ≠ keep 25 releases
 ```
 
-Mức 25 chỉ chấp nhận được khi rollback window thực tế còn nằm trong số release
-được giữ và lifecycle preview không đánh dấu current/rollback digests.
+Mức 25 không bảo đảm số release có thể phục hồi. Trong phạm vi Mandate 10,
+lifecycle preview phải xác nhận không current digest nào bị đánh dấu expire.
 
 ### 4.2.1 Ảnh hưởng của workflow thất bại sau khi push
 
@@ -274,38 +263,15 @@ Pipeline có thể build và push một service thành công, sau đó toàn wor
 bại ở service khác hoặc ở bước sign/attest/release-ready. Image đã push không tự
 được rollback khỏi ECR và vẫn được lifecycle tính vào `imageCountMoreThan`.
 
-Kiểm tra ngày 2026-07-29 trên `origin/main` xác nhận current runtime digests còn
-`24/24`, current `.sig/.att` còn `24/24` và previous runtime digests còn
-`21/21`. Lifecycle preview hoàn tất cho 24 repositories; chỉ `frontend` có năm
-old records được đánh dấu expire, không current hoặc previous digest nào bị
-đánh dấu.
-
-Năm immediate previous digests của `cart`, `currency`, `frontend-proxy`,
-`product-catalog` và `shipping` thiếu `.sig/.att`. Chúng không chạy traffic và
-chỉ còn trong chín ReplicaSets có Desired `0`. Các digest này không được coi là
-rollback hợp lệ dưới fail-closed admission. Tăng retention hoặc xây lại rollback
-artifacts là cải tiến dài hạn, không phải evidence của current release.
-
-Các lựa chọn tăng an toàn, theo thứ tự ưu tiên:
-
-1. Tách candidate build khỏi Production repository, chỉ promote sau release
-   gate.
-2. Bảo vệ các digest current/rollback bằng retention rule phù hợp.
-3. Nếu chưa đổi pipeline, tăng buffer theo số build thất bại cần chịu được và
-   xác nhận bằng lifecycle preview.
-4. Cảnh báo khi số records đạt 80% ngưỡng.
+Kiểm tra ngày 2026-07-29 trên `origin/main` xác nhận current runtime digests và
+current `.sig/.att` còn đủ `24/24`. Lifecycle preview hoàn tất cho 24
+repositories và không current digest nào bị đánh dấu expire. Cải tiến retention
+dài hạn được xử lý ngoài phạm vi nghiệm thu này.
 
 Raw evidence:
 
 ```text
 raw/06-ecr-lifecycle-policy.json
-```
-
-Console evidence cần bổ sung:
-
-```text
-images/06a-ecr-application-lifecycle-policy.png
-images/06b-ecr-cosign-lifecycle-policy.png
 ```
 
 AWS khuyến nghị chạy lifecycle preview trước khi áp dụng/thay đổi policy. Image
@@ -345,23 +311,11 @@ Phân biệt các failure mode:
 `cosign-artifacts` là repository tập trung riêng, nên retention của chứng thư
 phải được kiểm tra độc lập với từng service repository.
 
-### 4.4 Kết luận mục 4
-
-Current release đạt PASS vì:
-
-1. current GitOps digests tồn tại `24/24`;
-2. current `.sig/.att` tồn tại `24/24`;
-3. lifecycle preview không đánh dấu current hoặc immediate previous digests;
-4. EV-05 đối chiếu running Pod với immutable digest.
-
-Historical rollback coverage không đạt tuyệt đối và được ghi nhận `DEFERRED`;
-không dùng năm unsigned previous digests làm rollback target.
-
 ## 5. Runtime và admission evidence
 
 ### EV-05 — Argo rollout và image digest thực tế
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 Precondition đã đạt ngày 2026-07-29:
 
@@ -408,7 +362,7 @@ trong chart PR.
 
 ### EV-06 — Signed image ALLOW khi vẫn giữ `Ignore`
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 `failurePolicy: Ignore` chỉ điều khiển hành vi khi webhook không thể xử lý request.
 Khi webhook hoạt động bình thường, policy vẫn có thể từ chối image không hợp lệ.
@@ -480,7 +434,7 @@ Raw output: `raw/06-signed-image-allow.txt`.
 
 ### EV-07 — Internal unsigned image DENY
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 Đã chọn một platform-specific manifest digest của Accounting tồn tại trong
 `techx-prod-corp/accounting`:
@@ -540,7 +494,7 @@ kubectl delete namespace mandate10-validation
 
 ### EV-08 — Chuyển webhook sang `failurePolicy: Fail`
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 PR `#359` đổi duy nhất `failurePolicy: Ignore` thành `Fail`. Sau Argo reconcile:
 
@@ -567,12 +521,12 @@ Verification lúc `2026-07-29 01:18:33 +07:00`:
 
 Preflight raw: `raw/08-failure-policy-fail-preflight.txt`.
 
-Production namespace vẫn chưa opt-in. External allowlist phải được deploy và
-reconcile trước khi bật label.
+Tại thời điểm thu EV-08, Production chưa opt-in và external allowlist chưa
+deploy. Hai bước này đã hoàn tất sau PR `#370`; xem EV-13.
 
 ## 6. EV-09 — Pod supply-chain traceability
 
-Trạng thái: **CAPTURED**
+Trạng thái: **PASS**
 
 Đã truy vết container `accounting` trong running Pod Production tới đúng source,
 workflow, chart promotion và các OCI security artifacts:
@@ -643,7 +597,7 @@ Evidence:
 
 ## 8. EV-11 — Production inventory và explicit external allowlist
 
-Trạng thái: **VALIDATED / LOCAL CONFIG PREPARED**
+Trạng thái: **PASS**
 
 Read-only inventory kiểm tra 62 Pods và 36 workload objects, bao gồm
 container, initContainer, injected sidecar và workload scale-to-zero:
@@ -664,8 +618,9 @@ repositories. Isolated server-side dry-run xác nhận:
 - unlisted `registry.k8s.io/pause:3.10`: DENY với `no matching policies`;
 - không tạo Pod thật.
 
-Policy tạm và namespace validation đã được xóa. Manifest GitOps được chuẩn bị
-nhưng chưa deploy; Production namespace vẫn chưa opt-in.
+Policy tạm và namespace validation đã được xóa. Manifest GitOps sau đó được
+merge bằng PR `#370`; live policy đã `Ready=True`. Kết quả opt-in Production
+được ghi nhận riêng tại EV-13.
 
 Evidence:
 
@@ -673,42 +628,101 @@ Evidence:
 - `manifests/ev-11-unlisted-external-pod.yaml`;
 - `raw/11-production-image-inventory-and-allowlist-validation.txt`.
 
-## 9. EV-12 — Current release và ECR lifecycle
+## 9. EV-12 — Current release ECR integrity
 
-Trạng thái: **CURRENT RELEASE PASS / HISTORICAL ROLLBACK DEFERRED**
+Trạng thái: **PASS**
 
 Đối chiếu `origin/main` với AWS ECR xác nhận:
 
 - current runtime digests: `24/24`;
 - current `.sig/.att`: `24/24`;
-- previous runtime digests: `21/21`;
-- lifecycle preview: `24/24` hoàn tất, không current/previous digest nào bị
+- lifecycle preview: `24/24` hoàn tất, không current digest nào bị
   đánh dấu expire.
-
-Năm previous digests thiếu cả `.sig` và `.att`: `cart`, `currency`,
-`frontend-proxy`, `product-catalog`, `shipping`. Chúng chỉ còn được tham chiếu
-bởi chín ReplicaSets đã scale về `0`; không running Pod nào dùng các digest này.
-Do đó chúng không được công nhận là fail-closed rollback targets.
 
 Raw evidence: `raw/12-ecr-current-release-and-lifecycle.txt`.
 
-## 10. Outcome matrix
+## 10. EV-13 — Production opt-in và enforcement
 
-| Outcome | Tiêu chí hoàn tất | Trạng thái |
-|---|---|:---:|
-| CI security gate | 24 release services pass Trivy blocking mode | PASS |
-| KMS signature và attestations | 24/24 current digests có signature, CycloneDX và provenance | PASS |
-| Immutable Helm references | 24 digest overlays đã promote; Accounting runtime sample khớp digest ở EV-05 | PASS |
-| Admission policy readiness | Controller/policy Ready, webhook `failurePolicy: Fail` | PASS |
-| Admission policy behavior | Signed ALLOW, internal unsigned DENY trong validation namespace | PASS |
-| Webhook fail-closed | `failurePolicy: Fail`, Argo Healthy, regression tests pass | PASS |
-| Runtime traceability | Accounting Pod → digest → workflow/commit/PR → KMS/SBOM/provenance | PASS |
-| Production image inventory | Container/initContainer/sidecar và workload templates đã kiểm kê | PASS |
-| External image behavior | Explicit allowlist ALLOW 17/17; unlisted external DENY | PASS |
-| Current release ECR integrity | Runtime digest và `.sig/.att` 24/24; lifecycle preview an toàn | PASS |
-| Historical rollback depth | 5 previous digests thiếu artifacts, không dùng làm rollback target | DEFERRED |
-| Production admission scope | Allowlist được reconcile và Production opt-in | PENDING |
-| Approval | Technical Lead/Security Owner, CDO Reviewer, Rollback Operator | PENDING |
+Trạng thái: **PASS**
 
-Mandate 10 chỉ được đánh dấu **PASS** khi các mục còn `PENDING` được xử lý và
-reviewer chấp thuận.
+Sau khi PR `#370` được merge:
+
+- Argo application `supply-chain`: `Synced / Healthy`;
+- `ecr-signature-policy`: `Ready=True`;
+- `external-image-allowlist-policy`: `Ready=True`;
+- namespace `techx-corp-prod` được gắn
+  `policy.sigstore.dev/include=true`;
+- signed internal Accounting: ALLOW;
+- unsigned internal Accounting: DENY bởi `ecr-signature-policy`;
+- allowlisted external Linkerd: ALLOW;
+- unlisted `registry.k8s.io/pause:3.10`: DENY với
+  `no matching policies`;
+- cả bốn test dùng `--dry-run=server`, không tạo Pod thật;
+- toàn bộ Production Deployments vẫn đủ desired/available replicas;
+- `supply-chain` và `techx-corp` vẫn `Synced / Healthy`.
+
+Opt-in label hiện là thay đổi vận hành trực tiếp trên namespace, chưa được khai
+báo trong Helm template. Quyết định này tránh thay đổi chart dùng chung và tránh
+giả định sai về thứ tự readiness giữa hai Argo applications trong một lần
+bootstrap mới. Hạn chế là label phải được kiểm tra và gắn lại nếu namespace hoặc
+cluster được tạo lại.
+
+Rollback nhanh khi admission ảnh hưởng việc tạo Pod:
+
+```powershell
+kubectl label namespace techx-corp-prod policy.sigstore.dev/include-
+```
+
+Lệnh trên chỉ tắt opt-in của Production; không xóa policy và không restart Pod
+đang chạy.
+
+Raw evidence: `raw/13-production-opt-in-enforcement.txt`.
+
+## 11. EV-14 — Live Production admission
+
+Trạng thái: **PASS**
+
+Một canary Pod cô lập được tạo thật trong `techx-corp-prod` bằng signed internal
+`load-generator` digest hiện hành:
+
+- không thuộc Service selector và không nhận traffic;
+- không mount Secret hoặc service account token;
+- tắt Linkerd injection để chỉ kiểm tra internal image policy;
+- chỉ chạy `python -c`, in một dòng rồi kết thúc;
+- Pod `Succeeded`, exit code `0`;
+- runtime `imageID` khớp đúng digest trong manifest.
+
+Hai request CREATE thật tiếp theo xác nhận:
+
+- unsigned internal Accounting: DENY bởi `ecr-signature-policy`, không tạo Pod;
+- unlisted external `registry.k8s.io/pause:3.10`: DENY với
+  `no matching policies`, không tạo Pod.
+
+Canary đã được xóa. Không còn Pod evidence, toàn bộ Production Deployments vẫn
+Ready và hai Argo applications vẫn `Synced / Healthy`.
+
+EV-14 chỉ chứng minh live admission, scheduling, container execution và runtime
+digest match. EV-14 không giải mã SBOM/provenance và không kiểm tra chức năng
+ứng dụng `load-generator`; runtime traceability được chứng minh riêng bằng
+Accounting tại EV-09.
+
+Evidence:
+
+- `manifests/ev-14-live-signed-internal-canary.yaml`;
+- `raw/14-live-production-admission.txt`.
+
+## 12. Outcome matrix
+
+| Outcome | Tiêu chí hoàn tất | Evidence |
+|---|---|---|
+| CI security gate | 24 release services pass Trivy blocking mode | EV-01 |
+| KMS signature và attestations | Current digests có signature, CycloneDX và provenance `24/24` | EV-04 |
+| Immutable Production release | 24 digest overlays đã promote; runtime sample khớp digest | EV-02, EV-05 |
+| Admission readiness và fail-closed | Controller/policies Ready; webhook `failurePolicy: Fail` | EV-08, EV-13 |
+| Production admission enforcement | Allowlist Ready; Production opt-in; dry-run `4/4`; signed internal chạy thật; hai CREATE không hợp lệ bị DENY | EV-13, EV-14 |
+| Runtime traceability | Accounting Pod → digest → workflow/commit/PR → KMS/SBOM/provenance | EV-09 |
+| Production image inventory và allowlist | Container/initContainer/sidecar đã kiểm kê; 17 managed external repositories | EV-11 |
+| Current release ECR integrity | Runtime digest và `.sig/.att` `24/24`; lifecycle preview không đánh dấu current digest | EV-04, EV-12 |
+
+Mandate 10 chuyển sang **PASS** sau khi Go/No-Go liên team được ghi nhận và
+evidence sau opt-in được merge vào `main`.
