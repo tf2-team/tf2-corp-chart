@@ -3,4 +3,4 @@
 components:
   flagd:
     sidecarImageDigests:
-      flagd-ui: "sha256:940045937919992c7dd718c8bd5400975b5a416db2ac3e1ddefd715217873c93"
+      flagd-ui: "sha256:7bc5424d753f0c72bbfa673f63ab3e9adf560cd8ed2ac65a5f98016d92473645"

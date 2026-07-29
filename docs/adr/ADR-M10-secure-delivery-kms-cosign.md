@@ -81,6 +81,10 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
   - `https://cyclonedx.org/bom`;
   - `https://techx-corp.dev/attestations/provenance/v1`.
 - Webhook dùng `failurePolicy: Fail`.
+- Admission High Availability (HA): Webhook vận hành với `replicaCount: 3`, `priorityClass: system-cluster-critical`, resource request `250m`/`256Mi` và limit `1`/`512Mi`.
+- Node placement & Anti-affinity: Đặt trên `workload-class: critical` nodes (`commonNodeSelector`), bắt buộc phân tách host (`podAntiAffinity` hard cho `kubernetes.io/hostname`) và ưu tiên phân tách Availability Zone (`topology.kubernetes.io/zone`).
+- PodDisruptionBudget (PDB): Kích hoạt PDB với `minAvailable: 2` bảo vệ tính sẵn sàng khi bảo trì node.
+- GitOps-only recovery: Mọi phục hồi và điều chỉnh cấu hình webhook phải thực hiện qua GitOps commit trên `techx-corp-chart` và Argo CD reconciliation. Không sử dụng `failurePolicy: Ignore` hoặc lệnh `kubectl`/`helm` thao tác trực tiếp trên cluster.
 - Namespace chỉ chịu admission policy khi có label
   `policy.sigstore.dev/include=true`.
 - `external-image-allowlist-policy` dùng `static: pass` cho các external
@@ -117,6 +121,7 @@ admission có thể DENY Pod mới.
 | Immutable Production release | EV-02, EV-05 |
 | Admission readiness và fail-closed | EV-08, EV-13 |
 | Production admission enforcement: opt-in, dry-run `4/4` và live CREATE | EV-13, EV-14 |
+| Webhook HA (3 replicas, critical nodes, PDB minAvailable 2) | EV-15 |
 | Runtime traceability | EV-09 |
 | Production image inventory và explicit allowlist | EV-11 |
 | Current release ECR integrity `24/24` | EV-04, EV-12 |
@@ -158,6 +163,7 @@ Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 
 - Image ứng dụng có danh tính bất biến và chuỗi truy xuất kiểm chứng được.
 - Admission từ chối image nội bộ thiếu signature/SBOM/provenance.
+- Webhook HA 3-replica ngăn ngừa nghẽn liveness/readiness probe và Pod restart.
 - SBOM và provenance hỗ trợ audit từ Pod về source và pipeline.
 
 ### Rủi ro còn lại
@@ -166,3 +172,4 @@ Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 - `failurePolicy: Fail` có thể chặn Pod mới khi webhook gặp sự cố.
 - ECR lifecycle có thể làm mất runtime digest hoặc chứng thư rollback.
 - External repository mới phải được review và cập nhật allowlist trước rollout.
+<!-- Change trail: @hungxqt - 2026-07-29 - Update ADR-M10 with policy-controller webhook HA, critical node placement, PDB, and GitOps-only recovery. -->
