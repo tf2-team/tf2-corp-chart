@@ -64,7 +64,7 @@ rdsPostgresql:
 # Enable only after the approved policy decision is stored in the existing
 # executor ASM JSON as {"approval_id":"<signed-approval-id>"}.
 aiopsLiveExecutor:
-  approvalEnabled: false
+  approvalEnabled: true
   approvalProperty: approval_id
 
 # Mem0 self-hosted: runtime app secret + RDS-managed master secret for migrate.
