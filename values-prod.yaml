@@ -900,7 +900,9 @@ prometheus:
       scrape_interval: 30s
       evaluation_interval: 30s
       scrape_timeout: 10s
-    retention: 24h
+    # Keep two weeks of operational history. The preceding metric filters keep
+    # this retention window bounded without removing any CDO, SLO or HPA data.
+    retention: 15d
     persistentVolume:
       # The prod PVC was expanded during the AIOps long-run window. Kubernetes
       # forbids PVC shrink, so keep desired storage aligned with live capacity.

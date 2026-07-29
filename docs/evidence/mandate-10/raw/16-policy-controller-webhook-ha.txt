@@ -1,0 +1,45 @@
+EV-16 — Policy Controller webhook HA rollout
+Captured date: 2026-07-29 +07:00
+Source: live verification summary supplied during review of Chart PR #372.
+Raw terminal transcript: PENDING.
+
+Git identity:
+- Source PR: https://github.com/tf2-team/tf2-corp-chart/pull/375
+- Merge commit: 834dc6745b6f1b6a29dbede02b17f9889f0b077d
+- Configuration:
+  gitops/clusters/prod/supply-chain-application.yaml
+
+Configuration delta:
+- Webhook replicas: 1 -> 3.
+- Priority class: system-cluster-critical.
+- Node selector: workload-class=critical.
+- Resources: requests 250m/256Mi; limits 1 CPU/512Mi.
+- Hostname anti-affinity: chart default soft preference strengthened to a hard
+  required rule.
+- Zone anti-affinity: preferred distribution across Availability Zones.
+- PDB: chart default minAvailable 1 strengthened to minAvailable 2.
+- Prometheus scrape annotations enabled.
+- failurePolicy remains Fail.
+
+Live verification summary:
+- Argo application supply-chain: Synced / Healthy.
+- Deployment policy-controller-webhook: 3/3 Ready.
+- Three Pods scheduled on distinct nodes.
+- Pods distributed across us-east-1a and us-east-1b.
+- Container restarts: 0.
+- Service ready endpoints: 3.
+- PDB minAvailable: 2.
+- PDB allowed disruptions: 1.
+
+Assessment:
+PASS for rollout/readiness/topology verification.
+
+Limitations:
+- This is a supplied live verification summary; the raw terminal transcript is
+  not yet committed to the repository.
+- A read-only recapture attempt from the current workstation at
+  2026-07-29 14:54:37 +07:00 failed because the Kubernetes API requested fresh
+  credentials. No live state was changed.
+- No post-rollout burst/load retest is captured here.
+- Three replicas, host separation and PDB reduce admission unavailability risk;
+  they do not prove that timeouts, probe failures or restarts are eliminated.

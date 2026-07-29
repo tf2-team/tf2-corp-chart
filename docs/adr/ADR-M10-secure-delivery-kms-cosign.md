@@ -1,9 +1,10 @@
 # ADR-M10: Secure Delivery với AWS KMS Cosign và Image Admission Fail-Closed
 
-- Trạng thái: Đang nghiệm thu — kiểm soát kỹ thuật PASS, phê duyệt PENDING
+- Trạng thái: IN PROGRESS — supply-chain/admission controls PASS; merge
+  enforcement và approval PENDING
 - Ngày cập nhật: 2026-07-29
-- Go/No-Go liên team: chờ xác nhận từ platform, infra, chart/runtime security
-  và workload owners liên quan
+- Go/No-Go liên team: chờ required status check enforcement/negative test, sau
+  đó xác nhận từ platform, infra, chart/runtime security và workload owners
 
 ## Bối cảnh
 
@@ -40,7 +41,23 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
 
 - Không có bypass Trivy riêng theo service.
 - Trivy image scan chặn HIGH/CRITICAL trước ECR push.
-- Sign, attest và promotion chỉ chạy sau các security gate bắt buộc.
+- Sign, attest và promotion chỉ chạy sau Trivy IaC, Semgrep SAST và TruffleHog
+  secret scan bắt buộc.
+- Mỗi repo dùng một context ổn định tên `Mandate 10 required gate`; context này
+  chỉ PASS khi các test/scan/render thuộc repo đã PASS.
+- Context chỉ trở thành merge control sau khi repository admin thêm nó vào
+  active default-branch ruleset. Việc này đang chờ hoàn tất tại EV-15.
+
+### 1.1 Dependency pinning và selective delivery
+
+- Third-party GitHub Actions phải pin commit SHA; external Dockerfile `FROM`
+  phải pin `@sha256`.
+- Release catalog là nguồn chuẩn để phân loại service.
+- PR CI và publish chỉ build/scan service có đường dẫn ảnh hưởng thay đổi.
+- Unchanged services giữ nguyên digest overlay.
+- Production promotion chỉ cập nhật digest của service được rebuild.
+- Manual requested/full rebuild phải có lý do; tag release và shared/global
+  image paths là các full-build trigger hẹp được chấp thuận.
 
 ### 2. Immutable digest và chứng thư
 
@@ -64,6 +81,18 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
   - `https://cyclonedx.org/bom`;
   - `https://techx-corp.dev/attestations/provenance/v1`.
 - Webhook dùng `failurePolicy: Fail`.
+- Admission High Availability (HA): Webhook vận hành với `replicaCount: 3`,
+  `priorityClass: system-cluster-critical`, resource request `250m`/`256Mi` và
+  limit `1`/`512Mi`.
+- Node placement và anti-affinity: đặt trên `workload-class: critical` nodes;
+  tăng soft hostname anti-affinity mặc định của chart thành hard separation và
+  ưu tiên phân bố theo Availability Zone.
+- PodDisruptionBudget: tăng `minAvailable` mặc định từ `1` lên `2`, cho phép một
+  voluntary disruption khi cả ba replica healthy. PDB không phải quorum.
+- Cấu hình bền vững phải thay đổi qua GitOps. Trong sự cố admission,
+  operational rollback được phép gỡ namespace opt-in bằng lệnh `kubectl` đã
+  định nghĩa trong runbook; không chuyển `failurePolicy` sang `Ignore` hoặc tạo
+  allow-all bypass trực tiếp.
 - Namespace chỉ chịu admission policy khi có label
   `policy.sigstore.dev/include=true`.
 - `external-image-allowlist-policy` dùng `static: pass` cho các external
@@ -100,18 +129,27 @@ admission có thể DENY Pod mới.
 | Immutable Production release | EV-02, EV-05 |
 | Admission readiness và fail-closed | EV-08, EV-13 |
 | Production admission enforcement: opt-in, dry-run `4/4` và live CREATE | EV-13, EV-14 |
+| Webhook HA (3 replicas, critical nodes, PDB minAvailable 2) | EV-16 — raw transcript pending |
 | Runtime traceability | EV-09 |
 | Production image inventory và explicit allowlist | EV-11 |
 | Current release ECR integrity `24/24` | EV-04, EV-12 |
+| Required merge checks | EV-15 — admin pending |
+| Action/base-image pinning | EV-15 — PR open |
+| Selective build và promotion | EV-15 |
 
 Chi tiết lệnh, raw output và ảnh nằm tại
 `docs/evidence/mandate-10/secure-delivery.md`.
 
 ## Điều kiện chuyển sang Accepted
 
-1. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
+1. Merge platform `#128`, chart `#372` và infra `#154` sau review/CI xanh.
+2. Repository admin thêm `Mandate 10 required gate` vào active ruleset của cả
+   ba default branch với strict branch update.
+3. Thu negative evidence độc lập trên cả ba repo: mỗi repo có một PR nhỏ cố
+   tình làm required gate đỏ, bị chặn merge, sau đó đóng mà không merge.
+4. Merge EV-15 hoàn chỉnh vào `main`.
+5. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
    owners liên quan.
-2. Merge evidence sau opt-in Production vào `main`.
 
 ## Rollback
 
@@ -133,6 +171,8 @@ Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 
 - Image ứng dụng có danh tính bất biến và chuỗi truy xuất kiểm chứng được.
 - Admission từ chối image nội bộ thiếu signature/SBOM/provenance.
+- Webhook HA ba replica giảm nguy cơ nghẽn admission, probe timeout và Pod
+  restart; chưa có burst/load retest để kết luận loại bỏ hoàn toàn.
 - SBOM và provenance hỗ trợ audit từ Pod về source và pipeline.
 
 ### Rủi ro còn lại
@@ -141,3 +181,4 @@ Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 - `failurePolicy: Fail` có thể chặn Pod mới khi webhook gặp sự cố.
 - ECR lifecycle có thể làm mất runtime digest hoặc chứng thư rollback.
 - External repository mới phải được review và cập nhật allowlist trước rollout.
+<!-- Change trail: @hungxqt - 2026-07-29 - Update ADR-M10 with policy-controller webhook HA, critical node placement, PDB, and GitOps-managed configuration. -->
