@@ -904,12 +904,12 @@ prometheus:
     # this retention window bounded without removing any CDO, SLO or HPA data.
     retention: 15d
     persistentVolume:
-      # The prod PVC was expanded during the AIOps long-run window. Kubernetes
-      # forbids PVC shrink, so keep desired storage aligned with live capacity.
-      size: 48Gi
+      # Fifteen days of operational history needs headroom above the filtered
+      # baseline. 64Gi keeps TSDB compaction and temporary WAL growth bounded.
+      size: 64Gi
     resources:
       # Live baseline under Locust/AIOps was far below the old 500m/4Gi request.
-      # Keep the 4Gi limit and PVC unchanged, but release critical-node binpack pressure.
+      # Keep the 4Gi limit while releasing critical-node binpack pressure.
       requests:
         cpu: 200m
         memory: 2304Mi
