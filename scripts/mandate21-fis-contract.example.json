@@ -14,5 +14,43 @@
       "primaryInZoneTemplateId": "EXT0_REPLACE_WITH_1B_AND_RDS_FAILOVER",
       "primaryOutsideZoneTemplateId": "EXT0_REPLACE_WITH_1B_WITHOUT_RDS_FAILOVER"
     }
+  },
+  "cleanupByTemplateId": {
+    "EXT0_REPLACE_WITH_1A_AND_RDS_FAILOVER": {
+      "variant": "1a-primary-in",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": true
+    },
+    "EXT0_REPLACE_WITH_1A_WITHOUT_RDS_FAILOVER": {
+      "variant": "1a-primary-outside",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": false
+    },
+    "EXT0_REPLACE_WITH_1B_AND_RDS_FAILOVER": {
+      "variant": "1b-primary-in",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": true
+    },
+    "EXT0_REPLACE_WITH_1B_WITHOUT_RDS_FAILOVER": {
+      "variant": "1b-primary-outside",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": false
+    }
   }
 }

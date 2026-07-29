@@ -136,12 +136,20 @@ production ALB and target group. If Terraform recreates either resource, Person
 failed observability gate, not permission to continue.
 
 Final PASS requires FIS `completed`, SLO recovery within five minutes and for
-three consecutive one-minute windows, zero dropped k6 iterations, and Person 2's
+three consecutive one-minute windows, zero dropped k6 iterations, Person 2's
 equality proof:
 
 ```text
 charged = unique accepted = durable = persisted
 ```
 
+and deterministic runtime cleanup verification in `cleanup-state.json` with status `PASS`.
+The drill wrapper automatically evaluates eight read-only checks (`fisPostActions`,
+`networkAclRestored`, `ec2Recovered`, `rdsHealthy`, `valkeyHealthy`,
+`stopAlarmsStable`, `kubernetesRecovered`, and `durabilityReconciliation`) without
+performing any mutating AWS, Kubernetes, or Helm action.
+
 No live run is complete until Person 1 confirms that FIS-managed NACL/EC2 state
-is clean and Argo CD has no drift.
+is clean, `cleanup-state.json` is recorded as `PASS`, and Argo CD has no drift.
+
+<!-- Change trail: @hungxqt - 2026-07-29 - Documented deterministic runtime cleanup-state.json verification and fail-closed checks. -->

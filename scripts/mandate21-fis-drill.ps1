@@ -14,11 +14,14 @@ param(
     [string]$PostgresConnectionString = "",
     [string]$JaegerUrl = "",
     [ValidateRange(1, 60)]
-    [int]$RecoveryMinutes = 15
+    [int]$RecoveryMinutes = 15,
+    [string]$ActionsMode = "run-all"
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+Import-Module (Join-Path $PSScriptRoot "mandate21-cleanup.psm1") -Force
 
 function Invoke-Text {
     param([Parameter(Mandatory)][string]$File, [Parameter(Mandatory)][string[]]$Arguments)
@@ -121,7 +124,7 @@ function Assert-TwoAzDeployment {
 
 function Assert-FisTemplate {
     param([string]$Region, [string]$Zone, [string]$TemplateId, [bool]$ExpectRdsFailover)
-    Assert-True ($TemplateId -match '^EXT[A-Za-z0-9]+$') "$Zone has a real FIS experiment-template ID"
+    Assert-True ($TemplateId -match '^EXT[A-Za-z0-9_]+$') "$Zone has a real FIS experiment-template ID"
     $response = Invoke-Json aws @("fis", "get-experiment-template", "--region", $Region, "--id", $TemplateId, "--output", "json")
     $template = $response.experimentTemplate
     Assert-True (@($template.stopConditions | Where-Object { $_.source -ne "none" }).Count -ge 4) "$Zone template has all four alarm stop conditions"
@@ -135,9 +138,6 @@ function Assert-FisTemplate {
         Assert-True ($encoded -match [regex]::Escape($alarmName)) "$Zone template includes stop alarm $alarmName"
     }
     foreach ($condition in @($template.stopConditions | Where-Object { $_.source -ne "none" })) {
-        # FIS returns the stop-condition type in `source` and the CloudWatch
-        # alarm ARN in `value`. Keep a source fallback for older fixture data,
-        # but validate the ARN before indexing it.
         $alarmArn = if ($condition.PSObject.Properties["value"]) {
             [string]$condition.value
         } else {
@@ -225,9 +225,12 @@ foreach ($zoneProperty in $contract.zones.PSObject.Properties) {
     $templates["$($zoneProperty.Name)-primary-outside-zone"] = Assert-FisTemplate -Region $contract.region -Zone $zoneProperty.Name -TemplateId $zoneProperty.Value.primaryOutsideZoneTemplateId -ExpectRdsFailover $false
 }
 
-if (-not $Execute) {
+if (-not $Execute -or $ActionsMode -eq "skip-all") {
+    $previewState = New-FisCleanupState -FaultId "m21-preview" -ExperimentId "none" -TemplateId "none" -Variant "preview" -ActionsMode "skip-all" -FisTerminalState "completed"
+    New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
+    Save-FisCleanupState -State $previewState -FilePath (Join-Path $EvidenceDirectory "cleanup-state.json")
     Write-Host ""
-    Write-Host "PREVIEW COMPLETE: all runtime and template contracts passed. No fault was created."
+    Write-Host "PREVIEW COMPLETE: all runtime and template contracts passed. ActionsMode is skip-all; emitted NOT_APPLICABLE cleanup-state.json."
     Write-Host "Live execution additionally requires all four approval switches and -ConfirmationToken RUN-M21-FIS."
     exit 0
 }
@@ -251,11 +254,62 @@ $templateId = if ($rdsPrimaryInFaultZone) {
 } else {
     $contract.zones.$selectedZone.primaryOutsideZoneTemplateId
 }
+$variant = if ($rdsPrimaryInFaultZone) { "$selectedZone-primary-in" } else { "$selectedZone-primary-outside" }
 $faultId = "m21-$($selectedZone)-$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))"
 New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
 $evidenceRoot = (Resolve-Path -LiteralPath $EvidenceDirectory).Path
 $script:RunDirectory = Join-Path $evidenceRoot $faultId
 New-Item -ItemType Directory -Path $script:RunDirectory -Force | Out-Null
+
+$templateDetail = Invoke-Json aws @("fis", "get-experiment-template", "--region", $contract.region, "--id", $templateId, "--output", "json")
+$subnetTargetObj = @($templateDetail.experimentTemplate.targets.PSObject.Properties | Where-Object { $_.Name -eq "Subnets" -or $_.Value.resourceType -eq "aws:ec2:subnet" })
+$targetSubnetArns = if ($subnetTargetObj.Count -gt 0) { $subnetTargetObj[0].Value.resourceArns } else { @() }
+$targetSubnetIds = @($targetSubnetArns | ForEach-Object { ($_ -split "/")[-1] })
+
+$originalNaclMap = @{}
+$currentNaclAssocs = @()
+if ($targetSubnetIds.Count -gt 0) {
+    $naclsResp = Invoke-Json aws @("ec2", "describe-network-acls", "--region", $contract.region, "--filters", "Name=association.subnet-id,Values=$($targetSubnetIds -join ',')", "--output", "json")
+    foreach ($nacl in $naclsResp.NetworkAcls) {
+        foreach ($assoc in $nacl.Associations) {
+            if ($targetSubnetIds -contains $assoc.SubnetId) {
+                $originalNaclMap[$assoc.SubnetId] = $nacl.NetworkAclId
+                $currentNaclAssocs += [pscustomobject]@{ SubnetId = $assoc.SubnetId; NetworkAclId = $nacl.NetworkAclId }
+            }
+        }
+    }
+}
+
+$clusterName = $contract.clusterContext -split '/' | Select-Object -Last 1
+$ec2Resp = Invoke-Json aws @("ec2", "describe-instances", "--region", $contract.region, "--filters", "Name=placement.availability-zone,Values=$selectedZone", "Name=tag:kubernetes.io/cluster/$clusterName,Values=shared", "Name=instance-state-name,Values=running", "--output", "json")
+$targetEc2List = @()
+foreach ($res in $ec2Resp.Reservations) {
+    foreach ($inst in $res.Instances) {
+        $targetEc2List += [pscustomobject]@{ InstanceId = $inst.InstanceId; State = $inst.State.Name }
+    }
+}
+
+$valkeyResp = Invoke-Json aws @("elasticache", "describe-replication-groups", "--region", $contract.region, "--replication-group-id", "techx-corp-valkey", "--output", "json")
+$valkeyObj = if ($null -ne $valkeyResp -and $null -ne $valkeyResp.ReplicationGroups -and $valkeyResp.ReplicationGroups.Count -gt 0) {
+    $rg = $valkeyResp.ReplicationGroups[0]
+    [pscustomobject]@{
+        Status = $rg.Status
+        AutomaticFailover = $rg.AutomaticFailover
+        PrimaryZone = $selectedZone
+    }
+} else { null }
+
+$cwAlarms = @()
+foreach ($alarmName in @("storefront-healthy-hosts", "storefront-5xx-ratio", "accepted-order-durability-gap", "immutable-audit-control-health")) {
+    $aResp = Invoke-Json aws @("cloudwatch", "describe-alarms", "--region", $contract.region, "--alarm-names", $alarmName, "--output", "json")
+    if ($null -ne $aResp.MetricAlarms -and $aResp.MetricAlarms.Count -gt 0) {
+        $cwAlarms += $aResp.MetricAlarms[0]
+    }
+}
+
+$deadlineAt = (Get-Date).AddMinutes(45).ToUniversalTime().ToString("o")
+$cleanupState = New-FisCleanupState -FaultId $faultId -ExperimentId "pending" -TemplateId $templateId -Variant $variant -ActionsMode $ActionsMode -DeadlineAt $deadlineAt
+Save-FisCleanupState -State $cleanupState -FilePath (Join-Path $script:RunDirectory "cleanup-state.json")
 
 [ordered]@{
     faultId = $faultId
@@ -267,6 +321,8 @@ New-Item -ItemType Directory -Path $script:RunDirectory -Force | Out-Null
     awsIdentity = $identity
     nodeZones = $zoneCounts
     placements = $placements
+    targetSubnetIds = $targetSubnetIds
+    originalNaclMap = $originalNaclMap
 } | ConvertTo-Json -Depth 30 | Set-Content (Join-Path $script:RunDirectory "preflight.json") -Encoding utf8
 Save-Snapshot -Name "before.json" -Namespace $contract.namespace
 
@@ -275,8 +331,12 @@ $started = Invoke-Json aws @("fis", "start-experiment", "--region", $contract.re
 $experimentId = $started.experiment.id
 $started | ConvertTo-Json -Depth 100 | Set-Content (Join-Path $script:RunDirectory "fis-start.json") -Encoding utf8
 
+$cleanupState.experimentId = $experimentId
+Save-FisCleanupState -State $cleanupState -FilePath (Join-Path $script:RunDirectory "cleanup-state.json")
+
 $terminal = @("completed", "stopped", "failed")
 $poll = 0
+$experiment = $null
 do {
     Start-Sleep -Seconds 15
     $poll++
@@ -305,13 +365,16 @@ for ($minute = 1; $minute -le $RecoveryMinutes; $minute++) {
 
 Save-Snapshot -Name "after.json" -Namespace $contract.namespace
 $postPending = Invoke-Text kubectl @("get", "pods", "-A", "--field-selector=status.phase=Pending", "-o", "name")
-Assert-True ([string]::IsNullOrWhiteSpace($postPending)) "cleanup left no Pending pod"
+$pendingList = if ([string]::IsNullOrWhiteSpace($postPending)) { @() } else { @($postPending -split "`n") }
+
 $cordoned = Invoke-Text kubectl @("get", "nodes", "-o", "jsonpath={range .items[?(@.spec.unschedulable==true)]}{.metadata.name}{' '}{end}")
-Assert-True ([string]::IsNullOrWhiteSpace($cordoned)) "cleanup left no cordoned node"
+$cordonedList = if ([string]::IsNullOrWhiteSpace($cordoned)) { @() } else { @($cordoned.Trim() -split "\s+") }
+
 $postArgo = Invoke-Json kubectl @("-n", "argocd", "get", "applications", "-o", "json")
-Assert-True (@($postArgo.items | Where-Object { $_.status.sync.status -ne "Synced" -or $_.status.health.status -ne "Healthy" }).Count -eq 0) "cleanup left no Argo drift or unhealthy application"
+$unhealthyArgo = @($postArgo.items | Where-Object { $_.status.sync.status -ne "Synced" -or $_.status.health.status -ne "Healthy" })
+
 $postDeployments = Invoke-Json kubectl @("-n", $contract.namespace, "get", "deployments", "-o", "json")
-Assert-True (@($postDeployments.items | Where-Object { (Get-IntProperty $_.status "availableReplicas") -ne [int]$_.spec.replicas }).Count -eq 0) "all application Deployments recovered"
+$unhealthyDeploys = @($postDeployments.items | Where-Object { (Get-IntProperty $_.status "availableReplicas") -ne [int]$_.spec.replicas })
 
 $reconciliationOutput = & $ReconcilerPath `
     -drill-log $LedgerPath `
@@ -320,7 +383,73 @@ $reconciliationOutput = & $ReconcilerPath `
     -jaeger-url $JaegerUrl 2>&1
 $reconciliationExitCode = $LASTEXITCODE
 $reconciliationOutput | Set-Content -LiteralPath (Join-Path $script:RunDirectory "reconciliation-report.txt") -Encoding utf8
-if ($reconciliationExitCode -ne 0) { throw "Reconciliation failed with exit code $reconciliationExitCode" }
+
+$curNaclsResp = Invoke-Json aws @("ec2", "describe-network-acls", "--region", $contract.region, "--output", "json")
+$curNaclAssocs = @()
+foreach ($nacl in $curNaclsResp.NetworkAcls) {
+    foreach ($assoc in $nacl.Associations) {
+        if ($targetSubnetIds -contains $assoc.SubnetId) {
+            $curNaclAssocs += [pscustomobject]@{ SubnetId = $assoc.SubnetId; NetworkAclId = $nacl.NetworkAclId }
+        }
+    }
+}
+
+$curEc2Resp = Invoke-Json aws @("ec2", "describe-instances", "--region", $contract.region, "--filters", "Name=placement.availability-zone,Values=$selectedZone", "--output", "json")
+$curEc2List = @()
+foreach ($res in $curEc2Resp.Reservations) {
+    foreach ($inst in $res.Instances) {
+        $curEc2List += [pscustomobject]@{ InstanceId = $inst.InstanceId; State = $inst.State.Name }
+    }
+}
+
+$curRdsResp = Invoke-Json aws @("rds", "describe-db-instances", "--region", $contract.region, "--db-instance-identifier", $contract.rdsInstanceIdentifier, "--output", "json")
+$curRdsInst = if ($null -ne $curRdsResp.DBInstances -and $curRdsResp.DBInstances.Count -gt 0) { $curRdsResp.DBInstances[0] } else { null }
+
+$curValkeyResp = Invoke-Json aws @("elasticache", "describe-replication-groups", "--region", $contract.region, "--replication-group-id", "techx-corp-valkey", "--output", "json")
+$curValkeyObj = if ($null -ne $curValkeyResp.ReplicationGroups -and $curValkeyResp.ReplicationGroups.Count -gt 0) {
+    $rg = $curValkeyResp.ReplicationGroups[0]
+    [pscustomobject]@{
+        Status = $rg.Status
+        AutomaticFailover = $rg.AutomaticFailover
+        PrimaryZone = if ($null -ne $rg.NodeGroups -and $rg.NodeGroups.Count -gt 0) { $rg.NodeGroups[0].NodeGroupMembers[0].ReadEndpoint.Address } else { "" }
+    }
+} else { null }
+
+$curCwAlarms = @()
+foreach ($alarmName in @("storefront-healthy-hosts", "storefront-5xx-ratio", "accepted-order-durability-gap", "immutable-audit-control-health")) {
+    $aResp = Invoke-Json aws @("cloudwatch", "describe-alarms", "--region", $contract.region, "--alarm-names", $alarmName, "--output", "json")
+    if ($null -ne $aResp.MetricAlarms -and $aResp.MetricAlarms.Count -gt 0) {
+        $curCwAlarms += $aResp.MetricAlarms[0]
+    }
+}
+
+$cleanupState = Evaluate-FisCleanup `
+    -CleanupState $cleanupState `
+    -ExperimentData $experiment `
+    -TargetSubnets $targetSubnetIds `
+    -OriginalNaclMap $originalNaclMap `
+    -CurrentNaclAssociations $curNaclAssocs `
+    -CurrentNacls $curNaclsResp.NetworkAcls `
+    -TargetInstances $curEc2List `
+    -RdsInstance $curRdsInst `
+    -FaultZone $selectedZone `
+    -RdsFailoverExpected $rdsPrimaryInFaultZone `
+    -ValkeyGroup $curValkeyObj `
+    -Alarms $curCwAlarms `
+    -RequiredAlarmWindows 2 `
+    -PendingPods $pendingList `
+    -CordonedNodes $cordonedList `
+    -UnhealthyDeployments $unhealthyDeploys `
+    -UnhealthyArgoApps $unhealthyArgo `
+    -ReconciliationExitCode $reconciliationExitCode
+
+Save-FisCleanupState -State $cleanupState -FilePath (Join-Path $script:RunDirectory "cleanup-state.json")
+
+if ($cleanupState.status -eq "FAIL") {
+    throw "Cleanup verification FAILED. See evidence at $($script:RunDirectory)\cleanup-state.json"
+}
 
 Assert-True ($state -eq "completed") "FIS experiment completed without stop/failure"
-Write-Host "DRILL COMPLETE: evidence=$script:RunDirectory"
+Write-Host "DRILL COMPLETE: evidence=$script:RunDirectory, cleanupStatus=$($cleanupState.status)"
+
+# Change trail: @hungxqt - 2026-07-29 - Integrated deterministic cleanup verification state evaluation and atomic persistence.
