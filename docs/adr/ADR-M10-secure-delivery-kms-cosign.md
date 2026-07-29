@@ -2,8 +2,8 @@
 
 - Trạng thái: Đang nghiệm thu — kiểm soát kỹ thuật PASS, phê duyệt PENDING
 - Ngày cập nhật: 2026-07-29
-- Go/No-Go liên team: chờ xác nhận từ platform, infra, chart/runtime security
-  và workload owners liên quan
+- Go/No-Go liên team: chờ required status check enforcement/negative test, sau
+  đó xác nhận từ platform, infra, chart/runtime security và workload owners
 
 ## Bối cảnh
 
@@ -40,7 +40,23 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
 
 - Không có bypass Trivy riêng theo service.
 - Trivy image scan chặn HIGH/CRITICAL trước ECR push.
-- Sign, attest và promotion chỉ chạy sau các security gate bắt buộc.
+- Sign, attest và promotion chỉ chạy sau Trivy IaC, Semgrep SAST và TruffleHog
+  secret scan bắt buộc.
+- Mỗi repo dùng một context ổn định tên `Mandate 10 required gate`; context này
+  chỉ PASS khi các test/scan/render thuộc repo đã PASS.
+- Context chỉ trở thành merge control sau khi repository admin thêm nó vào
+  active default-branch ruleset. Việc này đang chờ hoàn tất tại EV-15.
+
+### 1.1 Dependency pinning và selective delivery
+
+- Third-party GitHub Actions phải pin commit SHA; external Dockerfile `FROM`
+  phải pin `@sha256`.
+- Release catalog là nguồn chuẩn để phân loại service.
+- PR CI và publish chỉ build/scan service có đường dẫn ảnh hưởng thay đổi.
+- Unchanged services giữ nguyên digest overlay.
+- Production promotion chỉ cập nhật digest của service được rebuild.
+- Manual requested/full rebuild phải có lý do; tag release và shared/global
+  image paths là các full-build trigger hẹp được chấp thuận.
 
 ### 2. Immutable digest và chứng thư
 
@@ -103,15 +119,23 @@ admission có thể DENY Pod mới.
 | Runtime traceability | EV-09 |
 | Production image inventory và explicit allowlist | EV-11 |
 | Current release ECR integrity `24/24` | EV-04, EV-12 |
+| Required merge checks | EV-15 — admin pending |
+| Action/base-image pinning | EV-15 — PR open |
+| Selective build và promotion | EV-15 |
 
 Chi tiết lệnh, raw output và ảnh nằm tại
 `docs/evidence/mandate-10/secure-delivery.md`.
 
 ## Điều kiện chuyển sang Accepted
 
-1. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
+1. Merge platform `#128`, chart `#372` và infra `#154` sau review/CI xanh.
+2. Repository admin thêm `Mandate 10 required gate` vào active ruleset của cả
+   ba default branch với strict branch update.
+3. Thu negative evidence: một PR cố tình đỏ bị chặn merge bởi failed required
+   check, sau đó đóng mà không merge.
+4. Merge EV-15 hoàn chỉnh vào `main`.
+5. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
    owners liên quan.
-2. Merge evidence sau opt-in Production vào `main`.
 
 ## Rollback
 

@@ -1,0 +1,65 @@
+EV-15 — Required gates, dependency pinning and selective delivery
+Captured at: 2026-07-29 +07:00
+
+Pull requests:
+- platform #128: https://github.com/tf2-team/tf2-corp-platform/pull/128
+  Adds the stable "Mandate 10 required gate" aggregate context and pins the
+  final floating checkout/configure-aws-credentials actions to commit SHAs.
+- chart #372: https://github.com/tf2-team/tf2-corp-chart/pull/372
+  Adds an always-on Production Helm dependency/lint/render/digest gate.
+- infra #154: https://github.com/tf2-team/tf2-corp-infra/pull/154
+  Adds the stable "Mandate 10 required gate" aggregate context for Terraform
+  validation, TFLint, Checkov and development/production plans.
+
+Observed CI:
+- chart PR #372, run 30424479392:
+  Mandate 10 required gate = PASS.
+- infra PR #154, run 30424348766:
+  Mandate 10 required gate = PASS.
+- platform PR #128, run 30424344521:
+  Mandate 10 required gate = PASS after all tests, PR image gate, Trivy IaC,
+  Semgrep and TruffleHog passed.
+
+Action pin inventory:
+- Search scope:
+  tf2-corp-platform/.github/workflows
+  tf2-corp-chart/.github/workflows
+  tf2-corp-infra/.github/workflows
+- Floating third-party uses after platform PR #128: 0.
+- Local reusable workflows (uses: ./...) are repository-local and are not
+  third-party floating references.
+
+Base image inventory:
+- External Dockerfile FROM references in the platform release build set are
+  pinned with @sha256.
+- FROM builder/base references are local multi-stage aliases, not registry
+  references.
+
+Selective delivery implementation:
+- scripts/release_services.json is the canonical release catalog.
+- PR CI classifies changed image-affecting paths and bakes/Trivy-scans only the
+  selected service set.
+- Publish classifies BUILD_SET and preserves unchanged service digest overlays.
+- Production promotion PR contains only rebuilt service digest overlays.
+- force_full_rebuild requires full_rebuild_reason.
+- requested_services requires requested_services_reason.
+- Tag releases and shared/global image paths are documented narrow full-build
+  triggers.
+
+Ruleset state:
+- Active ruleset name on platform/chart/infra:
+  mandate-10-main-protection.
+- The current authenticated token can read rulesets but GitHub returned HTTP
+  404 for all three ruleset update attempts.
+- Token scopes: gist, read:org, repo, workflow.
+- Required context to add after the three PRs are merged:
+  Mandate 10 required gate.
+- strict_required_status_checks_policy must be true.
+- Keep deletion, non-fast-forward and one-approval rules.
+
+Assessment:
+PARTIAL / ADMIN ACTION REQUIRED.
+The enforceable stable contexts have been implemented in PRs. Mandate 10
+requirement 1 remains open until a repository administrator adds the context to
+all three active default-branch rulesets and a deliberately failing PR proves
+that the failed required context blocks merge.
