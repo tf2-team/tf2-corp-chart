@@ -263,6 +263,17 @@
         "flagdSyncCidrs"
       ]
     },
+    "opensearchLogRetention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "transactionDays", "errorDays", "standardDays"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "transactionDays": { "type": "integer", "minimum": 1 },
+        "errorDays": { "type": "integer", "minimum": 1 },
+        "standardDays": { "type": "integer", "minimum": 1 }
+      }
+    },
     "egressProxy": {
       "type": "object",
       "additionalProperties": false,
