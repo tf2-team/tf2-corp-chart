@@ -3497,4 +3497,16 @@ prometheus-adapter:
       memory: 512Mi
   replicas: 2
 
-# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION env and set accounting.migration.enabled to false to temporarily disable migration job.
+capacityProbe:
+  enabled: false
+  targetZone: us-east-1b
+  replicas: 2
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+# Change trail: @hungxqt - 2026-07-29 - Add Karpenter capacityProbe configuration section for Mandate 21 AZ failover drills.

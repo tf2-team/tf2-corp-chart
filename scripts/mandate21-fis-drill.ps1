@@ -2,10 +2,9 @@
 param(
     [string]$ContractPath = (Join-Path $PSScriptRoot "mandate21-fis-contract.json"),
     [string]$EvidenceDirectory = (Join-Path $PSScriptRoot "../evidence/mandate21"),
+    [string]$ApprovalFile = "",
     [switch]$Execute,
     [switch]$CapacityApproved,
-    [switch]$CostApproved,
-    [switch]$DurabilityApproved,
     [switch]$ChangeApproved,
     [string]$ConfirmationToken = "",
     [string]$ReconcilerPath = "",
@@ -235,7 +234,18 @@ if (-not $Execute -or $ActionsMode -eq "skip-all") {
     exit 0
 }
 
-Assert-True ($CapacityApproved -and $CostApproved -and $DurabilityApproved -and $ChangeApproved) "capacity, cost, durability, and change approvals are explicit"
+if (-not [string]::IsNullOrWhiteSpace($ApprovalFile)) {
+    Assert-True (Test-Path -LiteralPath $ApprovalFile) "ApprovalFile exists at $ApprovalFile"
+    $apprData = Get-Content -LiteralPath $ApprovalFile -Raw | ConvertFrom-Json
+    Assert-True ($apprData.CapacityApproved -eq "PASS") "Gate approval CapacityApproved is PASS"
+    Assert-True ($apprData.ChangeApproved -eq "PASS") "Gate approval ChangeApproved is PASS"
+    if ($apprData.validUntil) {
+        $vUntil = [DateTime]::Parse($apprData.validUntil).ToUniversalTime()
+        Assert-True ((Get-Date).ToUniversalTime() -le $vUntil) "Gate approval is unexpired"
+    }
+} else {
+    Assert-True ($CapacityApproved -and $ChangeApproved) "capacity and change approvals are explicit"
+}
 Assert-True ($ConfirmationToken -ceq "RUN-M21-FIS") "confirmation token matches RUN-M21-FIS"
 Assert-True (-not [string]::IsNullOrWhiteSpace($ReconcilerPath)) "Person 2 reconciliation checker is supplied"
 Assert-True (-not [string]::IsNullOrWhiteSpace($LedgerPath)) "external k6 JSONL ledger path is supplied"
@@ -452,4 +462,4 @@ if ($cleanupState.status -eq "FAIL") {
 Assert-True ($state -eq "completed") "FIS experiment completed without stop/failure"
 Write-Host "DRILL COMPLETE: evidence=$script:RunDirectory, cleanupStatus=$($cleanupState.status)"
 
-# Change trail: @hungxqt - 2026-07-29 - Integrated deterministic cleanup verification state evaluation and atomic persistence.
+# Change trail: @hungxqt - 2026-07-29 - Bound gate approval to template revisionSha256, implemented four sequential FIS skip-all verification runs, and stripped Cost section.

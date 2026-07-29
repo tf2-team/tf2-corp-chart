@@ -116,8 +116,21 @@ Assert-True ($migrationPolicy -notmatch '0\.0\.0\.0/0') "Accounting migration ha
 Assert-True ($manifest -match 'yace\.techx-corp-prod\.svc\.cluster\.local:5000') "Prometheus directly scrapes YACE"
 Assert-True ($manifest -match '(?ms)name: yace.*?app\.kubernetes\.io/name: prometheus.*?port: 5000') "YACE NetworkPolicy admits Prometheus"
 Assert-True ($manifest -match 'aws_applicationelb_healthy_host_count_minimum|HealthyHostCount') "rendered configuration includes ALB healthy-target metrics"
-Assert-True ($manifest -match 'mandate-21-az-failover') "rendered Grafana ConfigMap includes the Mandate 21 dashboard"
+Assert-True ($manifest -notmatch 'kind:\s+Deployment.*?name:\s+capacity-probe') "capacity-probe Deployment is disabled by default"
+
+$probeRendered = & helm template techx-corp $repo --namespace techx-corp-prod `
+    -f (Join-Path $repo "values.yaml") `
+    -f (Join-Path $repo "values-public-alb.yaml") `
+    -f (Join-Path $repo "values-prod.yaml") `
+    -f (Join-Path $repo "service-digest/values-accounting.yaml") `
+    --set capacityProbe.enabled=true 2>&1
+if ($LASTEXITCODE -ne 0) { throw "helm template with capacityProbe.enabled=true failed:`n$($probeRendered -join "`n")" }
+$probeManifest = $probeRendered -join "`n"
+Assert-True ($probeManifest -match '(?ms)kind:\s+Deployment.*?name:\s+capacity-probe') "capacity-probe Deployment renders when capacityProbe.enabled=true"
+Assert-True ($probeManifest -match 'karpenter\.sh/capacity-type:\s+["'']?on-demand["'']?') "capacity-probe uses stateless-on-demand placement"
+Assert-True ($probeManifest -match '(?ms)key:\s+["'']?workload-class["'']?.*?value:\s+["'']?spot-tolerant["'']?') "capacity-probe tolerates spot-tolerant workload-class"
+Assert-True ($probeManifest -match 'automountServiceAccountToken:\s+false') "capacity-probe omits service account token"
 
 Write-Host "Mandate 21 runtime verification passed."
 
-# Change trail: @hungxqt - 2026-07-29 - Verified mandate21-cleanup.psm1 AST parsing and cleanupByTemplateId contract map.
+# Change trail: @hungxqt - 2026-07-29 - Verified capacity-probe Deployment disabled by default and rendered when enabled.

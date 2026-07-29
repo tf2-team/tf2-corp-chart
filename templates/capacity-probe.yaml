@@ -1,0 +1,46 @@
+{{- if .Values.capacityProbe.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: capacity-probe
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app.kubernetes.io/name: capacity-probe
+    app.kubernetes.io/component: karpenter-capacity-proof
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: {{ .Values.capacityProbe.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: capacity-probe
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: capacity-probe
+        app.kubernetes.io/component: karpenter-capacity-proof
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        topology.kubernetes.io/zone: {{ .Values.capacityProbe.targetZone | quote }}
+        karpenter.sh/capacity-type: "on-demand"
+      tolerations:
+        - key: "workload-class"
+          operator: "Equal"
+          value: "spot-tolerant"
+          effect: "NoSchedule"
+      containers:
+        - name: capacity-probe
+          image: "public.ecr.aws/docker/library/busybox:1.36.1"
+          command: ["sleep", "3600"]
+          resources:
+            {{- toYaml .Values.capacityProbe.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop:
+                - ALL
+{{- end }}
+# Change trail: @hungxqt - 2026-07-29 - Create capacity-probe Deployment template for Karpenter AZ failover proof.
