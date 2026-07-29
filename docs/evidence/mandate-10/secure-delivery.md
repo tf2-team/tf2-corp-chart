@@ -1,6 +1,7 @@
 # Mandate 10 — Secure Delivery, Image Integrity & KMS Cosign Evidence Report
 
-- Trạng thái: **IN PROGRESS — TECHNICAL CONTROLS PASS; APPROVAL PENDING**
+- Trạng thái: **IN PROGRESS — SUPPLY-CHAIN/ADMISSION CONTROLS PASS;
+  MERGE ENFORCEMENT AND APPROVAL PENDING**
 - Ngày rà soát gần nhất: 2026-07-29
 - Phạm vi: image ứng dụng do đội ngũ tự xây dựng bằng `tf2-corp-platform` và lưu
   trong `techx-prod-corp/**`
@@ -55,7 +56,7 @@ external allowlist tiếp tục bị từ chối.
 | Pod supply-chain traceability | DONE | EV-09 `PASS` |
 | Live Production admission | PASS | Signed internal canary chạy thật; hai CREATE request không hợp lệ bị DENY |
 | Stable required-check contexts | PR OPEN | Platform `#128`, chart `#372`, infra `#154`; cả ba gate đã PASS |
-| Default-branch required checks | ADMIN PENDING | Ruleset active chưa require context; token hiện tại không có quyền update |
+| Default-branch required checks | ADMIN PENDING | Ruleset active chưa require context; update request bằng credential hiện tại trả HTTP `404`, ruleset không đổi |
 | Action/base-image pinning | PR OPEN | Platform `#128` pin hai action cuối; inventory không còn third-party action tag trôi |
 | Selective build/deploy | PASS | `BUILD_SET`, selective digest promotion; full/requested rebuild bắt buộc lý do |
 
@@ -750,22 +751,26 @@ Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`
 - infra `#154`: aggregate Terraform validation, TFLint, Checkov và plan cho
   development/production.
 
-Platform run `30424344521`, chart run `30424479392` và infra run
-`30424348766` đều đã PASS context `Mandate 10 required gate`.
+Platform HEAD run `30425835764`, chart workflow-definition HEAD run
+`30424650674` và infra run `30424348766` đều đã PASS context
+`Mandate 10 required gate`. Các commit chart sau `d49dbe7` chỉ cập nhật
+evidence/ADR; workflow gate không đổi và tiếp tục được CI chạy lại trên PR.
 
 Ruleset `mandate-10-main-protection` đang active trên cả ba default branch nhưng
-chưa chứa `required_status_checks`. Token hiện tại đọc được ruleset nhưng cả ba
-lần update đều bị GitHub trả HTTP `404`, nên không tuyên bố enforcement đã hoàn
-thành.
+chưa chứa `required_status_checks`. Các update request bằng credential hiện tại
+đều trả HTTP `404`; ruleset chưa thay đổi và cần repository administrator xử
+lý. Phản hồi này phù hợp với thiếu quyền nhưng không được dùng để khẳng định
+permission là nguyên nhân duy nhất.
 
 Repository admin phải:
 
 1. merge ba PR sau review và CI xanh;
 2. thêm required context `Mandate 10 required gate` vào cả ba ruleset;
 3. bật strict branch update;
-4. mở một PR test cố tình làm gate đỏ;
-5. chụp Ruleset/PR UI chứng minh merge bị chặn bởi failed required check;
-6. đóng PR test mà không merge và lưu raw evidence.
+4. mở một negative PR nhỏ trên từng repo, cố tình làm gate tương ứng đỏ;
+5. chụp Ruleset/PR UI của cả ba repo, chứng minh merge bị chặn bởi failed
+   required check;
+6. đóng cả ba negative PR mà không merge và lưu raw evidence.
 
 Raw evidence: `raw/15-required-gates-pinning-selective-build.txt`.
 

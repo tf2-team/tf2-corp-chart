@@ -1,65 +1,151 @@
 EV-15 — Required gates, dependency pinning and selective delivery
 Captured at: 2026-07-29 +07:00
+Sensitive values: GitHub token and request headers are omitted.
 
-Pull requests:
-- platform #128: https://github.com/tf2-team/tf2-corp-platform/pull/128
-  Adds the stable "Mandate 10 required gate" aggregate context and pins the
-  final floating checkout/configure-aws-credentials actions to commit SHAs.
-- chart #372: https://github.com/tf2-team/tf2-corp-chart/pull/372
-  Adds an always-on Production Helm dependency/lint/render/digest gate.
-- infra #154: https://github.com/tf2-team/tf2-corp-infra/pull/154
-  Adds the stable "Mandate 10 required gate" aggregate context for Terraform
-  validation, TFLint, Checkov and development/production plans.
+=== Pull request identity ===
 
-Observed CI:
-- chart PR #372, run 30424479392:
-  Mandate 10 required gate = PASS.
-- infra PR #154, run 30424348766:
-  Mandate 10 required gate = PASS.
-- platform PR #128, run 30424344521:
-  Mandate 10 required gate = PASS after all tests, PR image gate, Trivy IaC,
-  Semgrep and TruffleHog passed.
+Platform:
+- PR: https://github.com/tf2-team/tf2-corp-platform/pull/128
+- HEAD: f98fe2eb8f44f3eaa5fe81c262fb03df0c3f9bf8
+- Base: 59886e12e9c038699ee319b05b355e7e9504f367
+- Mergeable: MERGEABLE
+- Review: REVIEW_REQUIRED
+- HEAD run: https://github.com/tf2-team/tf2-corp-platform/actions/runs/30425835764
+- Mandate 10 required gate: PASS after all tests, PR image gate, Trivy IaC,
+  Semgrep and TruffleHog passed
 
-Action pin inventory:
-- Search scope:
-  tf2-corp-platform/.github/workflows
-  tf2-corp-chart/.github/workflows
-  tf2-corp-infra/.github/workflows
-- Floating third-party uses after platform PR #128: 0.
-- Local reusable workflows (uses: ./...) are repository-local and are not
-  third-party floating references.
+Chart:
+- PR: https://github.com/tf2-team/tf2-corp-chart/pull/372
+- HEAD: d49dbe7236b0c1125a1120fbec096255422cbd8e
+- Base: 20122db6c14c4e9c13ddc33e6a7cb1da4642764e
+- Mergeable: MERGEABLE
+- Review: REVIEW_REQUIRED
+- HEAD run: https://github.com/tf2-team/tf2-corp-chart/actions/runs/30424650674
+- Mandate 10 required gate: PASS
 
-Base image inventory:
-- External Dockerfile FROM references in the platform release build set are
-  pinned with @sha256.
-- FROM builder/base references are local multi-stage aliases, not registry
-  references.
+Infra:
+- PR: https://github.com/tf2-team/tf2-corp-infra/pull/154
+- HEAD: 566458c3173dbd0fd8b31768a3c7ab7ed082bc3a
+- Base: 3b0f3e0fd35ba385692e83829bd693d60f700d41
+- Mergeable: MERGEABLE
+- Review: REVIEW_REQUIRED
+- Run: https://github.com/tf2-team/tf2-corp-infra/actions/runs/30424348766
+- Mandate 10 required gate: PASS
 
-Selective delivery implementation:
+=== Ruleset inventory ===
+
+Read command pattern:
+gh api repos/tf2-team/<repo>/rulesets/<ruleset-id> \
+  --jq '{id,name,enforcement,conditions,rules}'
+
+Platform:
+- ID: 19596567
+- Name: mandate-10-main-protection
+- Enforcement: active
+- Target: ~DEFAULT_BRANCH
+- Rules: deletion, non_fast_forward, pull_request
+- required_approving_review_count: 1
+- required_status_checks: absent
+
+Chart:
+- ID: 19595079
+- Name: mandate-10-main-protection
+- Enforcement: active
+- Target: ~DEFAULT_BRANCH
+- Rules: deletion, non_fast_forward, pull_request
+- required_approving_review_count: 1
+- required_status_checks: absent
+
+Infra:
+- ID: 19596302
+- Name: mandate-10-main-protection
+- Enforcement: active
+- Target: ~DEFAULT_BRANCH
+- Rules: deletion, non_fast_forward, pull_request
+- required_approving_review_count: 1
+- required_status_checks: absent
+
+Update result:
+- Three PUT update requests using the current credential returned HTTP 404.
+- Response body, with no token/header:
+  {"message":"Not Found",
+   "documentation_url":
+   "https://docs.github.com/rest/repos/rules#update-a-repository-ruleset",
+   "status":"404"}
+- Rulesets were re-read and remained unchanged.
+- HTTP 404 is consistent with insufficient administration access, but does not
+  prove that permission is the only possible cause.
+- Repository administrator action is required.
+
+Required rule after the three implementation PRs merge:
+- Context: Mandate 10 required gate
+- strict_required_status_checks_policy: true
+- Apply independently to platform, chart and infra default branches.
+- Preserve deletion, non-fast-forward and one-approval rules.
+
+=== GitHub Action pin inventory ===
+
+Search command:
+rg -n '^\s*(?:-\s*)?uses:' <repo>/.github/workflows
+
+Floating external detector:
+rg -n -P \
+  '^\s*(?:-|)\s*uses:\s*(?!\./)[^\s@]+@(?![0-9a-f]{40}(?:\s|$))\S+' \
+  <repo>/.github/workflows
+
+Results after Platform PR #128:
+- platform: total uses=60, local reusable=1, external floating=0
+- chart: total uses=8, local reusable=0, external floating=0
+- infra: total uses=35, local action/reusable=9, external floating=0
+
+Local references beginning with "./" are repository-local actions or reusable
+workflows and do not require a third-party commit SHA.
+
+=== Docker FROM inventory ===
+
+Search command:
+rg -n '^FROM\s+' tf2-corp-platform -g 'Dockerfile*'
+
+Classification:
+- Total FROM lines: 57
+- External registry/base references: 52
+- External references missing @sha256: 0
+- Local multi-stage aliases: 5
+
+Local aliases:
+- src/accounting/Dockerfile:17: FROM builder AS publish
+- src/load-generator/Dockerfile:12: FROM base AS builder
+- src/load-generator/Dockerfile:26: FROM base
+- src/currency/Dockerfile:21: FROM base AS builder
+- src/currency/Dockerfile:50: FROM base AS release
+
+=== Selective delivery implementation ===
+
+Evidence inspected in tf2-corp-platform/.github/workflows/build-and-push.yml:
 - scripts/release_services.json is the canonical release catalog.
-- PR CI classifies changed image-affecting paths and bakes/Trivy-scans only the
-  selected service set.
-- Publish classifies BUILD_SET and preserves unchanged service digest overlays.
-- Production promotion PR contains only rebuilt service digest overlays.
+- PR CI classifies image-affecting paths and bakes/Trivy-scans BUILD_SET only.
+- Publish preserves unchanged service digest overlays.
+- Production promotion updates only rebuilt service digest overlays.
 - force_full_rebuild requires full_rebuild_reason.
 - requested_services requires requested_services_reason.
-- Tag releases and shared/global image paths are documented narrow full-build
+- Tag releases and shared/global image paths are narrow documented full-build
   triggers.
 
-Ruleset state:
-- Active ruleset name on platform/chart/infra:
-  mandate-10-main-protection.
-- The current authenticated token can read rulesets but GitHub returned HTTP
-  404 for all three ruleset update attempts.
-- Token scopes: gist, read:org, repo, workflow.
-- Required context to add after the three PRs are merged:
-  Mandate 10 required gate.
-- strict_required_status_checks_policy must be true.
-- Keep deletion, non-fast-forward and one-approval rules.
+=== Negative-test requirement ===
+
+The three repositories have independent rulesets. One failing PR proves
+enforcement only for its own repository.
+
+Required final evidence:
+1. Merge platform #128, chart #372 and infra #154 after review and green CI.
+2. Admin adds "Mandate 10 required gate" to all three active rulesets.
+3. Open one deliberately failing negative PR in each repository.
+4. Confirm each failed required context blocks merge.
+5. Capture ruleset export, PR UI/check URL and merge-block reason for each repo.
+6. Close all three negative PRs without merge.
 
 Assessment:
 PARTIAL / ADMIN ACTION REQUIRED.
-The enforceable stable contexts have been implemented in PRs. Mandate 10
-requirement 1 remains open until a repository administrator adds the context to
-all three active default-branch rulesets and a deliberately failing PR proves
-that the failed required context blocks merge.
+Stable contexts and inventory evidence exist, but requirement 1 remains open
+until all three rulesets enforce the context and all three negative tests prove
+the behavior independently.

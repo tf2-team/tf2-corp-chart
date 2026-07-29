@@ -1,6 +1,7 @@
 # ADR-M10: Secure Delivery với AWS KMS Cosign và Image Admission Fail-Closed
 
-- Trạng thái: Đang nghiệm thu — kiểm soát kỹ thuật PASS, phê duyệt PENDING
+- Trạng thái: IN PROGRESS — supply-chain/admission controls PASS; merge
+  enforcement và approval PENDING
 - Ngày cập nhật: 2026-07-29
 - Go/No-Go liên team: chờ required status check enforcement/negative test, sau
   đó xác nhận từ platform, infra, chart/runtime security và workload owners
@@ -131,8 +132,8 @@ Chi tiết lệnh, raw output và ảnh nằm tại
 1. Merge platform `#128`, chart `#372` và infra `#154` sau review/CI xanh.
 2. Repository admin thêm `Mandate 10 required gate` vào active ruleset của cả
    ba default branch với strict branch update.
-3. Thu negative evidence: một PR cố tình đỏ bị chặn merge bởi failed required
-   check, sau đó đóng mà không merge.
+3. Thu negative evidence độc lập trên cả ba repo: mỗi repo có một PR nhỏ cố
+   tình làm required gate đỏ, bị chặn merge, sau đó đóng mà không merge.
 4. Merge EV-15 hoàn chỉnh vào `main`.
 5. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
    owners liên quan.
