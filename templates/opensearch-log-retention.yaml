@@ -1,0 +1,149 @@
+{{- $retention := .Values.opensearchLogRetention | default dict -}}
+{{- if $retention.enabled }}
+{{- $opensearch := .Values.components.opensearch | default dict -}}
+{{- $image := dict "name" "opensearch" "imageOverride" (default dict $opensearch.imageOverride) "defaultValues" .Values.default "Chart" .Chart -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-log-retention
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opensearch-log-retention
+data:
+  apply-retention.sh: |
+    #!/bin/sh
+    set -eu
+
+    endpoint="https://opensearch:9200"
+    auth="${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}"
+
+    request() {
+      method="$1"
+      path="$2"
+      payload="${3:-}"
+      if [ -n "$payload" ]; then
+        curl -skS --fail-with-body -u "$auth" -X "$method" \
+          -H 'Content-Type: application/json' --data "$payload" "$endpoint$path"
+      else
+        curl -skS --fail-with-body -u "$auth" -X "$method" "$endpoint$path"
+      fi
+    }
+
+    wait_for_opensearch() {
+      attempt=0
+      until request GET '/_cluster/health?timeout=20s' >/dev/null 2>&1; do
+        attempt=$((attempt + 1))
+        if [ "$attempt" -ge 60 ]; then
+          echo 'OpenSearch did not become ready within five minutes' >&2
+          exit 1
+        fi
+        sleep 5
+      done
+    }
+
+    put_policy() {
+      name="$1"
+      pattern="$2"
+      days="$3"
+      payload=$(printf '{"policy":{"description":"M18 bounded OpenTelemetry log retention","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["%s"],"priority":%s}]}}' "$days" "$pattern" "$4")
+      request PUT "/_plugins/_ism/policies/$name" "$payload" >/dev/null
+      echo "Applied $name: $pattern retained for ${days}d"
+    }
+
+    wait_for_opensearch
+    put_policy otel-logs-transaction-retention 'otel-logs-transaction-*' '{{ $retention.transactionDays }}' 300
+    put_policy otel-logs-error-retention 'otel-logs-error-*' '{{ $retention.errorDays }}' 200
+    put_policy otel-logs-standard-retention 'otel-logs-standard-*' '{{ $retention.standardDays }}' 100
+
+    # Legacy unified daily indices cannot be classified after the fact. Treat
+    # them as standard logs so they are no longer retained indefinitely.
+    request POST '/_plugins/_ism/add/otel-logs-20*' '{"policy_id":"otel-logs-standard-retention"}' >/dev/null 2>&1 || true
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: opensearch-log-retention
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opensearch-log-retention
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 360
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        {{- include "techx-corp.labels" . | nindent 8 }}
+        app.kubernetes.io/component: opensearch-log-retention
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: apply-retention
+          image: '{{ include "techx-corp.containerImage" $image }}'
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/scripts/apply-retention.sh"]
+          env:
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: techx-corp-opensearch
+                  key: username
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: techx-corp-opensearch
+                  key: password
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: script
+          configMap:
+            name: opensearch-log-retention
+            defaultMode: 0444
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opensearch-log-retention
+  labels:
+    {{- include "techx-corp.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: opensearch-log-retention
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              opentelemetry.io/name: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+{{- end }}

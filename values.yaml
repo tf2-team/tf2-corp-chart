@@ -30,6 +30,13 @@ networkPolicy:
   flagdSyncCidrs:
     - 122.248.223.194/32
 
+# M18: Separate OpenSearch indices let retention follow business value.
+opensearchLogRetention:
+  enabled: true
+  transactionDays: 30
+  errorDays: 14
+  standardDays: 7
+
 egressProxy:
   enabled: false
   replicas: 2
@@ -2850,8 +2857,45 @@ opentelemetry-collector:
           enabled: true
           num_consumers: 4
           queue_size: 2048
-      opensearch:
-        logs_index: otel-logs
+      opensearch/transaction:
+        logs_index: otel-logs-transaction
+        logs_index_time_format: "yyyy-MM-dd"
+        http:
+          # SEC-06: security plugin serves HTTPS (demo self-signed certs on single-node).
+          endpoint: https://opensearch:9200
+          tls:
+            insecure_skip_verify: true
+          auth:
+            authenticator: basicauth/opensearch
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 300s
+        sending_queue:
+          enabled: true
+          num_consumers: 4
+          queue_size: 2048
+      opensearch/error:
+        logs_index: otel-logs-error
+        logs_index_time_format: "yyyy-MM-dd"
+        http:
+          endpoint: https://opensearch:9200
+          tls:
+            insecure_skip_verify: true
+          auth:
+            authenticator: basicauth/opensearch
+        retry_on_failure:
+          enabled: true
+          initial_interval: 1s
+          max_interval: 30s
+          max_elapsed_time: 300s
+        sending_queue:
+          enabled: true
+          num_consumers: 4
+          queue_size: 2048
+      opensearch/standard:
+        logs_index: otel-logs-standard
         logs_index_time_format: "yyyy-MM-dd"
         http:
           # SEC-06: security plugin serves HTTPS (demo self-signed certs on single-node).
@@ -2905,6 +2949,25 @@ opentelemetry-collector:
             statements:
               # SANITIZE ALL SPAN NAMES TO PREVENT CARDINALITY EXPLOSION
               - set_semconv_span_name("1.37.0", "unsanitized_span_name")
+      # M18: each log record passes through exactly one of the three log
+      # pipelines below. Transaction services retain their full trail for 30
+      # days; errors in other services retain 14 days; normal operational logs
+      # retain 7 days. ERROR is OpenTelemetry severity number 17.
+      filter/transaction-logs:
+        error_mode: ignore
+        logs:
+          log_record:
+            - 'resource.attributes["service.name"] != "checkout" and resource.attributes["service.name"] != "payment" and resource.attributes["service.name"] != "accounting" and resource.attributes["service.name"] != "fraud-detection" and resource.attributes["service.name"] != "email" and resource.attributes["service.name"] != "shipping" and resource.attributes["service.name"] != "quote" and resource.attributes["service.name"] != "currency"'
+      filter/error-logs:
+        error_mode: ignore
+        logs:
+          log_record:
+            - 'resource.attributes["service.name"] == "checkout" or resource.attributes["service.name"] == "payment" or resource.attributes["service.name"] == "accounting" or resource.attributes["service.name"] == "fraud-detection" or resource.attributes["service.name"] == "email" or resource.attributes["service.name"] == "shipping" or resource.attributes["service.name"] == "quote" or resource.attributes["service.name"] == "currency" or severity_number < SEVERITY_NUMBER_ERROR'
+      filter/standard-logs:
+        error_mode: ignore
+        logs:
+          log_record:
+            - 'resource.attributes["service.name"] == "checkout" or resource.attributes["service.name"] == "payment" or resource.attributes["service.name"] == "accounting" or resource.attributes["service.name"] == "fraud-detection" or resource.attributes["service.name"] == "email" or resource.attributes["service.name"] == "shipping" or resource.attributes["service.name"] == "quote" or resource.attributes["service.name"] == "currency" or severity_number >= SEVERITY_NUMBER_ERROR'
       # APM Dashboard filters on these resource attributes (promoted to Prometheus
       # labels via promote_resource_attributes). Defaults match production; override
       # in values-dev.yaml (development / techx-corp-dev). Without them Grafana shows
@@ -2952,9 +3015,18 @@ opentelemetry-collector:
           receivers: [otlp, kafkametrics, spanmetrics]
           processors: [memory_limiter, resourcedetection, resource, batch]
           exporters: [otlphttp/prometheus, debug]
-        logs:
-          processors: [memory_limiter, resourcedetection, resource, batch]
-          exporters: [opensearch, debug]
+        logs/transaction:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, filter/transaction-logs, batch]
+          exporters: [opensearch/transaction, debug]
+        logs/error:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, filter/error-logs, batch]
+          exporters: [opensearch/error, debug]
+        logs/standard:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, filter/standard-logs, batch]
+          exporters: [opensearch/standard, debug]
       telemetry:
         metrics:
           # detailed self-metrics + OTLP export amplified load on small Critical MNG agents.
