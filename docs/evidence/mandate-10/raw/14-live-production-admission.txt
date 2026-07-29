@@ -1,0 +1,58 @@
+Mandate 10 EV-14 - Live Production admission
+Captured: 2026-07-29 (Asia/Bangkok)
+Cluster: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+Namespace: techx-corp-prod
+
+PRECONDITIONS
+
+  policy.sigstore.dev/include=true
+  ecr-signature-policy Ready=True
+  load-generator Deployment Ready=1
+
+SIGNED INTERNAL - REAL CREATE
+
+Manifest:
+  manifests/ev-14-live-signed-internal-canary.yaml
+
+Image:
+  493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator@sha256:d530fc1cc84fbe5c8c0a1a7ab4662bdcae391a34e654042179824d211d72ddbe
+
+Result:
+  pod/mandate10-live-signed-canary created
+  Created: 2026-07-29T04:13:47Z
+  Phase: Succeeded
+  Exit: 0
+  Runtime imageID:
+    493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/load-generator@sha256:d530fc1cc84fbe5c8c0a1a7ab4662bdcae391a34e654042179824d211d72ddbe
+  Node: ip-10-0-41-86.ec2.internal
+  Log: mandate10 signed internal canary passed
+
+UNSIGNED INTERNAL - REAL CREATE
+
+Expected: DENY
+Actual: DENY, exit 1
+Policy: ecr-signature-policy
+Reason: no matching attestations
+Resource after request: not found
+
+UNLISTED EXTERNAL - REAL CREATE
+
+Expected: DENY
+Actual: DENY, exit 1
+Reason: no matching policies
+Resource after request: not found
+
+CLEANUP AND POST-CHECK
+
+  pod/mandate10-live-signed-canary deleted
+  No resources found with app.kubernetes.io/part-of=mandate10-evidence
+  supply-chain Synced Healthy
+  techx-corp Synced Healthy
+  ALL_DEPLOYMENTS_READY
+
+SCOPE
+
+EV-14 proves live admission, scheduling, container execution and runtime digest
+matching. It does not decode the load-generator SBOM/provenance or test
+load-generator application behavior. Runtime traceability is evidenced
+separately by Accounting in EV-09.

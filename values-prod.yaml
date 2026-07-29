@@ -861,6 +861,36 @@ components:
 # Ensures prod overlay does not inherit a future base-values drift unintentionally.
 # Arrays replace under Helm merge — keep the full attributes list.
 prometheus:
+  # M18: retain the CDO service catalogue's resource metrics, while stopping
+  # high-cardinality Kubernetes control-plane and cAdvisor series at ingest.
+  # Linkerd, spanmetrics, OTLP, kube-state-metrics, YACE and Karpenter are
+  # deliberately outside this filter because they supply SLO, HPA and AIOps
+  # signals used by the platform.
+  scrapeConfigs:
+    kubernetes-api-servers:
+      # API-server latency histograms are not a CDO signal. Keep request
+      # counts and capacity gauges for basic Kubernetes control-plane health.
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          action: keep
+          regex: apiserver_(request_total|current_inflight_requests|longrunning_gauge|storage_objects)
+    kubernetes-nodes:
+      # CDO obtains workload CPU, memory, disk and network from cAdvisor.
+      # Keep only node and PVC health signals from the kubelet endpoint.
+      metric_relabel_configs:
+        - source_labels: [__name__]
+          action: keep
+          regex: kubelet_(running_pods|running_containers|node_name|volume_stats_(available_bytes|capacity_bytes|used_bytes))
+    kubernetes-nodes-cadvisor:
+      # Keep exactly the raw resource families listed in the CDO metric
+      # catalogue, and only for the production workloads that CDO analyses.
+      metric_relabel_configs:
+        - source_labels: [namespace]
+          action: keep
+          regex: techx-corp-prod
+        - source_labels: [__name__]
+          action: keep
+          regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|fs_reads_bytes_total|fs_writes_bytes_total|network_receive_bytes_total|network_transmit_bytes_total)
   server:
     nodeSelector:
       workload-tier: observability
