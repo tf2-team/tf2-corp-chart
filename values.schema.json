@@ -1017,6 +1017,12 @@
           "minimum": 1,
           "maximum": 1
         },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "image": {
           "$ref": "#/definitions/Image"
         },
@@ -1222,6 +1228,7 @@
       "required": [
         "enabled",
         "replicaCount",
+        "podAnnotations",
         "image",
         "service",
         "serviceAccount",

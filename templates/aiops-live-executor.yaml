@@ -114,6 +114,9 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: /metrics
         prometheus.io/port: {{ .Values.aiopsLiveExecutor.service.containerPort | quote }}
+        {{- with .Values.aiopsLiveExecutor.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ $serviceAccountName }}
       automountServiceAccountToken: true
