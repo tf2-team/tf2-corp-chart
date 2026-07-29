@@ -183,6 +183,9 @@
     "aiops": {
       "$ref": "#/definitions/Aiops"
     },
+    "aiopsLiveExecutor": {
+      "$ref": "#/definitions/AiopsLiveExecutor"
+    },
     "opentelemetry-collector": {
       "type": "object"
     },
@@ -748,6 +751,127 @@
         "resources"
       ],
       "title": "AIOps"
+    },
+    "AiopsLiveExecutor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "image": {
+          "$ref": "#/definitions/Image"
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "containerPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "annotations": {
+              "type": "object"
+            }
+          },
+          "required": ["port", "containerPort", "annotations"]
+        },
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": { "type": "boolean" },
+            "name": { "type": "string" },
+            "annotations": { "type": "object" }
+          },
+          "required": ["create", "name", "annotations"]
+        },
+        "rbac": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": { "type": "boolean" },
+            "targetDeployment": { "type": "string", "const": "product-catalog" }
+          },
+          "required": ["create", "targetDeployment"]
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": { "type": "string", "minLength": 1 },
+            "tokenKey": { "type": "string", "minLength": 1 }
+          },
+          "required": ["existingSecret", "tokenKey"]
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "existingClaim": { "type": "string" },
+            "storageClass": { "type": "string" },
+            "accessMode": {
+              "type": "string",
+              "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany", "ReadWriteOncePod"]
+            },
+            "size": { "type": "string" }
+          },
+          "required": ["enabled", "existingClaim", "accessMode", "size"]
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "environment": { "type": "string" },
+            "storePath": { "type": "string" },
+            "policyId": { "type": "string", "const": "phase3-scale-policy-v1" },
+            "policyExpiresAt": { "type": "string" },
+            "allowLiveApply": { "type": "string", "enum": ["false", "true"] }
+          },
+          "required": ["environment", "storePath", "policyId", "policyExpiresAt", "allowLiveApply"]
+        },
+        "networkPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "allowFrom": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["enabled", "allowFrom"]
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources"
+        }
+      },
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "service",
+        "serviceAccount",
+        "rbac",
+        "auth",
+        "persistence",
+        "config",
+        "networkPolicy",
+        "resources"
+      ],
+      "title": "AIOpsLiveExecutor"
     },
     "Components": {
       "type": "object",
