@@ -54,7 +54,10 @@ data:
     wait_for_opensearch
     put_policy otel-logs-transaction-retention 'otel-logs-transaction-*' '{{ $retention.transactionDays }}' 300
     put_policy otel-logs-error-retention 'otel-logs-error-*' '{{ $retention.errorDays }}' 200
-    put_policy otel-logs-standard-retention 'otel-logs-standard-*' '{{ $retention.standardDays }}' 100
+    # Existing temporary policies match otel-logs-* at priorities 100 and 110.
+    # Keep standard logs above those broad templates; error and transaction remain
+    # more specific at 200 and 300 respectively.
+    put_policy otel-logs-standard-retention 'otel-logs-standard-*' '{{ $retention.standardDays }}' 150
 
     # Legacy unified daily indices cannot be classified after the fact. Treat
     # them as standard logs so they are no longer retained indefinitely.
