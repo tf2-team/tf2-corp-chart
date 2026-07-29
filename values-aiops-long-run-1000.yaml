@@ -273,6 +273,11 @@ opentelemetry-collector:
     connectors:
       spanmetrics:
         metrics_flush_interval: 1s
+        dimensions:
+          - name: app.ai.surface
+          - name: gen_ai.request.model
+          - name: app.ai.outcome
+          - name: gen_ai.operation.name
     service:
       pipelines:
         metrics:
