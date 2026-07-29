@@ -79,6 +79,7 @@ jobs:
             --namespace techx-corp-prod \
             -f values.yaml -f values-public-alb.yaml -f values-prod.yaml \
             -f values-aiops-live-executor.yaml \
+            --set aiops.enabled=true \
             --set aiops.config.selfHeal.enabled=true >/tmp/aiops-invalid.yaml 2>/tmp/aiops-invalid.err; then
             echo "::error::self-heal rendered without live-approved policy and live apply"
             exit 1
@@ -88,9 +89,10 @@ jobs:
             --namespace techx-corp-prod \
             -f values.yaml -f values-public-alb.yaml -f values-prod.yaml \
             -f values-aiops-live-executor.yaml \
+            --set aiops.enabled=true \
             --set aiops.config.policyMode=live-approved \
             --set aiops.config.selfHeal.enabled=true \
-            --set aiopsLiveExecutor.config.allowLiveApply=true \
+            --set-string aiopsLiveExecutor.config.allowLiveApply=true \
             >/tmp/aiops-live.yaml
 
           yq -e 'select(.kind == "Deployment" and .metadata.name == "aiops-runtime") |

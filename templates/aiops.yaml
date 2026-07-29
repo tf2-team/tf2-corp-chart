@@ -1,12 +1,5 @@
-{{- if .Values.aiops.enabled }}
-{{- $name := "aiops-runtime" }}
-{{- $serviceAccountName := default $name .Values.aiops.serviceAccount.name }}
-{{- $claimName := default (printf "%s-state" $name) .Values.aiops.persistence.existingClaim }}
-{{- $repository := default (printf "%s/aiops" .Values.default.image.repository) .Values.aiops.image.repository }}
-{{- $tag := default (default .Chart.AppVersion .Values.default.image.tag) .Values.aiops.image.tag }}
-{{- $imageRef := printf "%s:%s" $repository $tag }}
-{{- with .Values.aiops.image.digest }}
-{{- $imageRef = printf "%s@%s" $repository . }}
+{{- if and .Values.aiops.config.selfHeal.enabled (not .Values.aiops.enabled) }}
+{{- fail "aiops.config.selfHeal.enabled=true requires aiops.enabled=true" }}
 {{- end }}
 {{- if and .Values.aiops.config.selfHeal.enabled (ne .Values.aiops.config.policyMode "live-approved") }}
 {{- fail "aiops.config.selfHeal.enabled=true requires aiops.config.policyMode=live-approved" }}
@@ -16,6 +9,16 @@
 {{- end }}
 {{- if and .Values.aiops.config.selfHeal.enabled (ne .Values.aiopsLiveExecutor.config.allowLiveApply "true") }}
 {{- fail "aiops.config.selfHeal.enabled=true requires aiopsLiveExecutor.config.allowLiveApply=true" }}
+{{- end }}
+{{- if .Values.aiops.enabled }}
+{{- $name := "aiops-runtime" }}
+{{- $serviceAccountName := default $name .Values.aiops.serviceAccount.name }}
+{{- $claimName := default (printf "%s-state" $name) .Values.aiops.persistence.existingClaim }}
+{{- $repository := default (printf "%s/aiops" .Values.default.image.repository) .Values.aiops.image.repository }}
+{{- $tag := default (default .Chart.AppVersion .Values.default.image.tag) .Values.aiops.image.tag }}
+{{- $imageRef := printf "%s:%s" $repository $tag }}
+{{- with .Values.aiops.image.digest }}
+{{- $imageRef = printf "%s@%s" $repository . }}
 {{- end }}
 {{- if .Values.aiops.serviceAccount.create }}
 apiVersion: v1
