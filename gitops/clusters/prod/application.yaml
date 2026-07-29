@@ -13,11 +13,6 @@ kind: Application
 metadata:
   name: techx-corp
   namespace: argocd
-  annotations:
-    # Include Sigstore's tag-to-digest admission mutation in Argo's predicted
-    # live state so immutable image resolution does not create false drift.
-    # This changes comparison only; it does not enable ServerSideApply.
-    argocd.argoproj.io/compare-options: ServerSideDiff=true,IncludeMutationWebhook=true
 spec:
   project: techx-corp
 
