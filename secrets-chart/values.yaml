@@ -39,6 +39,7 @@ targets:
   # Mem0 runtime keys (Groq, JWT, API keys) and RDS master for migrate Job
   mem0Runtime: techx-corp-mem0
   mem0RdsMaster: techx-corp-mem0-rds-master
+  aiObservability: techx-corp-ai-observability
 
 # Managed cart Valkey auth token (Terraform commerce_ha module).
 # Dev keeps in-cluster valkey-cart without auth — leave enabled: false.

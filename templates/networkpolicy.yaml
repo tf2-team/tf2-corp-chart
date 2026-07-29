@@ -576,6 +576,13 @@ spec:
           port: 4317
         - protocol: TCP
           port: 4318
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: jaeger
+      ports:
+        - protocol: TCP
+          port: 16686
 {{- end }}
 {{- end }}
 
@@ -2081,7 +2088,7 @@ spec:
             matchExpressions:
               - key: opentelemetry.io/name
                 operator: In
-                values: [frontend-proxy]
+                values: [frontend-proxy, frontend]
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: grafana
