@@ -1,0 +1,29 @@
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: external-image-allowlist-policy
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  images:
+    - glob: "index.docker.io/apache/kafka**"
+    - glob: "index.docker.io/library/busybox**"
+    - glob: "cr.l5d.io/linkerd/proxy**"
+    - glob: "index.docker.io/grafana/grafana**"
+    - glob: "index.docker.io/envoyproxy/envoy**"
+    - glob: "ghcr.io/open-feature/flagd**"
+    - glob: "index.docker.io/jaegertracing/jaeger**"
+    - glob: "index.docker.io/otel/opentelemetry-collector-contrib**"
+    - glob: "public.ecr.aws/aws-cli/aws-cli**"
+    - glob: "public.ecr.aws/docker/library/python**"
+    - glob: "quay.io/kiwigrid/k8s-sidecar**"
+    - glob: "quay.io/prometheus/prometheus**"
+    - glob: "quay.io/prometheuscommunity/yet-another-cloudwatch-exporter**"
+    - glob: "quay.io/prometheus-operator/prometheus-config-reloader**"
+    - glob: "registry.k8s.io/kube-state-metrics/kube-state-metrics**"
+    - glob: "registry.k8s.io/metrics-server/metrics-server**"
+    - glob: "registry.k8s.io/prometheus-adapter/prometheus-adapter**"
+  authorities:
+    - name: approved-external-image
+      static:
+        action: pass

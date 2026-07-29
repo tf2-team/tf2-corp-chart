@@ -1,0 +1,42 @@
+EV-10 — no-match-policy validation
+Captured at: 2026-07-29 02:16:47 +07:00
+Kubernetes context:
+arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+
+Preflight:
+- supply-chain: Synced / Healthy
+- policy-controller-webhook: Ready 1/1
+- ecr-signature-policy: Ready=True
+- validating webhook failurePolicy: Fail
+- opted-in namespaces before test: none
+
+Baseline without no-match-policy:
+- signed internal Accounting: ALLOW, exit 0
+- unsigned internal Accounting: DENY, exit 1
+- external Linkerd: DENY, exit 1
+- external denial reason: no matching policies
+
+Candidate configuration:
+config-policy-controller.data.no-match-policy=allow
+
+Candidate validation in namespace mandate10-validation:
+- external Linkerd: ALLOW, exit 0
+- signed internal Accounting: ALLOW, exit 0
+- unsigned internal Accounting: DENY, exit 1
+- unsigned denial reason: failed policy ecr-signature-policy; no matching attestations
+- real Pods created: none
+
+Cleanup:
+- temporary ConfigMap key removed successfully
+- no-match-policy live value after restore: not set
+- namespace mandate10-validation deleted
+
+Assessment:
+FUNCTIONAL BUT REJECTED — no-match-policy=allow admits images outside the
+internal ECR glob while ecr-signature-policy still rejects matching unsigned
+images. The option is too broad because any unrecognized external repository
+would also be admitted.
+
+Deployment state:
+The temporary setting was reverted. GitOps does not configure global
+no-match-policy=allow. Production namespace remains outside policy scope.

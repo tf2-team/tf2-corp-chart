@@ -32,9 +32,8 @@ ADR áp dụng cho image:
 - được chart Production triển khai.
 
 Image do nhà cung cấp bên ngoài phát hành, như Linkerd, BusyBox, Envoy, Postgres
-và Valkey, không phải artifact do platform ký. Trước khi opt-in namespace
-Production, `no-match-policy` phải được cấu hình rõ để các image ngoài glob
-không bị từ chối ngoài ý muốn.
+và Valkey, không phải artifact do platform ký. Chúng chỉ được admission khi
+match explicit allowlist; image không match policy nào tiếp tục bị từ chối.
 
 ## Quyết định
 
@@ -70,8 +69,10 @@ không bị từ chối ngoài ý muốn.
 - Webhook dùng `failurePolicy: Fail`.
 - Namespace chỉ chịu admission policy khi có label
   `policy.sigstore.dev/include=true`.
-- Production namespace chưa được opt-in cho đến khi `no-match-policy`, toàn bộ
-  container/initContainer/sidecar và rollback owner được chốt.
+- `external-image-allowlist-policy` dùng `static: pass` cho các external
+  repositories đã kiểm kê; không dùng global `no-match-policy: allow`.
+- Production namespace chưa được opt-in cho đến khi allowlist được reconcile,
+  toàn bộ container/initContainer/sidecar và rollback owner được chốt.
 
 ### 4. ECR retention
 
@@ -100,9 +101,14 @@ admission có thể DENY Pod mới.
 | Live webhook `failurePolicy: Fail` | PASS — PR `#359` |
 | Retest ALLOW/DENY sau fail-closed | PASS |
 | Running Accounting Pod truy về workflow/commit/PR/KMS/SBOM/provenance | PASS |
+| Production image inventory | PASS — 22 internal, 18 external |
+| External allowlist dry-run | PASS — 17/17 managed repositories |
+| Unlisted external image DENY | PASS |
+| Current release ECR/runtime/artifact coverage | PASS — 24/24 |
+| Lifecycle preview for current/previous digests | PASS — 0 marked |
+| Historical rollback artifact gap | DEFERRED — 5 previous digests |
 | Production namespace opt-in | PENDING |
-| Explicit `no-match-policy` | PENDING |
-| Retention acceptance | PENDING |
+| External allowlist GitOps deployment | PENDING |
 | Owner/reviewer/rollback assignment | PENDING |
 
 Chi tiết lệnh, raw output và ảnh nằm tại
@@ -110,14 +116,14 @@ Chi tiết lệnh, raw output và ảnh nằm tại
 
 ## Điều kiện chuyển sang Accepted
 
-1. Chọn và kiểm chứng `no-match-policy` cho image ngoài phạm vi.
+1. Deploy `external-image-allowlist-policy` bằng GitOps và xác nhận Ready.
 2. Khi opt-in Production, retest:
    - internal signed ALLOW;
    - internal unsigned DENY;
-   - external image xử lý đúng theo `no-match-policy`.
-3. Chốt rollback window và ECR retention.
-4. Ghi nhận Technical Lead/Security Owner, CDO Reviewer và Rollback Operator.
-5. Merge toàn bộ evidence sau triển khai vào `main`.
+   - allowlisted external ALLOW;
+   - unlisted external DENY.
+3. Ghi nhận Technical Lead/Security Owner, CDO Reviewer và Rollback Operator.
+4. Merge toàn bộ evidence sau triển khai vào `main`.
 
 ## Rollback
 
@@ -142,4 +148,4 @@ Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 - KMS, ECR và Policy Controller trở thành dependency của rollout.
 - `failurePolicy: Fail` có thể chặn Pod mới khi webhook gặp sự cố.
 - ECR lifecycle có thể làm mất runtime digest hoặc chứng thư rollback.
-- Image bên ngoài phạm vi cần policy riêng hoặc explicit no-match behavior.
+- External repository mới phải được review và cập nhật allowlist trước rollout.

@@ -1,0 +1,61 @@
+EV-11 — Production image inventory and explicit external allowlist validation
+Captured at: 2026-07-29 10:06:19 +07:00
+Kubernetes context:
+arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+
+Preflight:
+- supply-chain: Synced / Healthy
+- techx-corp: Synced / Healthy
+- Pods inspected: 62
+- workload objects inspected: 36
+- image references inspected: 228
+- unique internal images: 22
+- unique external images: 18
+
+External image inventory:
+1. apache/kafka:3.9.1
+2. busybox:1.37.0
+3. cr.l5d.io/linkerd/proxy:edge-26.7.2
+4. docker.io/grafana/grafana:13.0.1
+5. envoyproxy/envoy@sha256:a7a56545102f7a682e0cafea2c9b8448af1b09ebb710eab688dfb931e3ec7ff6
+6. ghcr.io/open-feature/flagd:v0.15.0
+7. jaegertracing/jaeger:2.17.0
+8. otel/opentelemetry-collector-contrib:0.151.0
+9. postgres:15
+10. public.ecr.aws/aws-cli/aws-cli:2.27.49
+11. public.ecr.aws/docker/library/python:3.13.5-alpine3.22
+12. quay.io/kiwigrid/k8s-sidecar:2.7.1
+13. quay.io/prometheus/prometheus:v3.11.3
+14. quay.io/prometheuscommunity/yet-another-cloudwatch-exporter@sha256:404791bf0b2f6efc0773f1cb65f314e6205cac3521064ce1b9d640f5bb268cfb
+15. quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0
+16. registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.18.0
+17. registry.k8s.io/metrics-server/metrics-server:v0.8.1
+18. registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.12.0
+
+Inventory decision:
+- 17 repositories belong to managed workload templates or injected Linkerd
+  containers and are included in external-image-allowlist-policy.
+- postgres:15 only appears in orphan Pod psql-check.
+- psql-check is Failed and has no ownerReference.
+- postgres:15 is not included in the allowlist.
+
+Isolated validation:
+- external-image-allowlist-policy Ready=True
+- 17/17 approved external images: ALLOW
+- signed internal Accounting: ALLOW
+- unsigned internal Accounting: DENY by ecr-signature-policy
+- registry.k8s.io/pause:3.10: DENY with no matching policies
+- real Pods created: none
+
+Cleanup:
+- temporary external-image-allowlist-policy deleted
+- mandate10-validation namespace deleted
+- Production namespace was not labeled
+
+Assessment:
+PASS — explicit static allowlist admits the inventoried managed external
+repositories, preserves signature enforcement for internal ECR images and
+rejects an unlisted external repository.
+
+Deployment state:
+The allowlist manifest is prepared locally and has not been deployed by Argo CD.
