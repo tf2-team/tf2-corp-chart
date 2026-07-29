@@ -60,6 +60,9 @@ Measured RTO:
 
 ## Cleanup
 
+- Cleanup status: `PASS` / `FAIL` / `NOT_APPLICABLE`
+- `cleanup-state.json` path:
+- Failed checks (if any):
 - FIS terminal state:
 - FIS-managed NACL removed:
 - Stopped instances recovered/replaced:
@@ -73,6 +76,7 @@ Measured RTO:
 
 - Wrapper preflight and snapshots:
 - FIS log/timeline:
+- Runtime cleanup state (`cleanup-state.json`):
 - k6 raw summary and JSONL ledger:
 - Person 2 reconciliation report:
 - Dashboard export/screenshots:
@@ -86,3 +90,5 @@ Measured RTO:
 - Follow-up:
 - Team signatures:
 - Mentor/CDO review:
+
+<!-- Change trail: @hungxqt - 2026-07-29 - Added cleanup status, failed checks, and cleanup-state.json path to drill report template. -->

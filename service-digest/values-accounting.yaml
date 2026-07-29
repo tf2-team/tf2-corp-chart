@@ -1,5 +1,4 @@
 # Managed by tf2-corp-platform secure delivery pipeline.
-# Change trail: @hungxqt - 2026-07-20 - Selective service digest promote into service-digest/.
 components:
   accounting:
     imageOverride:
