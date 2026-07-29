@@ -2718,6 +2718,10 @@ components:
 
 opentelemetry-collector:
   enabled: true
+  # Restart collector pods whenever their rendered ConfigMap changes. The
+  # collector reads its pipeline only at process start; mounting a new
+  # ConfigMap alone does not reload exporters or processors.
+  enableConfigChecksumAnnotation: true
   # Universal DaemonSet: run on Critical MNG and Karpenter (no workload-class selector).
   tolerations:
     - key: workload-class
