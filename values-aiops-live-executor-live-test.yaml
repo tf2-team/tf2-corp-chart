@@ -1,0 +1,9 @@
+# Live-test overlay for the AIOps self-heal executor.
+# Use only in a platform-owner-approved dev/demo namespace.
+aiopsLiveExecutor:
+  enabled: true
+  config:
+    allowLiveApply: "true"
+    cooldownSeconds: 60
+    actionBudgetWindowSeconds: 3600
+    actionBudgetMaxExecutions: 10

@@ -1071,14 +1071,25 @@
             "create": {
               "type": "boolean"
             },
-            "targetDeployment": {
-              "type": "string",
-              "const": "product-catalog"
+            "targetDeployments": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "product-catalog",
+                  "frontend-proxy",
+                  "frontend",
+                  "checkout",
+                  "cart"
+                ]
+              },
+              "uniqueItems": true
             }
           },
           "required": [
             "create",
-            "targetDeployment"
+            "targetDeployments"
           ]
         },
         "auth": {
@@ -1164,6 +1175,14 @@
             "cooldownSeconds": {
               "type": "integer",
               "minimum": 0
+            },
+            "actionBudgetWindowSeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "actionBudgetMaxExecutions": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "required": [
@@ -1172,7 +1191,9 @@
             "policyId",
             "policyExpiresAt",
             "allowLiveApply",
-            "cooldownSeconds"
+            "cooldownSeconds",
+            "actionBudgetWindowSeconds",
+            "actionBudgetMaxExecutions"
           ]
         },
         "networkPolicy": {

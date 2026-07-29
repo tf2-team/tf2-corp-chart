@@ -57,12 +57,16 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments"]
     resourceNames:
-      - {{ .Values.aiopsLiveExecutor.rbac.targetDeployment | quote }}
+      {{- range .Values.aiopsLiveExecutor.rbac.targetDeployments }}
+      - {{ . | quote }}
+      {{- end }}
     verbs: ["get", "patch", "update"]
   - apiGroups: ["autoscaling"]
     resources: ["horizontalpodautoscalers"]
     resourceNames:
-      - {{ .Values.aiopsLiveExecutor.rbac.targetDeployment | quote }}
+      {{- range .Values.aiopsLiveExecutor.rbac.targetDeployments }}
+      - {{ . | quote }}
+      {{- end }}
     verbs: ["get", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -151,6 +155,10 @@ spec:
               value: {{ .Values.aiopsLiveExecutor.config.allowLiveApply | quote }}
             - name: AIOPS_LIVE_EXECUTOR_COOLDOWN_SECONDS
               value: {{ .Values.aiopsLiveExecutor.config.cooldownSeconds | quote }}
+            - name: AIOPS_LIVE_EXECUTOR_ACTION_BUDGET_WINDOW_SECONDS
+              value: {{ .Values.aiopsLiveExecutor.config.actionBudgetWindowSeconds | quote }}
+            - name: AIOPS_LIVE_EXECUTOR_ACTION_BUDGET_MAX_EXECUTIONS
+              value: {{ .Values.aiopsLiveExecutor.config.actionBudgetMaxExecutions | quote }}
             - name: AIOPS_LIVE_EXECUTOR_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -280,4 +288,3 @@ spec:
   {{- end }}
 {{- end }}
 {{- end }}
-

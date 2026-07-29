@@ -1,5 +1,6 @@
 # Opt-in overlay for the self-heal live executor.
-# Only enable in a dev/demo namespace approved for `Deployment/product-catalog`.
+# Only enable in a dev/demo namespace approved for the executor allowlist.
+# This overlay deploys the executor with live Kubernetes mutation still disabled.
 aiopsLiveExecutor:
   enabled: true
   image:
