@@ -47,8 +47,61 @@ data:
       pattern="$2"
       days="$3"
       payload=$(printf '{"policy":{"description":"M18 bounded OpenTelemetry log retention","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["%s"],"priority":%s}]}}' "$days" "$pattern" "$4")
-      request PUT "/_plugins/_ism/policies/$name" "$payload" >/dev/null
+
+      # Updating an existing ISM policy requires its current version.
+      metadata=$(curl -skS --connect-timeout 5 --max-time 20 -u "$auth" \
+        "$endpoint/_plugins/_ism/policies/$name")
+      seq_no=$(printf '%s' "$metadata" | sed -n 's/.*"_seq_no":\([0-9][0-9]*\).*/\1/p')
+      primary_term=$(printf '%s' "$metadata" | sed -n 's/.*"_primary_term":\([0-9][0-9]*\).*/\1/p')
+      query=""
+      if [ -n "$seq_no" ] && [ -n "$primary_term" ]; then
+        query="?if_seq_no=$seq_no&if_primary_term=$primary_term"
+      fi
+      request PUT "/_plugins/_ism/policies/$name$query" "$payload" >/dev/null
       echo "Applied $name: $pattern retained for ${days}d"
+    }
+
+    migrate_legacy_indices() {
+      legacy_indices=$(curl -skS --connect-timeout 5 --max-time 20 -u "$auth" \
+        "$endpoint/_cat/indices/otel-logs-20*?h=index" | awk 'NF { print $1 }')
+      [ -n "$legacy_indices" ] || return 0
+
+      for index in $legacy_indices; do
+        request POST "/_plugins/_ism/change_policy/$index" \
+          '{"policy_id":"otel-logs-standard-retention","state":"hot","include":[{"state":"hot"}]}' >/dev/null
+      done
+
+      # change_policy is asynchronous.  Do not remove the legacy policies
+      # until every old index reports the replacement policy.
+      attempt=0
+      while :; do
+        pending=0
+        for index in $legacy_indices; do
+          metadata=$(curl -skS --connect-timeout 5 --max-time 20 -u "$auth" \
+            "$endpoint/_plugins/_ism/explain/$index")
+          if ! printf '%s' "$metadata" | grep -q '"policy_id":"otel-logs-standard-retention"'; then
+            pending=1
+            break
+          fi
+        done
+        [ "$pending" -eq 0 ] && return 0
+        attempt=$((attempt + 1))
+        if [ "$attempt" -ge 50 ]; then
+          echo 'Legacy OpenTelemetry log indexes did not migrate to the standard policy' >&2
+          exit 1
+        fi
+        sleep 5
+      done
+    }
+
+    delete_policy_if_present() {
+      name="$1"
+      metadata=$(curl -skS --connect-timeout 5 --max-time 20 -u "$auth" \
+        "$endpoint/_plugins/_ism/policies/$name")
+      if printf '%s' "$metadata" | grep -q '"_id"'; then
+        request DELETE "/_plugins/_ism/policies/$name" >/dev/null
+        echo "Removed legacy policy $name"
+      fi
     }
 
     wait_for_opensearch
@@ -59,9 +112,11 @@ data:
     # more specific at 200 and 300 respectively.
     put_policy otel-logs-standard-retention 'otel-logs-standard-*' '{{ $retention.standardDays }}' 150
 
-    # Legacy unified daily indices cannot be classified after the fact. Treat
-    # them as standard logs so they are no longer retained indefinitely.
-    request POST '/_plugins/_ism/add/otel-logs-20*' '{"policy_id":"otel-logs-standard-retention"}' >/dev/null 2>&1 || true
+    # Existing unified indexes predate log classification.  Retain them as
+    # standard logs, then remove the temporary broad policies used by M16/AIOps.
+    migrate_legacy_indices
+    delete_policy_if_present aiops-otel-logs-retention
+    delete_policy_if_present m16-otel-logs-retention
 ---
 apiVersion: batch/v1
 kind: Job
