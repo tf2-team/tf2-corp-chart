@@ -34,6 +34,8 @@ targets:
   grafanaDiscord: techx-corp-grafana-discord
   # AIOps inbound Grafana webhook auth secret
   aiopsGrafanaWebhook: techx-corp-aiops-grafana-webhook
+  # AIOps self-heal live executor bearer token
+  aiopsLiveExecutor: aiops-live-executor-token
   # Mem0 runtime keys (Groq, JWT, API keys) and RDS master for migrate Job
   mem0Runtime: techx-corp-mem0
   mem0RdsMaster: techx-corp-mem0-rds-master
