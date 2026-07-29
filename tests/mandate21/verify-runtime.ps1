@@ -21,13 +21,15 @@ $errors = $null
 Assert-True ($errors.Count -eq 0) "FIS wrapper parses as PowerShell"
 
 $wrapper = Read-RepoFile "scripts/mandate21-fis-drill.ps1"
-Assert-True ($wrapper -match 'Get-Random') "wrapper selects the live AZ at runtime"
+Assert-True ($wrapper -notmatch 'Get-Random') "wrapper never randomly selects a single AZ"
 Assert-True ($wrapper -match 'start-experiment') "wrapper starts an AWS FIS experiment"
-Assert-True ($wrapper -match 'RUN-M21-FIS') "wrapper requires an explicit live confirmation token"
+Assert-True ($wrapper -match 'Invoke-Mandate21SkipAll') "wrapper delegates to fixed-order four-template orchestration"
+Assert-True ($wrapper.Contains('"--experiment-options","actionsMode=skip-all"')) "wrapper starts real FIS experiments in skip-all mode"
+Assert-True ($wrapper -notmatch 'ConfirmationToken|RUN-M21-FIS') "wrapper rejects the legacy confirmation-token path"
 Assert-True ($wrapper -notmatch '(?im)\bkubectl\b.*\b(cordon|drain|delete)\b') "wrapper never cordons, drains, or deletes Kubernetes resources"
-Assert-True ($wrapper -match 'describe-alarms') "wrapper verifies every FIS stop alarm is OK"
-Assert-True ($wrapper -match 'RecoveryMinutes') "wrapper enforces a measured recovery window"
-Assert-True ($wrapper -match 'reconciliation-report\.txt') "wrapper persists Person 2 reconciliation output"
+Assert-True ($wrapper -match 'Assert-Mandate21LiveTemplate') "wrapper verifies every live FIS template revision and stop-alarm contract"
+Assert-True ($wrapper -match 'Test-Mandate21Approval') "wrapper enforces revision-bound approval and evidence gates"
+Assert-True ($wrapper -match 'Save-RunEnvelope') "wrapper atomically persists partial and terminal skip-all evidence"
 
 $cleanupPath = Join-Path $repo "scripts/mandate21-cleanup.psm1"
 $cleanupTokens = $null
@@ -41,9 +43,10 @@ $preflightErrors = $null
 [void][System.Management.Automation.Language.Parser]::ParseFile($preflightPath, [ref]$preflightTokens, [ref]$preflightErrors)
 Assert-True ($preflightErrors.Count -eq 0) "infrastructure preflight collector parses as PowerShell"
 $preflight = Read-RepoFile "scripts/collect-infra-preflight.ps1"
-Assert-True ($preflight -match '\[string\]\$OutputPath\s*=\s*""') "preflight output default does not evaluate PSScriptRoot during parameter binding"
-Assert-True ($preflight -match '\$OutputPath\s*=\s*Join-Path\s+\$scriptDirectory') "preflight resolves its default output path at runtime"
-Assert-True ($preflight -notmatch 'ConvertFrom-Json\s+-Depth') "preflight JSON parsing is compatible with Windows PowerShell 5.1"
+Assert-True ($preflight -match '\[string\]\$OutputPath\s*=\s*\(Join-Path\s+\$PSScriptRoot') "preflight defaults evidence output relative to its script directory"
+Assert-True ($preflight -match 'Import-Module.*mandate21-evidence\.psm1') "preflight uses the shared fail-closed evaluator"
+Assert-True ($preflight -match '&\s*aws\s+@Arguments') "preflight invokes AWS with an argument array"
+Assert-True ($preflight -match '"eks",\s*"describe-cluster"') "preflight derives network scope from the configured EKS cluster"
 Assert-True ($preflight -match '\$ValkeyReplicationGroupId\s*=\s*"techx-prod-tf2-cart"') "preflight targets the production Valkey replication group"
 Assert-True ($preflight -match '\$MskClusterName\s*=\s*"techx-prod-tf2-msk"') "preflight targets the production MSK cluster"
 
@@ -145,4 +148,4 @@ Assert-True ($probeManifest -match 'automountServiceAccountToken:\s+false') "cap
 
 Write-Host "Mandate 21 runtime verification passed."
 
-# Change trail: @hungxqt - 2026-07-29 - Verified capacity-probe Deployment disabled by default and rendered when enabled.
+# Change trail: @hungxqt - 2026-07-29 - Aligned runtime verification with fixed-order FIS skip-all and fail-closed preflight contracts.

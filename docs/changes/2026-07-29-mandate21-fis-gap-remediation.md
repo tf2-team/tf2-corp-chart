@@ -56,6 +56,7 @@ Canonical hashes cover complete FIS template objects, so selector, action, alarm
 * `tests/mandate21/verify-fis-contract.ps1` — Contract/hash/drift tests.
 * `tests/mandate21/verify-fis-approval.ps1` — Approval rejection tests.
 * `tests/mandate21/verify-fis-drill.ps1` — Mocked order/fail-fast/evidence tests.
+* `tests/mandate21/verify-runtime.ps1` — Runtime assertions aligned with fixed-order skip-all and preflight v2 contracts.
 
 **Documentation:**
 * `docs/operations/mandate21-az-failover.md` — Current CMD-first operating procedure.
@@ -97,6 +98,7 @@ Related: `techx-corp-infra/docs/changes/2026-07-29-immutable-audit-dlq-archive-d
 | FIS contract | `pwsh -NoProfile -File tests\mandate21\verify-fis-contract.ps1` | PASS. |
 | FIS approval | `pwsh -NoProfile -File tests\mandate21\verify-fis-approval.ps1` | PASS. |
 | FIS orchestration | `pwsh -NoProfile -File tests\mandate21\verify-fis-drill.ps1` | PASS. |
+| Runtime verification | `pwsh -NoProfile -File tests\mandate21\verify-runtime.ps1` | PASS. |
 | Helm/schema | `helm lint . -f values.yaml -f values-prod.yaml -f values-capacity-probe.yaml` | PASS (1 chart, 0 failures). |
 
 ### Manual Verification
