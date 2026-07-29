@@ -2929,6 +2929,62 @@ opentelemetry-collector:
         timeout: 5s
         send_batch_size: 1024
         send_batch_max_size: 2048
+      # M18: keep traces that are actionable for incident investigation, rather
+      # than storing every successful request in Jaeger's in-memory backend.
+      # `http.route` is normalised by the transform processor immediately below.
+      tail_sampling:
+        decision_wait: 10s
+        num_traces: 5000
+        expected_new_traces_per_sec: 100
+        policies:
+          - name: error
+            type: status_code
+            status_code:
+              status_codes: [ERROR]
+          - name: slow-checkout
+            type: and
+            and:
+              and_sub_policy:
+                - name: checkout-route
+                  type: string_attribute
+                  string_attribute:
+                    key: http.route
+                    values: ["/api/checkout"]
+                - name: checkout-latency
+                  type: latency
+                  latency:
+                    threshold_ms: 500
+          - name: slow-cart
+            type: and
+            and:
+              and_sub_policy:
+                - name: cart-route
+                  type: string_attribute
+                  string_attribute:
+                    key: http.route
+                    values: ["/api/cart"]
+                - name: cart-latency
+                  type: latency
+                  latency:
+                    threshold_ms: 300
+          - name: slow-browse
+            type: and
+            and:
+              and_sub_policy:
+                - name: browse-route
+                  type: string_attribute
+                  string_attribute:
+                    key: http.route
+                    values: ["/api/products/{productId}"]
+                - name: browse-latency
+                  type: latency
+                  latency:
+                    threshold_ms: 1000
+          # A small baseline sample preserves representative healthy traces.
+          - name: baseline-success
+            type: probabilistic
+            probabilistic:
+              sampling_percentage: 5
       resourcedetection:
         detectors: [env, system]
       transform:
@@ -3013,7 +3069,7 @@ opentelemetry-collector:
       pipelines:
         traces:
           processors:
-            [memory_limiter, resourcedetection, resource, transform, batch]
+            [memory_limiter, resourcedetection, resource, transform, tail_sampling, batch]
           exporters: [otlp/jaeger, debug, spanmetrics]
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics]
