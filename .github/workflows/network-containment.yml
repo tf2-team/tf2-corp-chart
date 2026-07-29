@@ -130,6 +130,9 @@ jobs:
       - name: Verify Mandate 21 runtime drill contracts
         shell: pwsh
         run: ./tests/mandate21/verify-runtime.ps1
+      - name: Verify LLM observability contracts
+        shell: pwsh
+        run: ./tests/observability/verify-llm-observability.ps1
       - name: Validate Envoy proxy configuration
         run: |
           helm template techx-corp . \

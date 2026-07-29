@@ -1175,6 +1175,8 @@ components:
         value: frontend-web
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
+      - name: JAEGER_QUERY_URL
+        value: http://jaeger:16686
     resources:
       # Burstable QoS. Under the 700–800-user M16 run, all 20 replicas were
       # reachable and received balanced Linkerd traffic, but 200m caused CFS
@@ -2923,6 +2925,11 @@ opentelemetry-collector:
       # Prometheus Adapter rate window, so the HPA sees 0 RPS under load.
       spanmetrics:
         metrics_flush_interval: 15s
+        dimensions:
+          - name: app.ai.surface
+          - name: gen_ai.request.model
+          - name: app.ai.outcome
+          - name: gen_ai.operation.name
 
     extensions:
       health_check: {}
