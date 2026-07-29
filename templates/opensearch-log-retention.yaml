@@ -23,10 +23,10 @@ data:
       path="$2"
       payload="${3:-}"
       if [ -n "$payload" ]; then
-        curl -skS --fail-with-body -u "$auth" -X "$method" \
+        curl -skS --connect-timeout 5 --max-time 20 --fail-with-body -u "$auth" -X "$method" \
           -H 'Content-Type: application/json' --data "$payload" "$endpoint$path"
       else
-        curl -skS --fail-with-body -u "$auth" -X "$method" "$endpoint$path"
+        curl -skS --connect-timeout 5 --max-time 20 --fail-with-body -u "$auth" -X "$method" "$endpoint$path"
       fi
     }
 

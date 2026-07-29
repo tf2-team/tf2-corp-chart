@@ -1884,6 +1884,15 @@ spec:
         - protocol: TCP
           port: 9200
     {{- end }}
+    {{- if .Values.opensearchLogRetention.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: opensearch-log-retention
+      ports:
+        - protocol: TCP
+          port: 9200
+    {{- end }}
     - from:
         - podSelector:
             matchLabels:
