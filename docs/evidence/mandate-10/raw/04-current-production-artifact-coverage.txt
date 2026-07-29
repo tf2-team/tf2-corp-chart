@@ -1,0 +1,51 @@
+EV-04 — Current Production artifact coverage
+Captured at: 2026-07-29 01:42 +07:00
+AWS account: 493499579600
+Region: us-east-1
+Runtime image scope: techx-prod-corp/**
+Artifact repository: techx-prod-corp/cosign-artifacts
+
+Method:
+1. Read the current digest from every service-digest/values-*.yaml file.
+2. Resolve the exact sha256-<digest>.sig and sha256-<digest>.att tags.
+3. Parse each OCI signature manifest and require a non-empty Cosign signature.
+4. Parse every .att manifest and require both predicate types:
+   - https://cyclonedx.org/bom
+   - https://techx-corp.dev/attestations/provenance/v1
+
+Service             Signature   CycloneDX   Provenance   Attestation layers
+accounting          true        true        true         2
+ad                  true        true        true         2
+aiops               true        true        true         2
+cart                true        true        true         2
+checkout            true        true        true         2
+currency            true        true        true         2
+email               true        true        true         2
+flagd-ui            true        true        true         2
+fraud-detection     true        true        true         2
+frontend            true        true        true         2
+frontend-proxy      true        true        true         2
+image-provider      true        true        true         2
+kafka               true        true        true         2
+llm                 true        true        true         2
+load-generator      true        true        true         2
+mem0                true        true        true         2
+opensearch          true        true        true         2
+payment             true        true        true         2
+product-catalog     true        true        true         2
+product-reviews     true        true        true         2
+quote               true        true        true         2
+recommendation      true        true        true         2
+shipping            true        true        true         2
+shopping-copilot    true        true        true         2
+
+Summary:
+services=24
+signature=24
+cyclonedx=24
+provenance=24
+ecr_batch_failures=0
+
+Assessment:
+PASS — Every current Production service digest in scope has an exact Cosign
+signature artifact plus CycloneDX and custom provenance attestation layers.

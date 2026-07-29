@@ -1,0 +1,59 @@
+EV-08 — failurePolicy Fail post-merge verification
+Captured at: 2026-07-29 01:18:33 +07:00
+Kubernetes context: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+Merged PR: tf2-team/tf2-corp-chart#359
+Main merge commit: e7ca67aa9c9fa5624543586e32d3bde54184811f
+
+Live state:
+- Argo application supply-chain: Synced / Healthy
+- supply-chain operation: Succeeded
+- validating webhook policy.sigstore.dev: failurePolicy=Fail
+- deployment policy-controller-webhook: Ready 1/1, Available 1
+- ClusterImagePolicy ecr-signature-policy: present
+
+Fail-closed regression test:
+- Temporary namespace: mandate10-validation
+- Label: policy.sigstore.dev/include=true
+
+Signed test:
+kubectl apply --dry-run=server \
+  -f docs/evidence/mandate-10/manifests/ev-06-signed-accounting-pod.yaml \
+  -o name
+
+Result:
+pod/mandate10-signed-accounting
+SIGNED_EXIT_CODE=0
+
+Unsigned test:
+kubectl apply --dry-run=server \
+  -f docs/evidence/mandate-10/manifests/ev-07-unsigned-accounting-pod.yaml \
+  -o name
+
+Result:
+admission webhook "policy.sigstore.dev" denied the request:
+failed policy: ecr-signature-policy
+attestation key validation failed for authority kms-key-authority:
+no matching attestations
+UNSIGNED_EXIT_CODE=1
+
+Post-test:
+- No resources found in mandate10-validation namespace.
+- Temporary namespace mandate10-validation deleted.
+- Namespaces with policy.sigstore.dev/include=true after cleanup: none.
+
+Production impact check:
+- Production namespace remained outside the opt-in selector.
+- supply-chain remained Synced / Healthy.
+- policy-controller-webhook remained Running and Ready 1/1.
+- EV-08 did not modify a Production workload resource; Production remained
+  outside the webhook opt-in selector.
+- techx-corp was OutOfSync / Missing because of unrelated Mandate 21 and YACE
+  resources; those resources are outside the EV-08 supply-chain Application.
+- A failed runtime-hardening-inventory CronJob Pod was observed and then cleaned
+  by its lifecycle; Production was not opted in, so this was not caused by
+  Sigstore failurePolicy=Fail.
+
+Assessment:
+PASS — The live webhook is fail-closed, signed admission succeeds, unsigned
+internal admission is denied, and the temporary validation namespace was
+removed.
