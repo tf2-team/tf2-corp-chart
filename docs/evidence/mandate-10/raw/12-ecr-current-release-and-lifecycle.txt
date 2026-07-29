@@ -1,0 +1,44 @@
+EV-12 — ECR current release and lifecycle verification
+Captured at: 2026-07-29 10:24:03 +07:00
+Chart baseline: origin/main
+Chart revision: 220b92f2e5a26b7ef0a3ced7d451c22c3ca2f142
+AWS account: 493499579600
+Region: us-east-1
+
+Runtime digest existence:
+- current GitOps digests present: 24/24
+- previous Git-history digests identified: 21
+- previous runtime digests present: 21/21
+- services without a previous digest in Git history: aiops, kafka, mem0
+
+Cosign artifact existence:
+- current digests with exact .sig and .att tags: 24/24
+- previous digests with exact .sig and .att tags: 16/21
+- previous digests missing both artifacts:
+  - cart
+  - currency
+  - frontend-proxy
+  - product-catalog
+  - shipping
+- no co-located .sig/.att tags were found in those five service repositories
+
+Lifecycle preview:
+- previews started: 24/24
+- previews completed: 24/24
+- repositories with expiration candidates: frontend
+- frontend expiration candidates: 5 old records
+- current digests marked for expiration: 0
+- previous digests marked for expiration: 0
+
+Kubernetes references to the five unsigned historical digests:
+- ReplicaSets found: 9
+- all nine ReplicaSets have Desired=0 and Current=0
+- no running Pod uses these five digests
+
+Assessment:
+- PASS for current Production release integrity and lifecycle safety.
+- Historical rollback depth is limited: five immediate previous digests cannot
+  pass fail-closed admission because they have no signature/attestation.
+- Do not claim those five digests as valid rollback targets.
+- Longer retention and cleanup/rebuild of historical rollback artifacts are
+  deferred improvements, not evidence for the current release.

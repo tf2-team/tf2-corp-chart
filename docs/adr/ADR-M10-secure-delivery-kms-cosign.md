@@ -1,231 +1,143 @@
 # ADR-M10: Secure Delivery với AWS KMS Cosign và Image Admission Fail-Closed
 
-- Trạng thái: Đề xuất
-- Ngày: 2026-07-28
-- Technical Lead / Security Owner: pending approval
-- CDO Reviewer: pending approval
-- Rollback Operator: pending assignment
+- Trạng thái: Đang nghiệm thu — kiểm soát kỹ thuật PASS, phê duyệt PENDING
+- Ngày cập nhật: 2026-07-29
+- Go/No-Go liên team: chờ xác nhận từ platform, infra, chart/runtime security
+  và workload owners liên quan
 
 ## Bối cảnh
 
-Hệ thống cần bảo đảm các image ứng dụng do đội ngũ tự xây dựng có thể được xác
-minh từ lúc build đến lúc được Kubernetes admission. Các rủi ro chính gồm:
+Các image ứng dụng do `tf2-corp-platform` build phải có danh tính bất biến và có
+thể truy vết từ source đến Pod Production. Chuỗi kiểm chứng gồm:
 
-1. Policy Controller hoặc webhook TLS gặp lỗi có thể làm gián đoạn rollout nếu
-   bật Fail-Closed quá sớm.
-2. Pipeline từng có ngoại lệ Trivy cho `shopping-copilot`, làm một service không
-   tuân theo cùng security gate như các release services còn lại.
-3. Image dùng tag có thể trỏ tới nội dung khác theo thời gian và làm mất liên kết
-   chính xác giữa chart, CI run và artifact đã ký.
-4. Signature, SBOM và provenance được lưu trong ECR cần có retention phù hợp với
-   release digest; nếu artifact bị xóa, lần admission/recreate Pod sau đó có thể
-   bị từ chối.
-5. Production namespace có thể chứa container sử dụng image do nhà cung cấp bên
-   ngoài phát hành, không thuộc quyền build/sign của platform. Opt-in namespace
-   mà chưa xác định `no-match-policy` có thể vô tình chặn các container này.
-6. Không có Argo CD Development tương đương để kiểm thử toàn bộ admission flow;
-   việc kiểm thử phải dùng namespace validation tách biệt trên cluster hiện có.
+- Trivy chặn HIGH/CRITICAL trước khi phát hành;
+- image được tham chiếu bằng digest;
+- AWS KMS signature, CycloneDX SBOM và provenance được lưu trong ECR;
+- Sigstore Policy Controller từ chối image nội bộ thiếu chứng thư;
+- Pod đang chạy truy được về workflow, commit, PR và reviewer.
 
-## Phạm vi quyết định
+Cluster không có Argo CD Development tương đương. Admission được kiểm tra trước
+bằng server-side dry-run trong namespace `mandate10-validation`, sau đó xác nhận
+trên Production bằng canary cô lập và các request CREATE thật.
 
-Quyết định này áp dụng cho image ứng dụng do đội ngũ tự xây dựng:
+## Phạm vi
+
+ADR áp dụng cho image:
 
 - do `tf2-corp-platform` build;
-- được lưu tại
+- lưu tại
   `493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/**`;
-- được release pipeline chọn trong production build set;
-- được triển khai bởi chart production.
+- thuộc production release build set;
+- được chart Production triển khai.
 
-Các image do nhà cung cấp bên ngoài phát hành, như BusyBox, Envoy, Postgres và
-Valkey, nằm ngoài yêu cầu digest, KMS signature, SBOM và provenance của ADR này.
-Việc cho phép chúng trong một namespace opt-in phải được xử lý rõ bằng
-policy/no-match behavior, thay vì tuyên bố chúng đã được platform ký.
-
-Required Status Checks của GitHub Branch Protection không nằm trong phạm vi
-quyết định hiện tại. CI vẫn phải fail khi Trivy phát hiện HIGH/CRITICAL, nhưng ADR
-không khẳng định GitHub luôn chặn merge một PR đỏ.
+Image do nhà cung cấp bên ngoài phát hành, như Linkerd, BusyBox, Envoy, Postgres
+và Valkey, không phải artifact do platform ký. Chúng chỉ được admission khi
+match explicit allowlist; image không match policy nào tiếp tục bị từ chối.
 
 ## Quyết định
 
-### 1. Chuẩn hóa Sigstore Policy Controller
+### 1. CI security gate
 
-- Triển khai upstream Sigstore Policy Controller Helm chart được pin version qua
-  Argo CD application độc lập `supply-chain`.
-- Dùng IRSA để controller truy cập KMS/ECR theo quyền tối thiểu.
-- Dùng `ClusterImagePolicy` chỉ match phạm vi image ứng dụng do đội ngũ tự xây
-  dựng trong Production ECR.
-- Bắt đầu với `failurePolicy: Ignore` trong giai đoạn kiểm tra controller,
-  TLS/CA, IRSA, KMS, artifact coverage và policy behavior.
-- Chỉ opt-in namespace bằng label
-  `policy.sigstore.dev/include=true` sau khi đã kiểm kê toàn bộ containers trong
-  namespace.
+- Không có bypass Trivy riêng theo service.
+- Trivy image scan chặn HIGH/CRITICAL trước ECR push.
+- Sign, attest và promotion chỉ chạy sau các security gate bắt buộc.
 
-`failurePolicy: Ignore` chỉ quy định hành vi khi webhook không thể xử lý request;
-nó không vô hiệu hóa quyết định DENY khi webhook hoạt động bình thường.
+### 2. Immutable digest và chứng thư
 
-### 2. Immutable digest và chứng thư tập trung
-
-- Release pipeline resolve immutable digest cho mỗi image ứng dụng do đội ngũ tự
-  xây dựng.
-- Chart production tham chiếu image theo dạng
+- Chart tham chiếu image ứng dụng theo
   `repository@sha256:<digest>`.
-- Ký mỗi release digest bằng AWS KMS.
-- Tạo CycloneDX SBOM và provenance attestation cho mỗi release digest.
-- Lưu OCI signature/attestation trong
-  `techx-prod-corp/cosign-artifacts` thông qua `COSIGN_REPOSITORY`.
-- Xác minh KMS bằng URI dạng
-  `awskms:///arn:aws:kms:us-east-1:493499579600:key/<key-id>`.
+- Pipeline ký release digest bằng AWS KMS.
+- Mỗi digest có CycloneDX SBOM và provenance attestation.
+- Signature và attestation được lưu tập trung tại
+  `techx-prod-corp/cosign-artifacts`.
+- Custom provenance predicate dùng URI định danh
+  `https://techx-corp.dev/attestations/provenance/v1`. URI này là type
+  identifier; payload thực tế nằm trong DSSE attestation ở ECR.
 
-Không mở rộng `ClusterImagePolicy` sang external registries trong Mandate 10.
+### 3. Admission policy
 
-### 3. CI security gate thống nhất
+- Argo application `supply-chain` quản lý Sigstore Policy Controller.
+- `ClusterImagePolicy/ecr-signature-policy` chỉ match
+  `techx-prod-corp/**`, dùng KMS key
+  `f96d445c-43c3-49d3-b508-7243e07c4f27` và yêu cầu:
+  - KMS signature;
+  - `https://cyclonedx.org/bom`;
+  - `https://techx-corp.dev/attestations/provenance/v1`.
+- Webhook dùng `failurePolicy: Fail`.
+- Namespace chỉ chịu admission policy khi có label
+  `policy.sigstore.dev/include=true`.
+- `external-image-allowlist-policy` dùng `static: pass` cho các external
+  repositories đã kiểm kê; không dùng global `no-match-policy: allow`.
+- Production namespace đã opt-in sau khi allowlist được reconcile. Bốn
+  server-side dry-run đạt 4/4; signed internal canary CREATE thật chạy thành
+  công, còn unsigned internal và unlisted external CREATE thật bị từ chối.
+- Label được áp dụng như một operational control, chưa khai báo trong Helm
+  template dùng chung.
+- Nếu namespace hoặc cluster được tạo lại, operator phải xác nhận hai policy
+  `Ready=True`, chạy lại admission tests rồi mới gắn lại opt-in label.
 
-- Gỡ bỏ bypass Trivy riêng của `shopping-copilot`.
-- Các service trong production build set dùng Trivy blocking mode cho
-  HIGH/CRITICAL.
-- Production workflow chỉ tiếp tục push/sign/attest khi các bước bắt buộc thành
-  công.
-- Việc vá dependency phải được review như thay đổi ứng dụng riêng, không được
-  coi là thay đổi admission policy.
+### 4. ECR retention
 
-Production run `30370423129` là evidence pipeline cho tập 24 release artifacts.
-Số workload thực sự active trên Production phải được xác nhận độc lập từ Argo
-rendered manifests và running Pods. Việc build AIOps không tự động chứng minh
-AIOps đang được deploy.
+- Service repository dùng immutable tags, xóa `buildcache` sau một ngày và giữ
+  25 ECR records mới nhất.
+- `cosign-artifacts` giữ 1000 records mới nhất.
+- Một multi-architecture release chiếm nhiều records; 25 records không tương
+  đương 25 releases.
+- Lifecycle có thể xóa digest vẫn cần cho rollback. Current release chỉ được
+  chấp thuận sau khi current/rollback digests được kiểm tra.
+- Mọi thay đổi lifecycle phải đi qua repository hạ tầng sở hữu policy.
 
-### 4. ECR lifecycle và retention
+Nếu runtime digest bị xóa, Pod mới có thể gặp `ErrImagePull` hoặc
+`ImagePullBackOff`. Nếu signature/attestation bị xóa nhưng runtime image còn,
+admission có thể DENY Pod mới.
 
-Lifecycle của service repository và `cosign-artifacts` được đánh giá riêng:
+## Trạng thái kiểm chứng
 
-- Production service repositories dùng immutable tags và hai lifecycle rules:
-  expire `buildcache` sau một ngày, sau đó giữ 25 ECR records mới nhất bằng
-  `tagStatus: any`.
-- Repository tập trung `techx-prod-corp/cosign-artifacts` dùng cùng cấu trúc hai
-  rules nhưng override ngưỡng giữ thành 1000 records; AWS verification ngày
-  2026-07-29 ghi nhận 249 records, chưa chạm ngưỡng.
-- Không mô tả module hiện tại là lifecycle ba rule.
-- Một multi-architecture release chiếm nhiều ECR records, do đó giữ 25 records
-  không đồng nghĩa giữ 25 releases.
-- Production workflow có thể để lại image records khi một service đã push thành
-  công nhưng toàn workflow thất bại ở bước sau. Các records không được promote
-  vẫn tiêu thụ cùng retention quota với digest đang chạy.
-- Quan sát ngày 2026-07-29 cho thấy `frontend` và `accounting` đều có 20 records,
-  mỗi build set chiếm khoảng 5 records. Ngưỡng 25 chỉ còn headroom khoảng một
-  build trước khi đầy; build kế tiếp có thể expire nhóm 5 records cũ nhất.
-- Thời gian giữ signature, SBOM và provenance phải không ngắn hơn thời gian một
-  release digest còn có thể được deploy hoặc rollback.
-- Lifecycle policy không biết digest nào còn được GitOps tham chiếu. Trước mọi
-  thay đổi retention phải chạy lifecycle preview và bảo vệ current/rollback
-  digests.
-- Thay đổi lifecycle phải được thực hiện trong repository hạ tầng sở hữu policy,
-  không sửa nóng trên AWS Console rồi bỏ ngoài GitOps/IaC.
+| Outcome | Evidence |
+|---|---|
+| CI security gate | EV-01 |
+| KMS signature và attestations `24/24` | EV-04 |
+| Immutable Production release | EV-02, EV-05 |
+| Admission readiness và fail-closed | EV-08, EV-13 |
+| Production admission enforcement: opt-in, dry-run `4/4` và live CREATE | EV-13, EV-14 |
+| Runtime traceability | EV-09 |
+| Production image inventory và explicit allowlist | EV-11 |
+| Current release ECR integrity `24/24` | EV-04, EV-12 |
 
-Phân biệt hai lỗi:
+Chi tiết lệnh, raw output và ảnh nằm tại
+`docs/evidence/mandate-10/secure-delivery.md`.
 
-- Runtime image digest bị lifecycle xóa: Pod đang chạy không dừng ngay, nhưng
-  Pod mới trên node cần pull image có thể chuyển từ `ErrImagePull` sang
-  `ImagePullBackOff`.
-- Signature/attestation bị xóa trong khi runtime image còn: sau khi namespace
-  opt-in, admission policy có thể từ chối tạo Pod; đây không phải
-  `ImagePullBackOff`.
+## Điều kiện chuyển sang Accepted
 
-Retention chỉ được chấp nhận khi rollback window chính thức không dài hơn số
-release thực tế còn giữ, và current/rollback digests cùng chứng thư tương ứng đã
-được kiểm tra còn tồn tại. Tăng từ 5 lên 25 records là cải thiện cần thiết nhưng
-chỉ được xem là chấp nhận có điều kiện; thiết kế mục tiêu phải tách candidate
-builds khỏi promoted Production images hoặc bảo vệ rõ các promoted/rollback
-digests bằng lifecycle đã preview.
-
-### 5. Lộ trình admission enforcement
-
-Thực hiện theo thứ tự:
-
-1. Xác nhận `supply-chain` Synced/Healthy, controller và policy Ready.
-2. Kiểm kê từng release digest của image ứng dụng trong phạm vi, bảo đảm có KMS
-   signature, CycloneDX SBOM và provenance.
-3. Xác nhận production digest PR đã merge và workloads ổn định.
-4. Tạo namespace `mandate10-validation`, chỉ opt-in namespace này.
-5. Khi vẫn giữ `failurePolicy: Ignore`, kiểm tra:
-   - signed internal image trả về ALLOW;
-   - confirmed-unsigned internal image trả về DENY.
-6. Xác định và kiểm chứng `no-match-policy` cho image do nhà cung cấp bên ngoài
-   phát hành.
-7. Chỉ sau khi các bước trên đạt, tạo GitOps PR đổi `failurePolicy: Ignore` thành
-   `Fail`.
-8. Chờ Argo Synced/Healthy và chạy lại positive/negative admission tests.
-9. Chỉ cân nhắc opt-in Production namespace sau khi kiểm kê mọi container,
-   initContainer và sidecar trong namespace.
-
-Không dùng image chưa ký do nhà cung cấp bên ngoài phát hành làm negative test
-cho signature policy, vì kết quả đó chủ yếu phản ánh no-match behavior. Negative
-test phải dùng một digest thuộc `techx-prod-corp/**` và được xác nhận không có
-chứng thư hợp lệ.
-
-## An toàn rollout
-
-Do không có Argo CD Development, quy tắc Dev-First được thay bằng kiểm thử có cô
-lập:
-
-- production webhook vẫn giữ safe mode `Ignore`;
-- test dùng namespace validation riêng;
-- chỉ dùng `--dry-run=server`, không tạo workload thử thật;
-- không label namespace Production trong giai đoạn đầu;
-- mọi thay đổi `failurePolicy` phải qua GitOps PR;
-- phải có named operator, rollback owner và maintenance window phù hợp.
-
-Không thực hiện admission test trong lúc Argo/workload đang biến động bởi mandate
-khác, vì kết quả rollout và traceability khi đó không đủ tin cậy.
-
-## Tiêu chí kiểm chứng
-
-ADR chỉ đủ điều kiện chuyển sang `Accepted` khi có bằng chứng:
-
-1. Production workflow pass cho toàn bộ production build set ở Trivy blocking
-   mode.
-2. Mỗi release digest trong scope verify thành công:
-   - AWS KMS signature;
-   - CycloneDX SBOM;
-   - provenance attestation.
-3. Chart/Argo rendered manifests dùng đúng digest đã merge của các image ứng
-   dụng trong phạm vi.
-4. Policy Controller, TLS/CA, IRSA và KMS hoạt động ổn định.
-5. Signed internal image ALLOW và unsigned internal image DENY bằng
-   server-side dry-run trong validation namespace.
-6. `failurePolicy: Fail` được reconcile thành công và hai admission tests vẫn
-   đạt.
-7. Một running Pod được truy vết đầy đủ về digest, workflow, commit, PR/reviewer,
-   signature, SBOM và provenance.
-8. Technical Lead/Security Owner, CDO Reviewer và Rollback Operator được ghi
-   nhận.
+1. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
+   owners liên quan.
+2. Merge evidence sau opt-in Production vào `main`.
 
 ## Rollback
 
-Nếu webhook gặp sự cố TLS, network, KMS/ECR hoặc gây gián đoạn admission:
+Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 
-1. Named operator tạo hoặc áp dụng GitOps revert đưa
-   `failurePolicy: Fail` về `Ignore`.
-2. Chờ `supply-chain` application Synced/Healthy và xác nhận admission phục hồi.
-3. Nếu lỗi do release digest, revert chart về digest đã được xác minh trước đó.
-4. Không cấp bypass rộng, không tắt toàn bộ policy và không sửa nóng ngoài GitOps
-   như một giải pháp lâu dài.
-5. Lưu incident timeline, revision rollback và output kiểm chứng vào evidence.
+1. Gỡ opt-in label khỏi Production:
+   `kubectl label namespace techx-corp-prod policy.sigstore.dev/include-`.
+2. Xác nhận Pod admission và workload recovery; label removal không restart các
+   Pod đang chạy.
+3. Chỉ thay đổi `failurePolicy` bằng một GitOps revert riêng nếu sự cố ảnh hưởng
+   namespace khác và đã được owner phê duyệt.
+4. Revert workload về digest đã xác minh nếu lỗi thuộc release image.
+5. Không tạo allow-all bypass cluster-wide.
+6. Lưu incident timeline, Git revision và output kiểm chứng.
 
 ## Hệ quả
 
 ### Tích cực
 
-- Image ứng dụng do đội ngũ tự xây dựng có danh tính bất biến bằng digest.
-- Có thể xác minh tính toàn vẹn và nguồn phát hành bằng AWS KMS signature.
-- SBOM và provenance hỗ trợ audit và truy vết từ workload về quá trình build.
-- Admission policy giảm đáng kể nguy cơ triển khai image nội bộ không được ký
-  hoặc thiếu chứng thư bắt buộc.
+- Image ứng dụng có danh tính bất biến và chuỗi truy xuất kiểm chứng được.
+- Admission từ chối image nội bộ thiếu signature/SBOM/provenance.
+- SBOM và provenance hỗ trợ audit từ Pod về source và pipeline.
 
-### Đánh đổi và rủi ro còn lại
+### Rủi ro còn lại
 
-- KMS, ECR, policy controller và lifecycle trở thành các dependency quan trọng
-  của quá trình rollout.
-- `failurePolicy: Fail` có thể chặn Pod mới nếu webhook hoặc dependency gặp lỗi.
-- Trivy/signature không chứng minh phần mềm hoàn toàn không có lỗ hổng.
-- Image do nhà cung cấp bên ngoài phát hành vẫn cần quản trị rủi ro riêng.
-- Chữ ký mật mã cung cấp bằng chứng integrity/authenticity kỹ thuật; ADR không
-  tuyên bố đây là chữ ký điện tử có giá trị pháp lý.
+- KMS, ECR và Policy Controller trở thành dependency của rollout.
+- `failurePolicy: Fail` có thể chặn Pod mới khi webhook gặp sự cố.
+- ECR lifecycle có thể làm mất runtime digest hoặc chứng thư rollback.
+- External repository mới phải được review và cập nhật allowlist trước rollout.
