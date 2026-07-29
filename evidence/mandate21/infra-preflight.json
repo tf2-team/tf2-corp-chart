@@ -1,0 +1,81 @@
+﻿{
+    "schemaVersion":  1,
+    "collectedAt":  "2026-07-29T13:25:10.1915846Z",
+    "region":  "us-east-1",
+    "vpcId":  "vpc-0eef6ab7c99ef3bf4",
+    "overallStatus":  "PASS",
+    "checks":  [
+                   {
+                       "check":  "Private subnet subnet-07599236e4979c4b2 in us-east-1a has available NAT Gateway in same AZ",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Private subnet subnet-0ee04e7bc69e247a3 in us-east-1b has available NAT Gateway in same AZ",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Private subnet subnet-0d1f0d1de6b352021 in us-east-1a has available NAT Gateway in same AZ",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Private subnet subnet-0ab17749536b34693 in us-east-1b has available NAT Gateway in same AZ",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "RDS techx-prod-tf2-postgresql is available",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "RDS techx-prod-tf2-postgresql is Multi-AZ",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "RDS techx-prod-tf2-postgresql storage encryption is enabled",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "RDS techx-prod-tf2-postgresql deletion protection is enabled",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "RDS techx-prod-tf2-postgresql backup retention is \u003e=7 days",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Valkey techx-prod-tf2-cart status is available",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Valkey techx-prod-tf2-cart automatic failover is enabled",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Valkey techx-prod-tf2-cart at-rest encryption is enabled",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "Valkey techx-prod-tf2-cart transit encryption is enabled",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "DynamoDB table techx-prod-tf2-checkout-outbox status is ACTIVE",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "DynamoDB table techx-prod-tf2-checkout-outbox deletion protection is enabled",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "DynamoDB table techx-prod-tf2-checkout-outbox PITR is ENABLED",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "MSK cluster techx-prod-tf2-msk status is ACTIVE",
+                       "status":  "PASS"
+                   },
+                   {
+                       "check":  "MSK cluster techx-prod-tf2-msk has \u003e=2 broker nodes across AZs",
+                       "status":  "PASS"
+                   }
+               ]
+}

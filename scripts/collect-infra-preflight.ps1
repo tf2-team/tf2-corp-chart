@@ -3,15 +3,27 @@ param(
     [string]$Region = "us-east-1",
     [string]$VpcId = "",
     [string]$RdsIdentifier = "techx-prod-tf2-postgresql",
-    [string]$ValkeyReplicationGroupId = "techx-corp-valkey",
+    [string]$ValkeyReplicationGroupId = "techx-prod-tf2-cart",
     [string]$DynamoDbTable = "techx-prod-tf2-checkout-outbox",
-    [string]$MskClusterName = "techx-corp-msk",
-    [string]$OutputPath = (Join-Path $PSScriptRoot "../evidence/mandate21/infra-preflight.json"),
-    [string]$SummaryPath = (Join-Path $PSScriptRoot "../evidence/mandate21/infra-preflight-summary.md")
+    [string]$MskClusterName = "techx-prod-tf2-msk",
+    [string]$OutputPath = "",
+    [string]$SummaryPath = ""
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+$scriptDirectory = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $PSScriptRoot
+} else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $scriptDirectory "../evidence/mandate21/infra-preflight.json"
+}
+if ([string]::IsNullOrWhiteSpace($SummaryPath)) {
+    $SummaryPath = Join-Path $scriptDirectory "../evidence/mandate21/infra-preflight-summary.md"
+}
 
 function Invoke-Text {
     param([Parameter(Mandatory)][string]$File, [Parameter(Mandatory)][string[]]$Arguments)
@@ -24,7 +36,7 @@ function Invoke-Text {
 
 function Invoke-Json {
     param([Parameter(Mandatory)][string]$File, [Parameter(Mandatory)][string[]]$Arguments)
-    return (Invoke-Text -File $File -Arguments $Arguments | ConvertFrom-Json -Depth 100)
+    return (Invoke-Text -File $File -Arguments $Arguments | ConvertFrom-Json)
 }
 
 function Assert-Check {
@@ -130,7 +142,7 @@ $markdown = @"
 
 **Collected At:** $($evidenceObj.collectedAt)  
 **Region:** $Region  
-**Overall Status:** $(if ($allPass) { '✅ PASS' } else { '❌ FAIL' })  
+**Overall Status:** $(if ($allPass) { 'PASS' } else { 'FAIL' })
 
 ## Validation Summary
 
@@ -139,8 +151,7 @@ $markdown = @"
 "@
 
 foreach ($c in $checks) {
-    $icon = if ($c.status -eq "PASS") { "✅ PASS" } else { "❌ FAIL" }
-    $markdown += "`n| $($c.check) | $icon |"
+    $markdown += "`n| $($c.check) | $($c.status) |"
 }
 
 $markdown += "`n`n<!-- Change trail: @hungxqt - 2026-07-29 - Generated fail-closed infrastructure preflight summary report. -->`n"

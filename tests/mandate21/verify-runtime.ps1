@@ -35,6 +35,18 @@ $cleanupErrors = $null
 [void][System.Management.Automation.Language.Parser]::ParseFile($cleanupPath, [ref]$cleanupTokens, [ref]$cleanupErrors)
 Assert-True ($cleanupErrors.Count -eq 0) "cleanup module parses as PowerShell"
 
+$preflightPath = Join-Path $repo "scripts/collect-infra-preflight.ps1"
+$preflightTokens = $null
+$preflightErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile($preflightPath, [ref]$preflightTokens, [ref]$preflightErrors)
+Assert-True ($preflightErrors.Count -eq 0) "infrastructure preflight collector parses as PowerShell"
+$preflight = Read-RepoFile "scripts/collect-infra-preflight.ps1"
+Assert-True ($preflight -match '\[string\]\$OutputPath\s*=\s*""') "preflight output default does not evaluate PSScriptRoot during parameter binding"
+Assert-True ($preflight -match '\$OutputPath\s*=\s*Join-Path\s+\$scriptDirectory') "preflight resolves its default output path at runtime"
+Assert-True ($preflight -notmatch 'ConvertFrom-Json\s+-Depth') "preflight JSON parsing is compatible with Windows PowerShell 5.1"
+Assert-True ($preflight -match '\$ValkeyReplicationGroupId\s*=\s*"techx-prod-tf2-cart"') "preflight targets the production Valkey replication group"
+Assert-True ($preflight -match '\$MskClusterName\s*=\s*"techx-prod-tf2-msk"') "preflight targets the production MSK cluster"
+
 $contract = Read-RepoFile "scripts/mandate21-fis-contract.example.json" | ConvertFrom-Json
 Assert-True ($contract.schemaVersion -eq 1) "example contract uses schema version 1"
 Assert-True (@($contract.zones.PSObject.Properties).Count -eq 2) "example contract maps exactly two AZs"
