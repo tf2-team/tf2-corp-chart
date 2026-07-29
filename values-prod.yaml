@@ -497,7 +497,7 @@ components:
     # in-cluster singleton Service.
     initContainers:
       - name: wait-for-managed-valkey
-        image: busybox:1.37.0
+        image: "index.docker.io/library/busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
         command: ["sh", "-c", "until nc -z -v -w5 valkey-cart.techx.internal 6379; do echo waiting for managed Valkey; sleep 2; done;"]
   checkout:
     autoscaling:
@@ -643,6 +643,9 @@ components:
     # Not on the Directive #3 two-replica money-path floor: load is tiny, BTC HTTP
     # is authoritative for chaos keys, and multi-replica emptyDir splits local-* UI.
     replicas: 1
+    imageOverride:
+      # Keep tag provenance while pinning the exact artifact admitted in prod.
+      tag: "v0.15.0@sha256:ad3f1f93862eefdaac7103228ab57e603f0f8266a5de4cf49cea2e0fe806587f"
     # Dual sources: local ConfigMap file + BTC central HTTP.
     # Merge order: later source wins on key clash — HTTP last so BTC always wins
     # for shared original keys (paymentFailure, cartFailure, …).
@@ -673,6 +676,19 @@ components:
       affinity: {}
       tolerations: []
       topologySpreadConstraints: []
+    # Arrays replace during Helm merge; restate the complete base init container.
+    initContainers:
+      - name: init-config
+        image: "index.docker.io/library/busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
+        command:
+          - sh
+          - -c
+          - cp /config-ro/demo.flagd.json /config-rw/demo.flagd.json && cat /config-rw/demo.flagd.json
+        volumeMounts:
+          - mountPath: /config-ro
+            name: config-ro
+          - mountPath: /config-rw
+            name: config-rw
 
   frontend:
     optionalDependencyTimeoutMs: 500
@@ -764,6 +780,8 @@ components:
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-product-reviews-model-read
     modelDelivery:
+      fetcherImage: "public.ecr.aws/aws-cli/aws-cli:2.27.49@sha256:bad3346a39098ab077be6ed58c7e1fe68321a4a844c7c740318100013e6c3581"
+      extractorImage: "index.docker.io/library/busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
       s3Uri: s3://techx-prod-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/artifacts/c6197e30a2dd6dd6ce7488cc775c7ae3f10b21df29192c085992f75befeedc50/model.tar.gz
     initContainers: []
   shopping-copilot:
@@ -773,6 +791,8 @@ components:
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-shopping-copilot-model-read
     modelDelivery:
+      fetcherImage: "public.ecr.aws/aws-cli/aws-cli:2.27.49@sha256:bad3346a39098ab077be6ed58c7e1fe68321a4a844c7c740318100013e6c3581"
+      extractorImage: "index.docker.io/library/busybox:1.37.0@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"
       s3Uri: s3://techx-prod-tf2-ai-models-493499579600/protectai/deberta-v3-base-prompt-injection-v2/89b085cd330414d3e7d9dd787870f315957e1e9f/artifacts/c6197e30a2dd6dd6ce7488cc775c7ae3f10b21df29192c085992f75befeedc50/model.tar.gz
   quote:
     autoscaling:
@@ -861,6 +881,10 @@ components:
 # Ensures prod overlay does not inherit a future base-values drift unintentionally.
 # Arrays replace under Helm merge — keep the full attributes list.
 prometheus:
+  configmapReload:
+    prometheus:
+      image:
+        tag: "v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1"
   # M18: retain the CDO service catalogue's resource metrics, while stopping
   # high-cardinality Kubernetes control-plane and cAdvisor series at ingest.
   # Linkerd, spanmetrics, OTLP, kube-state-metrics, YACE and Karpenter are
@@ -892,6 +916,8 @@ prometheus:
           action: keep
           regex: container_(cpu_usage_seconds_total|memory_working_set_bytes|fs_reads_bytes_total|fs_writes_bytes_total|network_receive_bytes_total|network_transmit_bytes_total)
   server:
+    image:
+      tag: "v3.11.3@sha256:c0b857aead0d5793aa566adb8f49a9983d6f6031652098759d521a330cfa050f"
     nodeSelector:
       workload-tier: observability
     podAnnotations:
@@ -917,6 +943,8 @@ prometheus:
         cpu: 500m
         memory: 4Gi
   kube-state-metrics:
+    image:
+      sha: "sha256:1545919b72e3ae035454fc054131e8d0f14b42ef6fc5b2ad5c751cafa6b2130e"
     podAnnotations:
       linkerd.io/inject: disabled
     nodeSelector:
@@ -948,11 +976,15 @@ grafana:
       eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-grafana-athena
 
 metrics-server:
+  image:
+    tag: "v0.8.1@sha256:b2d2efaf5ac3b366ed0f839d2412a2c4279d4fc2a2a733f12c52133faed36c41"
   podAnnotations:
     linkerd.io/inject: disabled
     cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
 
 prometheus-adapter:
+  image:
+    tag: "v0.12.0@sha256:932eae60e2bcf9c4660d6442da066ef1a79b4ea7cc232c61c7303069216ca006"
   podAnnotations:
     linkerd.io/inject: disabled
 
@@ -965,6 +997,9 @@ jaeger:
 
 
 opentelemetry-collector:
+  image:
+    repository: index.docker.io/otel/opentelemetry-collector-contrib
+    tag: "0.151.0@sha256:d57bfe8eee2378f31cb1193239fbcac521d54a5a071fca2bfc106916a32b892d"
   podAnnotations:
     checksum/config: "20260728-receivers-v1"
   # Kafka observability follows MSK. Restate OpenSearch envs because Helm
