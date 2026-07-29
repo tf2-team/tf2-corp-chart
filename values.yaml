@@ -468,6 +468,20 @@ aiops:
     autoRunEnabled: true
     autoRunIntervalSeconds: 60
     prometheusBaseUrl: http://prometheus:9090
+    selfHeal:
+      enabled: false
+      executorUrl: http://aiops-live-executor:8080
+      executorAccount: aiops-runtime
+      policyId: phase3-scale-policy-v1
+      policyExpiresAt: "2026-08-31T23:59:59Z"
+      verificationDeadlineSeconds: 300
+      minFreshSamples: 2
+      consecutivePasses: 2
+      failureSamples: 2
+      auth:
+        existingSecret: aiops-live-executor-token
+        tokenKey: token
+        approvalIdKey: approval-id
   resources:
     requests:
       cpu: 100m
@@ -481,6 +495,7 @@ aiops:
 aiopsLiveExecutor:
   enabled: false
   replicaCount: 1
+  podAnnotations: {}
   image:
     repository: ""
     tag: ""
@@ -495,10 +510,16 @@ aiopsLiveExecutor:
     annotations: {}
   rbac:
     create: true
-    targetDeployment: product-catalog
+    targetDeployments:
+      - product-catalog
+      - frontend-proxy
+      - frontend
+      - checkout
+      - cart
   auth:
     existingSecret: aiops-live-executor-token
     tokenKey: token
+    approvalIdKey: approval-id
   persistence:
     enabled: true
     existingClaim: ""
@@ -511,6 +532,9 @@ aiopsLiveExecutor:
     policyId: phase3-scale-policy-v1
     policyExpiresAt: "2026-08-31T23:59:59Z"
     allowLiveApply: "false"
+    cooldownSeconds: 900
+    actionBudgetWindowSeconds: 3600
+    actionBudgetMaxExecutions: 10
   networkPolicy:
     enabled: true
     allowFrom:
@@ -1159,6 +1183,8 @@ components:
         value: frontend-web
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
+      - name: JAEGER_QUERY_URL
+        value: http://jaeger:16686
     resources:
       # Burstable QoS. Under the 700–800-user M16 run, all 20 replicas were
       # reachable and received balanced Linkerd traffic, but 200m caused CFS
@@ -2963,6 +2989,11 @@ opentelemetry-collector:
       # Prometheus Adapter rate window, so the HPA sees 0 RPS under load.
       spanmetrics:
         metrics_flush_interval: 15s
+        dimensions:
+          - name: app.ai.surface
+          - name: gen_ai.request.model
+          - name: app.ai.outcome
+          - name: gen_ai.operation.name
 
     extensions:
       health_check: {}
@@ -3569,4 +3600,19 @@ prometheus-adapter:
       memory: 512Mi
   replicas: 2
 
-# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION env and set accounting.migration.enabled to false to temporarily disable migration job.
+capacityProbe:
+  enabled: false
+  runId: disabled
+  evidenceId: disabled
+  sourceRevision: pending
+  targetZone: us-east-1b
+  replicas: 2
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+# Change trail: @hungxqt - 2026-07-29 - Added traceable run and revision fields for capacity evidence.

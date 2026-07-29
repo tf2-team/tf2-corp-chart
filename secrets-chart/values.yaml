@@ -39,6 +39,7 @@ targets:
   # Mem0 runtime keys (Groq, JWT, API keys) and RDS master for migrate Job
   mem0Runtime: techx-corp-mem0
   mem0RdsMaster: techx-corp-mem0-rds-master
+  aiObservability: techx-corp-ai-observability
 
 # Managed cart Valkey auth token (Terraform commerce_ha module).
 # Dev keeps in-cluster valkey-cart without auth — leave enabled: false.
@@ -59,6 +60,12 @@ rdsPostgresql:
   enabled: false
   # Full ASM secret containing endpoint metadata; credentials stay in postgresql-app.
   remoteKey: ""
+
+# Enable only after the approved policy decision is stored in the existing
+# executor ASM JSON as {"approval_id":"<signed-approval-id>"}.
+aiopsLiveExecutor:
+  approvalEnabled: true
+  approvalProperty: approval_id
 
 # Mem0 self-hosted: runtime app secret + RDS-managed master secret for migrate.
 # remoteKey may be an ASM name or full ARN (ESO accepts both for Secrets Manager).

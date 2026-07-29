@@ -7,12 +7,75 @@
   "rdsInstanceIdentifier": "techx-prod-tf2-postgresql",
   "zones": {
     "us-east-1a": {
-      "primaryInZoneTemplateId": "EXT33xYmxJVCDMiQ",
-      "primaryOutsideZoneTemplateId": "EXTvCVv3L4aYWBa"
+      "primaryInZoneTemplateId": "EXT2UboGoZ7ErXaQ",
+      "primaryOutsideZoneTemplateId": "EXT2cGQZ1Hb4HKCC"
     },
     "us-east-1b": {
-      "primaryInZoneTemplateId": "EXT3V4aApSKJaBnp",
-      "primaryOutsideZoneTemplateId": "EXT2eK437rucfP5a"
+      "primaryInZoneTemplateId": "EXTDqvVeTfQiN7zBS",
+      "primaryOutsideZoneTemplateId": "EXT34dobGM9bVqZ2"
     }
-  }
+  },
+  "cleanupByTemplateId": {
+    "EXT2UboGoZ7ErXaQ": {
+      "variant": "1a-primary-in",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": true
+    },
+    "EXT2cGQZ1Hb4HKCC": {
+      "variant": "1a-primary-outside",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": false
+    },
+    "EXTDqvVeTfQiN7zBS": {
+      "variant": "1b-primary-in",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": true
+    },
+    "EXT34dobGM9bVqZ2": {
+      "variant": "1b-primary-outside",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": false
+    }
+  },
+  "accountId": "493499579600",
+  "templateRevisions": {
+    "1a-primary-in": {
+      "templateId": "EXT2UboGoZ7ErXaQ",
+      "revisionSha256": "22873c683fa034843990d906c49b1c89a11d82b0fef05151d27cba48819e58dd"
+    },
+    "1a-primary-outside": {
+      "templateId": "EXT2cGQZ1Hb4HKCC",
+      "revisionSha256": "35691140cc4e0a04f49e6dbcb4fb969672d94f52d99cf14e8aa564cc8c9b0ead"
+    },
+    "1b-primary-in": {
+      "templateId": "EXTDqvVeTfQiN7zBS",
+      "revisionSha256": "4357893630d1d2eb9d5d9c45f3b2f831f900ca58a9878cfa1385b07a0ad58127"
+    },
+    "1b-primary-outside": {
+      "templateId": "EXT34dobGM9bVqZ2",
+      "revisionSha256": "fd9bd879c6df1cc78f9004cb68431a2af89a7930401aa0072a767273bcd1901b"
+    }
+  },
+  "requiredStopAlarmArns": [
+    "arn:aws:cloudwatch:us-east-1:493499579600:alarm:techx-prod-tf2-storefront-5xx-ratio",
+    "arn:aws:cloudwatch:us-east-1:493499579600:alarm:techx-prod-tf2-storefront-healthy-hosts",
+    "arn:aws:cloudwatch:us-east-1:493499579600:alarm:techx-prod-tf2-mandate12-immutable-audit-control-health",
+    "arn:aws:cloudwatch:us-east-1:493499579600:alarm:techx-prod-tf2-accepted-order-durability-gap"
+  ]
 }

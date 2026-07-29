@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "accountId", "region", "clusterContext", "chartGitSha", "infraGitSha", "contractSha256", "templates", "evidence", "CapacityApproved", "ChangeApproved", "approvedBy", "changeReference", "approvedAt", "expiresAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "accountId": { "type": "string", "pattern": "^[0-9]{12}$" },
+    "region": { "const": "us-east-1" },
+    "clusterContext": { "type": "string" },
+    "chartGitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "infraGitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "contractSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "templates": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "object", "additionalProperties": false, "required": ["variant", "templateId", "revisionSha256", "lastUpdateTime"], "properties": { "variant": { "enum": ["1a-primary-in", "1a-primary-outside", "1b-primary-in", "1b-primary-outside"] }, "templateId": { "type": "string", "pattern": "^EXT[A-Za-z0-9]+$" }, "revisionSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "lastUpdateTime": { "type": "string" } } } },
+    "evidence": { "type": "object", "additionalProperties": false, "required": ["infraPreflightSha256", "capacity1aTo1bSha256", "capacity1bTo1aSha256", "auditAlarmSha256"], "properties": { "infraPreflightSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "capacity1aTo1bSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "capacity1bTo1aSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "auditAlarmSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } },
+    "CapacityApproved": { "const": "PASS" },
+    "ChangeApproved": { "const": "PASS" },
+    "approvedBy": { "type": "string", "minLength": 1 },
+    "changeReference": { "type": "string", "minLength": 1 },
+    "approvedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

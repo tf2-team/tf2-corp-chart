@@ -3,4 +3,4 @@
 components:
   checkout:
     imageOverride:
-      digest: "sha256:a7f4f96e788dc72bf2a74c36dde025c7186b141d0801ce81efbd04bc09b86789"
+      digest: "sha256:7fb7053951acc97954ec1915be8a9c6b4444f7691d680d2b68acdd45dac66cad"

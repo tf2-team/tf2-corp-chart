@@ -1,9 +1,14 @@
 # Opt-in overlay for the self-heal live executor.
-# Only enable in a dev/demo namespace approved for `Deployment/product-catalog`.
+# Only enable in a dev/demo namespace approved for the executor allowlist.
+# This overlay enables live Kubernetes mutation for controlled self-heal smoke tests.
 aiopsLiveExecutor:
   enabled: true
+  podAnnotations:
+    config.linkerd.io/skip-outbound-ports: "443,10000,9901"
   image:
-    digest: sha256:dc8d13fbde12dce83dfb0748b2ceda44e1154a3b559ec1091551d5c0b28af302
+    digest: sha256:8b7e278cf9d715d28b5159f1521b13b1783a911ba33a1d9fc1572f98d7da1f20
   auth:
     existingSecret: aiops-live-executor-token
     tokenKey: token
+  config:
+    allowLiveApply: "true"
