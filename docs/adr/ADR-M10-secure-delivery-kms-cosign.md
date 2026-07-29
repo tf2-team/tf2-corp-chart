@@ -1,10 +1,9 @@
 # ADR-M10: Secure Delivery với AWS KMS Cosign và Image Admission Fail-Closed
 
-- Trạng thái: Đang nghiệm thu
+- Trạng thái: Đang nghiệm thu — kiểm soát kỹ thuật PASS, phê duyệt PENDING
 - Ngày cập nhật: 2026-07-29
-- Technical Lead / Security Owner: pending approval
-- CDO Reviewer: pending approval
-- Rollback Operator: pending assignment
+- Go/No-Go liên team: chờ xác nhận từ platform, infra, chart/runtime security
+  và workload owners liên quan
 
 ## Bối cảnh
 
@@ -17,9 +16,9 @@ thể truy vết từ source đến Pod Production. Chuỗi kiểm chứng gồm
 - Sigstore Policy Controller từ chối image nội bộ thiếu chứng thư;
 - Pod đang chạy truy được về workflow, commit, PR và reviewer.
 
-Cluster không có Argo CD Development tương đương. Admission test vì vậy dùng
-namespace `mandate10-validation` tách biệt, chỉ chạy server-side dry-run và không
-tạo workload thử thật.
+Cluster không có Argo CD Development tương đương. Admission được kiểm tra trước
+bằng server-side dry-run trong namespace `mandate10-validation`, sau đó xác nhận
+trên Production bằng canary cô lập và các request CREATE thật.
 
 ## Phạm vi
 
@@ -42,8 +41,6 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
 - Không có bypass Trivy riêng theo service.
 - Trivy image scan chặn HIGH/CRITICAL trước ECR push.
 - Sign, attest và promotion chỉ chạy sau các security gate bắt buộc.
-- Full rebuild là ngoại lệ có lý do; selective build chỉ xử lý service thuộc
-  `BUILD_SET`.
 
 ### 2. Immutable digest và chứng thư
 
@@ -71,8 +68,13 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
   `policy.sigstore.dev/include=true`.
 - `external-image-allowlist-policy` dùng `static: pass` cho các external
   repositories đã kiểm kê; không dùng global `no-match-policy: allow`.
-- Production namespace chưa được opt-in cho đến khi allowlist được reconcile,
-  toàn bộ container/initContainer/sidecar và rollback owner được chốt.
+- Production namespace đã opt-in sau khi allowlist được reconcile. Bốn
+  server-side dry-run đạt 4/4; signed internal canary CREATE thật chạy thành
+  công, còn unsigned internal và unlisted external CREATE thật bị từ chối.
+- Label được áp dụng như một operational control, chưa khai báo trong Helm
+  template dùng chung.
+- Nếu namespace hoặc cluster được tạo lại, operator phải xác nhận hai policy
+  `Ready=True`, chạy lại admission tests rồi mới gắn lại opt-in label.
 
 ### 4. ECR retention
 
@@ -81,8 +83,8 @@ match explicit allowlist; image không match policy nào tiếp tục bị từ 
 - `cosign-artifacts` giữ 1000 records mới nhất.
 - Một multi-architecture release chiếm nhiều records; 25 records không tương
   đương 25 releases.
-- Lifecycle có thể xóa digest vẫn cần cho rollback. Retention chỉ được chấp
-  thuận sau khi rollback window và current/rollback digests được kiểm tra.
+- Lifecycle có thể xóa digest vẫn cần cho rollback. Current release chỉ được
+  chấp thuận sau khi current/rollback digests được kiểm tra.
 - Mọi thay đổi lifecycle phải đi qua repository hạ tầng sở hữu policy.
 
 Nếu runtime digest bị xóa, Pod mới có thể gặp `ErrImagePull` hoặc
@@ -91,49 +93,39 @@ admission có thể DENY Pod mới.
 
 ## Trạng thái kiểm chứng
 
-| Kiểm chứng | Kết quả |
+| Outcome | Evidence |
 |---|---|
-| Trivy blocking mode, không còn `shopping-copilot` bypass | PASS |
-| 24 current Production digests có `.sig` và `.att` | PASS — 24/24 |
-| 24 `.att` manifests có CycloneDX và provenance | PASS — 24/24 |
-| Signed internal image ALLOW | PASS |
-| Internal digest thiếu artifact DENY | PASS |
-| Live webhook `failurePolicy: Fail` | PASS — PR `#359` |
-| Retest ALLOW/DENY sau fail-closed | PASS |
-| Running Accounting Pod truy về workflow/commit/PR/KMS/SBOM/provenance | PASS |
-| Production image inventory | PASS — 22 internal, 18 external |
-| External allowlist dry-run | PASS — 17/17 managed repositories |
-| Unlisted external image DENY | PASS |
-| Current release ECR/runtime/artifact coverage | PASS — 24/24 |
-| Lifecycle preview for current/previous digests | PASS — 0 marked |
-| Historical rollback artifact gap | DEFERRED — 5 previous digests |
-| Production namespace opt-in | PENDING |
-| External allowlist GitOps deployment | PENDING |
-| Owner/reviewer/rollback assignment | PENDING |
+| CI security gate | EV-01 |
+| KMS signature và attestations `24/24` | EV-04 |
+| Immutable Production release | EV-02, EV-05 |
+| Admission readiness và fail-closed | EV-08, EV-13 |
+| Production admission enforcement: opt-in, dry-run `4/4` và live CREATE | EV-13, EV-14 |
+| Runtime traceability | EV-09 |
+| Production image inventory và explicit allowlist | EV-11 |
+| Current release ECR integrity `24/24` | EV-04, EV-12 |
 
 Chi tiết lệnh, raw output và ảnh nằm tại
 `docs/evidence/mandate-10/secure-delivery.md`.
 
 ## Điều kiện chuyển sang Accepted
 
-1. Deploy `external-image-allowlist-policy` bằng GitOps và xác nhận Ready.
-2. Khi opt-in Production, retest:
-   - internal signed ALLOW;
-   - internal unsigned DENY;
-   - allowlisted external ALLOW;
-   - unlisted external DENY.
-3. Ghi nhận Technical Lead/Security Owner, CDO Reviewer và Rollback Operator.
-4. Merge toàn bộ evidence sau triển khai vào `main`.
+1. Ghi nhận Go/No-Go của platform, infra, chart/runtime security và workload
+   owners liên quan.
+2. Merge evidence sau opt-in Production vào `main`.
 
 ## Rollback
 
 Nếu webhook, TLS, KMS hoặc ECR gây gián đoạn admission:
 
-1. Rollback Operator tạo GitOps revert đưa `failurePolicy: Fail` về `Ignore`.
-2. Chờ `supply-chain` Synced/Healthy.
-3. Revert workload về digest đã xác minh nếu lỗi thuộc release image.
-4. Không tắt policy cluster-wide hoặc tạo allow-all bypass lâu dài.
-5. Lưu incident timeline, Git revision và output kiểm chứng.
+1. Gỡ opt-in label khỏi Production:
+   `kubectl label namespace techx-corp-prod policy.sigstore.dev/include-`.
+2. Xác nhận Pod admission và workload recovery; label removal không restart các
+   Pod đang chạy.
+3. Chỉ thay đổi `failurePolicy` bằng một GitOps revert riêng nếu sự cố ảnh hưởng
+   namespace khác và đã được owner phê duyệt.
+4. Revert workload về digest đã xác minh nếu lỗi thuộc release image.
+5. Không tạo allow-all bypass cluster-wide.
+6. Lưu incident timeline, Git revision và output kiểm chứng.
 
 ## Hệ quả
 

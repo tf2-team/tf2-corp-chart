@@ -1,0 +1,93 @@
+Mandate 10 EV-13 - Production opt-in and enforcement
+Captured: 2026-07-29 (Asia/Bangkok)
+Cluster: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+Namespace: techx-corp-prod
+Chart PR: https://github.com/tf2-team/tf2-corp-chart/pull/370
+Main revision: 1606a7fd2fcd740a4c3aad128dcc175490ce2326
+
+PRECONDITIONS
+
+Argo applications:
+  supply-chain  Synced  Healthy
+  techx-corp    Synced  Healthy
+
+ClusterImagePolicies:
+  ecr-signature-policy               Ready=True
+  external-image-allowlist-policy    Ready=True
+
+Policy controller webhook:
+  Ready 1/1, Up-to-date 1, Available 1
+
+PRODUCTION OPT-IN
+
+Command:
+  kubectl label namespace techx-corp-prod policy.sigstore.dev/include=true --overwrite
+
+Result:
+  namespace/techx-corp-prod labeled
+  policy.sigstore.dev/include=true
+
+SERVER-SIDE DRY-RUN RESULTS
+
+1. Signed internal Accounting
+   Expected: ALLOW
+   Actual:   ALLOW (exit 0)
+
+2. Unsigned internal Accounting
+   Expected: DENY
+   Actual:   DENY (exit 1)
+   Policy:   ecr-signature-policy
+   Reason:   no matching attestations
+
+3. Allowlisted external Linkerd
+   Expected: ALLOW
+   Actual:   ALLOW (exit 0)
+
+4. Unlisted external registry.k8s.io/pause:3.10
+   Expected: DENY
+   Actual:   DENY (exit 1)
+   Reason:   no matching policies
+
+All tests used:
+  kubectl apply --dry-run=server
+
+No evidence Pod was created.
+
+LIVE WORKLOAD EVIDENCE
+
+Production opt-in managedFields timestamp:
+  manager:   kubectl-label
+  operation: Update
+  time:      2026-07-29T03:52:17Z
+
+The scheduled runtime-hardening inventory created a real Pod after opt-in:
+  Pod:      runtime-hardening-inventory-29754970-wn5z5
+  Created:  2026-07-29T04:10:00Z
+  Started:  2026-07-29T04:10:05Z
+  Finished: 2026-07-29T04:10:11Z
+  Image:    public.ecr.aws/docker/library/python:3.13.5-alpine3.22@sha256:37b14db89f587f9eaa890e4a442a3fe55db452b69cca1403cc730bd0fbdc8aaf
+  Phase:    Failed
+  Exit:     1
+
+The Pod passed admission, was scheduled and ran the scanner. Exit 1 came from
+the scanner finding runtime-hardening violations on the orphan psql-check Pod;
+it was not an admission denial.
+
+POST-CHECK
+
+  supply-chain  Synced  Healthy
+  techx-corp    Synced  Healthy
+
+All Production Deployments retained their desired and available replica counts.
+No recent unexpected policy.sigstore.dev admission-denial event was found.
+
+KNOWN OPERATIONAL NOTE
+
+The Production opt-in label is currently an explicit live operational control.
+It is not declared in templates/linkerd-namespace-inject.yaml. This avoids
+changing the shared chart and avoids assuming cross-Application readiness order.
+If the namespace or cluster is recreated, revalidate both policies and reapply
+the label.
+
+Emergency opt-out:
+  kubectl label namespace techx-corp-prod policy.sigstore.dev/include-
