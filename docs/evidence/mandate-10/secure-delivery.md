@@ -733,6 +733,7 @@ Evidence:
 | Runtime traceability | Accounting Pod → digest → workflow/commit/PR → KMS/SBOM/provenance | EV-09 |
 | Production image inventory và allowlist | Container/initContainer/sidecar đã kiểm kê; 17 managed external repositories | EV-11 |
 | Current release ECR integrity | Runtime digest và `.sig/.att` `24/24`; lifecycle preview không đánh dấu current digest | EV-04, EV-12 |
+| Webhook HA rollout | 3/3 Ready, ba node, hai AZ, ba ready endpoints, PDB `minAvailable: 2` | EV-16 — raw transcript pending |
 | Required merge checks | Stable context trên cả ba repo, ruleset bắt buộc context, PR đỏ bị chặn bởi failed check | **ADMIN PENDING — EV-15** |
 | Image/IaC/SAST/secret gates | Image Trivy trước push; release/sign/promotion phụ thuộc Trivy IaC, Semgrep và TruffleHog | EV-01, EV-15 |
 | Action và base-image pinning | Third-party actions pin commit SHA; external Docker `FROM` pin digest | **PR OPEN — EV-15** |
@@ -751,10 +752,9 @@ Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`
 - infra `#154`: aggregate Terraform validation, TFLint, Checkov và plan cho
   development/production.
 
-Platform HEAD run `30425835764`, chart workflow-definition HEAD run
-`30424650674` và infra run `30424348766` đều đã PASS context
-`Mandate 10 required gate`. Các commit chart sau `d49dbe7` chỉ cập nhật
-evidence/ADR; workflow gate không đổi và tiếp tục được CI chạy lại trên PR.
+Platform HEAD run `30425835764`, Chart captured HEAD `63b7220` run
+`30432108931` và infra run `30424348766` đều đã PASS context
+`Mandate 10 required gate`.
 
 Ruleset `mandate-10-main-protection` đang active trên cả ba default branch nhưng
 chưa chứa `required_status_checks`. Các update request bằng credential hiện tại
@@ -776,3 +776,28 @@ Raw evidence: `raw/15-required-gates-pinning-selective-build.txt`.
 
 Mandate 10 chỉ chuyển sang **PASS** sau khi EV-15 hoàn tất và Go/No-Go liên team
 được ghi nhận.
+
+## 14. EV-16 — Policy Controller webhook HA rollout
+
+Trạng thái: **ROLLOUT PASS — RAW TERMINAL TRANSCRIPT PENDING**
+
+PR chart `#375`, merge commit `834dc67`, tăng webhook từ một lên ba replica,
+đặt trên critical nodes, tăng resource requests/limits, tăng PDB
+`minAvailable` từ default `1` lên `2`, tăng hostname anti-affinity từ soft lên
+hard và ưu tiên phân bố theo zone. Đây là hardening tăng khả năng chịu một Pod
+hoặc node disruption; PDB không phải cơ chế quorum.
+
+Live verification summary ghi nhận:
+
+- Argo `supply-chain`: `Synced / Healthy`;
+- Deployment: `3/3 Ready`;
+- ba Pod ở ba node khác nhau, phân bố `us-east-1a` và `us-east-1b`;
+- restart `0`;
+- Service có ba ready endpoints;
+- PDB `minAvailable: 2`, cho phép một disruption.
+
+Kết quả này chứng minh rollout, readiness và topology đạt. Nó không chứng minh
+mọi admission timeout/probe failure đã bị loại bỏ vì chưa có burst/load retest
+sau rollout.
+
+Raw summary: `raw/16-policy-controller-webhook-ha.txt`.

@@ -16,11 +16,12 @@ Platform:
 
 Chart:
 - PR: https://github.com/tf2-team/tf2-corp-chart/pull/372
-- HEAD: d49dbe7236b0c1125a1120fbec096255422cbd8e
-- Base: 20122db6c14c4e9c13ddc33e6a7cb1da4642764e
+- Captured PR HEAD: 63b7220cbb8f462adc9256dcd93a2ad50f7b5b39
+- Captured base: 834dc6745b6f1b6a29dbede02b17f9889f0b077d
 - Mergeable: MERGEABLE
 - Review: REVIEW_REQUIRED
-- HEAD run: https://github.com/tf2-team/tf2-corp-chart/actions/runs/30424650674
+- Captured HEAD run:
+  https://github.com/tf2-team/tf2-corp-chart/actions/runs/30432108931
 - Mandate 10 required gate: PASS
 
 Infra:
