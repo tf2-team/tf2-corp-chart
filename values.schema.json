@@ -488,15 +488,48 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean" },
-        "runId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{5,62}$", "maxLength": 63 },
-        "evidenceId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{5,62}$", "maxLength": 63 },
-        "sourceRevision": { "type": "string", "pattern": "^[0-9A-Za-z._-]{7,63}$", "maxLength": 63 },
-        "targetZone": { "type": "string", "enum": ["us-east-1a", "us-east-1b"] },
-        "replicas": { "type": "integer", "minimum": 0 },
-        "resources": { "type": "object" }
+        "enabled": {
+          "type": "boolean"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{5,62}$",
+          "maxLength": 63
+        },
+        "evidenceId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{5,62}$",
+          "maxLength": 63
+        },
+        "sourceRevision": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z._-]{7,63}$",
+          "maxLength": 63
+        },
+        "targetZone": {
+          "type": "string",
+          "enum": [
+            "us-east-1a",
+            "us-east-1b"
+          ]
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resources": {
+          "type": "object"
+        }
       },
-      "required": ["enabled", "runId", "evidenceId", "sourceRevision", "targetZone", "replicas", "resources"]
+      "required": [
+        "enabled",
+        "runId",
+        "evidenceId",
+        "sourceRevision",
+        "targetZone",
+        "replicas",
+        "resources"
+      ]
     }
   },
   "required": [
@@ -868,6 +901,82 @@
             },
             "prometheusBaseUrl": {
               "type": "string"
+            },
+            "selfHeal": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "executorUrl": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "executorAccount": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "policyId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "policyExpiresAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "verificationDeadlineSeconds": {
+                  "type": "integer",
+                  "minimum": 30
+                },
+                "minFreshSamples": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "consecutivePasses": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "failureSamples": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "auth": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "existingSecret": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "tokenKey": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "approvalIdKey": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "existingSecret",
+                    "tokenKey",
+                    "approvalIdKey"
+                  ]
+                }
+              },
+              "required": [
+                "enabled",
+                "executorUrl",
+                "executorAccount",
+                "policyId",
+                "policyExpiresAt",
+                "verificationDeadlineSeconds",
+                "minFreshSamples",
+                "consecutivePasses",
+                "failureSamples",
+                "auth"
+              ]
             }
           },
           "required": [
@@ -875,7 +984,8 @@
             "policyMode",
             "autoRunEnabled",
             "autoRunIntervalSeconds",
-            "prometheusBaseUrl"
+            "prometheusBaseUrl",
+            "selfHeal"
           ]
         },
         "resources": {
@@ -982,11 +1092,16 @@
             "tokenKey": {
               "type": "string",
               "minLength": 1
+            },
+            "approvalIdKey": {
+              "type": "string",
+              "minLength": 1
             }
           },
           "required": [
             "existingSecret",
-            "tokenKey"
+            "tokenKey",
+            "approvalIdKey"
           ]
         },
         "persistence": {
@@ -1045,6 +1160,10 @@
                 "false",
                 "true"
               ]
+            },
+            "cooldownSeconds": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "required": [
@@ -1052,7 +1171,8 @@
             "storePath",
             "policyId",
             "policyExpiresAt",
-            "allowLiveApply"
+            "allowLiveApply",
+            "cooldownSeconds"
           ]
         },
         "networkPolicy": {
@@ -1671,7 +1791,7 @@
         },
         "name": {
           "type": "string",
-          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames \u2026/<component> to \u2026/<name>."
+          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames …/<component> to …/<name>."
         },
         "tag": {
           "type": "string"
@@ -1685,7 +1805,7 @@
         },
         "digest": {
           "type": "string",
-          "description": "Immutable image digest pin (sha256:\u2026). When set, templates render image@digest instead of :tag. Written under service-digest/ by platform CI.",
+          "description": "Immutable image digest pin (sha256:…). When set, templates render image@digest instead of :tag. Written under service-digest/ by platform CI.",
           "pattern": "^sha256:[0-9a-f]{64}$"
         }
       },
