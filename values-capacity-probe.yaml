@@ -1,0 +1,17 @@
+# Resting desired state. Approved probe windows temporarily change these values through Git.
+capacityProbe:
+  enabled: false
+  runId: disabled
+  evidenceId: disabled
+  sourceRevision: pending
+  targetZone: us-east-1b
+  replicas: 2
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+# Change trail: @hungxqt - 2026-07-29 - Keep the production capacity probe disabled outside approved evidence windows.

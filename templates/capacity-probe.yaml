@@ -8,18 +8,29 @@ metadata:
     app.kubernetes.io/name: capacity-probe
     app.kubernetes.io/component: karpenter-capacity-proof
     app.kubernetes.io/managed-by: Helm
+    mandate21.techx.io/run-id: {{ .Values.capacityProbe.runId | quote }}
+    mandate21.techx.io/evidence-id: {{ .Values.capacityProbe.evidenceId | quote }}
+    mandate21.techx.io/source-revision: {{ .Values.capacityProbe.sourceRevision | quote }}
 spec:
   replicas: {{ .Values.capacityProbe.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: capacity-probe
+      mandate21.techx.io/run-id: {{ .Values.capacityProbe.runId | quote }}
   template:
     metadata:
       labels:
         app.kubernetes.io/name: capacity-probe
         app.kubernetes.io/component: karpenter-capacity-proof
+        mandate21.techx.io/run-id: {{ .Values.capacityProbe.runId | quote }}
+        mandate21.techx.io/evidence-id: {{ .Values.capacityProbe.evidenceId | quote }}
+        mandate21.techx.io/source-revision: {{ .Values.capacityProbe.sourceRevision | quote }}
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       nodeSelector:
         topology.kubernetes.io/zone: {{ .Values.capacityProbe.targetZone | quote }}
         karpenter.sh/capacity-type: "on-demand"
@@ -43,4 +54,4 @@ spec:
               drop:
                 - ALL
 {{- end }}
-# Change trail: @hungxqt - 2026-07-29 - Create capacity-probe Deployment template for Karpenter AZ failover proof.
+# Change trail: @hungxqt - 2026-07-29 - Hardened and labeled the capacity probe for revision-bound evidence.

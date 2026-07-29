@@ -488,20 +488,15 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "targetZone": {
-          "type": "string"
-        },
-        "replicas": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "resources": {
-          "type": "object"
-        }
-      }
+        "enabled": { "type": "boolean" },
+        "runId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{5,62}$", "maxLength": 63 },
+        "evidenceId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{5,62}$", "maxLength": 63 },
+        "sourceRevision": { "type": "string", "pattern": "^[0-9A-Za-z._-]{7,63}$", "maxLength": 63 },
+        "targetZone": { "type": "string", "enum": ["us-east-1a", "us-east-1b"] },
+        "replicas": { "type": "integer", "minimum": 0 },
+        "resources": { "type": "object" }
+      },
+      "required": ["enabled", "runId", "evidenceId", "sourceRevision", "targetZone", "replicas", "resources"]
     }
   },
   "required": [
