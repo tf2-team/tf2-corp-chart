@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/network-containment.yml"
       - "templates/networkpolicy.yaml"
+      - "templates/aiops.yaml"
+      - "templates/aiops-live-executor.yaml"
       - "templates/egress-proxy.yaml"
       - "templates/_objects.tpl"
       - "templates/component.yaml"
@@ -17,11 +19,16 @@ on:
       - "gitops/linkerd/linkerd-control-plane.yaml"
       - "values.schema.json"
       - "values*.yaml"
+      - "values-aiops-live-executor.yaml"
+      - "secrets-chart/**"
+      - "gitops/clusters/prod/application.yaml"
   push:
     branches: [main]
     paths:
       - ".github/workflows/network-containment.yml"
       - "templates/networkpolicy.yaml"
+      - "templates/aiops.yaml"
+      - "templates/aiops-live-executor.yaml"
       - "templates/egress-proxy.yaml"
       - "templates/_objects.tpl"
       - "templates/component.yaml"
@@ -34,6 +41,9 @@ on:
       - "gitops/linkerd/linkerd-control-plane.yaml"
       - "values.schema.json"
       - "values*.yaml"
+      - "values-aiops-live-executor.yaml"
+      - "secrets-chart/**"
+      - "gitops/clusters/prod/application.yaml"
 
 permissions:
   contents: read
@@ -58,6 +68,52 @@ jobs:
           helm dependency build .
       - name: Helm lint
         run: helm lint . -f values.yaml -f values-public-alb.yaml -f values-prod.yaml
+      - name: Verify AIOps self-heal chart contract
+        run: |
+          set -euo pipefail
+          helm lint . \
+            -f values.yaml -f values-public-alb.yaml -f values-prod.yaml \
+            -f values-aiops-live-executor.yaml
+
+          if helm template techx-corp . \
+            --namespace techx-corp-prod \
+            -f values.yaml -f values-public-alb.yaml -f values-prod.yaml \
+            -f values-aiops-live-executor.yaml \
+            --set aiops.config.selfHeal.enabled=true >/tmp/aiops-invalid.yaml 2>/tmp/aiops-invalid.err; then
+            echo "::error::self-heal rendered without live-approved policy and live apply"
+            exit 1
+          fi
+
+          helm template techx-corp . \
+            --namespace techx-corp-prod \
+            -f values.yaml -f values-public-alb.yaml -f values-prod.yaml \
+            -f values-aiops-live-executor.yaml \
+            --set aiops.config.policyMode=live-approved \
+            --set aiops.config.selfHeal.enabled=true \
+            --set aiopsLiveExecutor.config.allowLiveApply=true \
+            >/tmp/aiops-live.yaml
+
+          yq -e 'select(.kind == "Deployment" and .metadata.name == "aiops-runtime") |
+            .spec.template.spec.containers[0].env[] |
+            select(.name == "AIOPS_SELF_HEAL_APPROVAL_ID")' /tmp/aiops-live.yaml >/dev/null
+          yq -e 'select(.kind == "Deployment" and .metadata.name == "aiops-live-executor") |
+            .spec.template.spec.containers[0].env[] |
+            select(.name == "AIOPS_LIVE_EXECUTOR_APPROVAL_ID")' /tmp/aiops-live.yaml >/dev/null
+          yq -e 'select(.kind == "Role" and .metadata.name == "aiops-live-executor-deployment-writer") |
+            .rules[] | select(.resources[] == "horizontalpodautoscalers")' /tmp/aiops-live.yaml >/dev/null
+          yq -e 'select(.kind == "NetworkPolicy" and .metadata.name == "aiops-runtime") |
+            .spec.egress[] | select(.to[].podSelector.matchLabels."app.kubernetes.io/name" == "aiops-live-executor")' \
+            /tmp/aiops-live.yaml >/dev/null
+          yq -e 'select(.kind == "NetworkPolicy" and .metadata.name == "aiops-live-executor") |
+            .spec.egress[] | select(.ports[].port == 443)' /tmp/aiops-live.yaml >/dev/null
+
+          helm lint ./secrets-chart
+          helm template techx-corp-secrets ./secrets-chart \
+            --namespace techx-corp-prod \
+            --set aiopsLiveExecutor.approvalEnabled=true \
+            >/tmp/aiops-secrets.yaml
+          yq -e 'select(.kind == "ExternalSecret" and .metadata.name == "aiops-live-executor-token") |
+            .spec.data[] | select(.secretKey == "approval-id")' /tmp/aiops-secrets.yaml >/dev/null
       - name: Verify three-state containment manifests
         shell: pwsh
         run: ./tests/mandate17/verify-rendered-manifests.ps1

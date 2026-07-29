@@ -461,6 +461,20 @@ aiops:
     autoRunEnabled: true
     autoRunIntervalSeconds: 60
     prometheusBaseUrl: http://prometheus:9090
+    selfHeal:
+      enabled: false
+      executorUrl: http://aiops-live-executor:8080
+      executorAccount: aiops-runtime
+      policyId: phase3-scale-policy-v1
+      policyExpiresAt: "2026-08-31T23:59:59Z"
+      verificationDeadlineSeconds: 300
+      minFreshSamples: 2
+      consecutivePasses: 2
+      failureSamples: 2
+      auth:
+        existingSecret: aiops-live-executor-token
+        tokenKey: token
+        approvalIdKey: approval-id
   resources:
     requests:
       cpu: 100m
@@ -492,6 +506,7 @@ aiopsLiveExecutor:
   auth:
     existingSecret: aiops-live-executor-token
     tokenKey: token
+    approvalIdKey: approval-id
   persistence:
     enabled: true
     existingClaim: ""
@@ -504,6 +519,7 @@ aiopsLiveExecutor:
     policyId: phase3-scale-policy-v1
     policyExpiresAt: "2026-08-31T23:59:59Z"
     allowLiveApply: "false"
+    cooldownSeconds: 900
   networkPolicy:
     enabled: true
     allowFrom:

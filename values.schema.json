@@ -725,6 +725,43 @@
             },
             "prometheusBaseUrl": {
               "type": "string"
+            },
+            "selfHeal": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "executorUrl": { "type": "string", "minLength": 1 },
+                "executorAccount": { "type": "string", "minLength": 1 },
+                "policyId": { "type": "string", "minLength": 1 },
+                "policyExpiresAt": { "type": "string", "minLength": 1 },
+                "verificationDeadlineSeconds": { "type": "integer", "minimum": 30 },
+                "minFreshSamples": { "type": "integer", "minimum": 1 },
+                "consecutivePasses": { "type": "integer", "minimum": 1 },
+                "failureSamples": { "type": "integer", "minimum": 1 },
+                "auth": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "existingSecret": { "type": "string", "minLength": 1 },
+                    "tokenKey": { "type": "string", "minLength": 1 },
+                    "approvalIdKey": { "type": "string", "minLength": 1 }
+                  },
+                  "required": ["existingSecret", "tokenKey", "approvalIdKey"]
+                }
+              },
+              "required": [
+                "enabled",
+                "executorUrl",
+                "executorAccount",
+                "policyId",
+                "policyExpiresAt",
+                "verificationDeadlineSeconds",
+                "minFreshSamples",
+                "consecutivePasses",
+                "failureSamples",
+                "auth"
+              ]
             }
           },
           "required": [
@@ -732,7 +769,8 @@
             "policyMode",
             "autoRunEnabled",
             "autoRunIntervalSeconds",
-            "prometheusBaseUrl"
+            "prometheusBaseUrl",
+            "selfHeal"
           ]
         },
         "resources": {
@@ -811,9 +849,10 @@
           "additionalProperties": false,
           "properties": {
             "existingSecret": { "type": "string", "minLength": 1 },
-            "tokenKey": { "type": "string", "minLength": 1 }
+            "tokenKey": { "type": "string", "minLength": 1 },
+            "approvalIdKey": { "type": "string", "minLength": 1 }
           },
-          "required": ["existingSecret", "tokenKey"]
+          "required": ["existingSecret", "tokenKey", "approvalIdKey"]
         },
         "persistence": {
           "type": "object",
@@ -838,9 +877,10 @@
             "storePath": { "type": "string" },
             "policyId": { "type": "string", "const": "phase3-scale-policy-v1" },
             "policyExpiresAt": { "type": "string" },
-            "allowLiveApply": { "type": "string", "enum": ["false", "true"] }
+            "allowLiveApply": { "type": "string", "enum": ["false", "true"] },
+            "cooldownSeconds": { "type": "integer", "minimum": 0 }
           },
-          "required": ["environment", "storePath", "policyId", "policyExpiresAt", "allowLiveApply"]
+          "required": ["environment", "storePath", "policyId", "policyExpiresAt", "allowLiveApply", "cooldownSeconds"]
         },
         "networkPolicy": {
           "type": "object",

@@ -8,6 +8,15 @@
 {{- with .Values.aiops.image.digest }}
 {{- $imageRef = printf "%s@%s" $repository . }}
 {{- end }}
+{{- if and .Values.aiops.config.selfHeal.enabled (ne .Values.aiops.config.policyMode "live-approved") }}
+{{- fail "aiops.config.selfHeal.enabled=true requires aiops.config.policyMode=live-approved" }}
+{{- end }}
+{{- if and .Values.aiops.config.selfHeal.enabled (not .Values.aiopsLiveExecutor.enabled) }}
+{{- fail "aiops.config.selfHeal.enabled=true requires aiopsLiveExecutor.enabled=true" }}
+{{- end }}
+{{- if and .Values.aiops.config.selfHeal.enabled (ne .Values.aiopsLiveExecutor.config.allowLiveApply "true") }}
+{{- fail "aiops.config.selfHeal.enabled=true requires aiopsLiveExecutor.config.allowLiveApply=true" }}
+{{- end }}
 {{- if .Values.aiops.serviceAccount.create }}
 apiVersion: v1
 kind: ServiceAccount
@@ -133,6 +142,36 @@ spec:
               value: {{ .Values.aiops.config.autoRunIntervalSeconds | quote }}
             - name: AIOPS_PROMETHEUS_BASE_URL
               value: {{ .Values.aiops.config.prometheusBaseUrl | quote }}
+            - name: AIOPS_SELF_HEAL_ENABLED
+              value: {{ .Values.aiops.config.selfHeal.enabled | quote }}
+            - name: AIOPS_SELF_HEAL_POLICY_ID
+              value: {{ .Values.aiops.config.selfHeal.policyId | quote }}
+            - name: AIOPS_SELF_HEAL_POLICY_EXPIRES_AT
+              value: {{ .Values.aiops.config.selfHeal.policyExpiresAt | quote }}
+            - name: AIOPS_SELF_HEAL_VERIFICATION_DEADLINE_SECONDS
+              value: {{ .Values.aiops.config.selfHeal.verificationDeadlineSeconds | quote }}
+            - name: AIOPS_SELF_HEAL_MIN_FRESH_SAMPLES
+              value: {{ .Values.aiops.config.selfHeal.minFreshSamples | quote }}
+            - name: AIOPS_SELF_HEAL_CONSECUTIVE_PASSES
+              value: {{ .Values.aiops.config.selfHeal.consecutivePasses | quote }}
+            - name: AIOPS_SELF_HEAL_FAILURE_SAMPLES
+              value: {{ .Values.aiops.config.selfHeal.failureSamples | quote }}
+            {{- if .Values.aiops.config.selfHeal.enabled }}
+            - name: AIOPS_LIVE_EXECUTOR_URL
+              value: {{ .Values.aiops.config.selfHeal.executorUrl | quote }}
+            - name: AIOPS_LIVE_EXECUTOR_ACCOUNT
+              value: {{ .Values.aiops.config.selfHeal.executorAccount | quote }}
+            - name: AIOPS_LIVE_EXECUTOR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aiops.config.selfHeal.auth.existingSecret | quote }}
+                  key: {{ .Values.aiops.config.selfHeal.auth.tokenKey | quote }}
+            - name: AIOPS_SELF_HEAL_APPROVAL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aiops.config.selfHeal.auth.existingSecret | quote }}
+                  key: {{ .Values.aiops.config.selfHeal.auth.approvalIdKey | quote }}
+            {{- end }}
             - name: AIOPS_STATE_STORE_PATH
               value: /app/state/aiops.sqlite3
             - name: AIOPS_REMEDIATION_AUDIT_PATH
