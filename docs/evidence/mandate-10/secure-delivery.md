@@ -1,6 +1,7 @@
 # Mandate 10 — Secure Delivery, Image Integrity & KMS Cosign Evidence Report
 
-- Trạng thái: **IN PROGRESS — TECHNICAL CONTROLS PASS; APPROVAL PENDING**
+- Trạng thái: **IN PROGRESS — SUPPLY-CHAIN/ADMISSION CONTROLS PASS;
+  MERGE ENFORCEMENT AND APPROVAL PENDING**
 - Ngày rà soát gần nhất: 2026-07-29
 - Phạm vi: image ứng dụng do đội ngũ tự xây dựng bằng `tf2-corp-platform` và lưu
   trong `techx-prod-corp/**`
@@ -8,7 +9,9 @@
   build
 
 > External allowlist đã được deploy và Production đã opt-in thành công. Báo cáo
-> chưa chuyển sang `PASS` cho đến khi có xác nhận Go/No-Go liên team.
+> chưa chuyển sang `PASS`: required status check đang chờ repository admin gắn
+> context ổn định vào ba ruleset `main`, sau đó phải thu bằng chứng một PR cố
+> tình đỏ bị chặn merge. Go/No-Go liên team chỉ diễn ra sau bước này.
 
 ## 1. Phạm vi và tiêu chí nghiệm thu
 
@@ -24,6 +27,9 @@ dụng do đội ngũ tự xây dựng:
    không có chứng thư hợp lệ.
 5. Có thể truy vết từ Pod đang chạy về digest, CI run, Git commit, PR/reviewer,
    chữ ký, SBOM và provenance.
+6. GitHub Actions và external Docker base image được pin bằng SHA/digest.
+7. Build và promotion chỉ áp dụng cho service thay đổi; full rebuild là đường
+   hẹp, có trigger hoặc lý do vận hành rõ ràng.
 
 Các image do nhà cung cấp bên ngoài phát hành, như BusyBox, Envoy, Postgres hoặc
 Valkey, không nằm trong yêu cầu digest, KMS signature, SBOM hay provenance của
@@ -49,6 +55,10 @@ external allowlist tiếp tục bị từ chối.
 | Chuyển `failurePolicy: Fail` | DONE | Argo Synced/Healthy; signed ALLOW và unsigned DENY đã retest dưới fail-closed |
 | Pod supply-chain traceability | DONE | EV-09 `PASS` |
 | Live Production admission | PASS | Signed internal canary chạy thật; hai CREATE request không hợp lệ bị DENY |
+| Stable required-check contexts | PR OPEN | Platform `#128`, chart `#372`, infra `#154`; cả ba gate đã PASS |
+| Default-branch required checks | ADMIN PENDING | Ruleset active chưa require context; update request bằng credential hiện tại trả HTTP `404`, ruleset không đổi |
+| Action/base-image pinning | PR OPEN | Platform `#128` pin hai action cuối; inventory không còn third-party action tag trôi |
+| Selective build/deploy | PASS | `BUILD_SET`, selective digest promotion; full/requested rebuild bắt buộc lý do |
 
 ## 3. Evidence đã thu thập
 
@@ -723,6 +733,71 @@ Evidence:
 | Runtime traceability | Accounting Pod → digest → workflow/commit/PR → KMS/SBOM/provenance | EV-09 |
 | Production image inventory và allowlist | Container/initContainer/sidecar đã kiểm kê; 17 managed external repositories | EV-11 |
 | Current release ECR integrity | Runtime digest và `.sig/.att` `24/24`; lifecycle preview không đánh dấu current digest | EV-04, EV-12 |
+| Webhook HA rollout | 3/3 Ready, ba node, hai AZ, ba ready endpoints, PDB `minAvailable: 2` | EV-16 — raw transcript pending |
+| Required merge checks | Stable context trên cả ba repo, ruleset bắt buộc context, PR đỏ bị chặn bởi failed check | **ADMIN PENDING — EV-15** |
+| Image/IaC/SAST/secret gates | Image Trivy trước push; release/sign/promotion phụ thuộc Trivy IaC, Semgrep và TruffleHog | EV-01, EV-15 |
+| Action và base-image pinning | Third-party actions pin commit SHA; external Docker `FROM` pin digest | **PR OPEN — EV-15** |
+| Selective build và promotion | Chỉ build/scan/promote service đổi; full rebuild hẹp và có lý do | EV-15 |
 
-Mandate 10 chuyển sang **PASS** sau khi Go/No-Go liên team được ghi nhận và
-evidence sau opt-in được merge vào `main`.
+## 13. EV-15 — Required checks, pinning và selective delivery
+
+Trạng thái: **PARTIAL — ADMIN ACTION REQUIRED**
+
+Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`:
+
+- platform `#128`: aggregate toàn bộ tests, PR image build/Trivy, Trivy IaC,
+  Semgrep và TruffleHog; đồng thời pin hai action `@v4` cuối cùng;
+- chart `#372`: luôn build Helm dependencies, lint và render Production với
+  digest overlays, từ chối internal image còn dùng tag;
+- infra `#154`: aggregate Terraform validation, TFLint, Checkov và plan cho
+  development/production.
+
+Platform HEAD run `30425835764`, Chart captured HEAD `63b7220` run
+`30432108931` và infra run `30424348766` đều đã PASS context
+`Mandate 10 required gate`.
+
+Ruleset `mandate-10-main-protection` đang active trên cả ba default branch nhưng
+chưa chứa `required_status_checks`. Các update request bằng credential hiện tại
+đều trả HTTP `404`; ruleset chưa thay đổi và cần repository administrator xử
+lý. Phản hồi này phù hợp với thiếu quyền nhưng không được dùng để khẳng định
+permission là nguyên nhân duy nhất.
+
+Repository admin phải:
+
+1. merge ba PR sau review và CI xanh;
+2. thêm required context `Mandate 10 required gate` vào cả ba ruleset;
+3. bật strict branch update;
+4. mở một negative PR nhỏ trên từng repo, cố tình làm gate tương ứng đỏ;
+5. chụp Ruleset/PR UI của cả ba repo, chứng minh merge bị chặn bởi failed
+   required check;
+6. đóng cả ba negative PR mà không merge và lưu raw evidence.
+
+Raw evidence: `raw/15-required-gates-pinning-selective-build.txt`.
+
+Mandate 10 chỉ chuyển sang **PASS** sau khi EV-15 hoàn tất và Go/No-Go liên team
+được ghi nhận.
+
+## 14. EV-16 — Policy Controller webhook HA rollout
+
+Trạng thái: **ROLLOUT PASS — RAW TERMINAL TRANSCRIPT PENDING**
+
+PR chart `#375`, merge commit `834dc67`, tăng webhook từ một lên ba replica,
+đặt trên critical nodes, tăng resource requests/limits, tăng PDB
+`minAvailable` từ default `1` lên `2`, tăng hostname anti-affinity từ soft lên
+hard và ưu tiên phân bố theo zone. Đây là hardening tăng khả năng chịu một Pod
+hoặc node disruption; PDB không phải cơ chế quorum.
+
+Live verification summary ghi nhận:
+
+- Argo `supply-chain`: `Synced / Healthy`;
+- Deployment: `3/3 Ready`;
+- ba Pod ở ba node khác nhau, phân bố `us-east-1a` và `us-east-1b`;
+- restart `0`;
+- Service có ba ready endpoints;
+- PDB `minAvailable: 2`, cho phép một disruption.
+
+Kết quả này chứng minh rollout, readiness và topology đạt. Nó không chứng minh
+mọi admission timeout/probe failure đã bị loại bỏ vì chưa có burst/load retest
+sau rollout.
+
+Raw summary: `raw/16-policy-controller-webhook-ha.txt`.

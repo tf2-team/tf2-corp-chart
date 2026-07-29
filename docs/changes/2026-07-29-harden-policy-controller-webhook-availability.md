@@ -11,10 +11,11 @@ During a recent `techx-corp` release sync, admission requests saturated the sing
 ## Before
 
 * **Topology:** 1 webhook replica (`replicaCount: 1`).
-* **Node placement:** Default node selector and no explicit affinity rules.
+* **Node placement:** Không có critical node selector; chart đã có soft
+  hostname anti-affinity mặc định.
 * **Priority:** Default pod priority.
 * **Resources:** Requested CPU `100m`, memory `128Mi`; Limited CPU `200m`, memory `512Mi`.
-* **PDB:** Disabled.
+* **PDB:** Đã bật theo chart default với `minAvailable: 1`.
 * **Metrics Annotations:** Omitted from `valuesObject`.
 * **Behavior under load:** Single-replica bottleneck during concurrent image admission checks leading to probe timeouts and restart loops.
 
@@ -32,8 +33,15 @@ During a recent `techx-corp` release sync, admission requests saturated the sing
 ## Technical Design Decisions
 
 * **Fail-Closed Retention:** Maintained `failurePolicy: Fail` to enforce zero-trust container security contracts. Temporary enforcement bypasses (e.g., `failurePolicy: Ignore`) were rejected to avoid admitting unverified artifacts into production.
-* **GitOps-Only Recovery:** Managed all HA parameters directly within `supply-chain-application.yaml` `valuesObject` so Argo CD automatically reconciles state without manual `kubectl` or `helm` mutating commands.
-* **Strict Anti-Affinity & PDB:** Required hard pod anti-affinity across hostnames to guarantee that a single node failure cannot compromise more than one webhook replica. Set PDB `minAvailable: 2` to preserve quorum during node maintenance or rolling updates.
+* **GitOps-Managed Configuration:** HA parameters are managed in
+  `supply-chain-application.yaml` and reconciled by Argo CD. Emergency
+  admission recovery may use the documented `kubectl` command to remove the
+  Production namespace opt-in label; durable configuration changes still go
+  through GitOps.
+* **Strict Anti-Affinity & PDB:** Tăng soft hostname preference mặc định thành
+  hard separation để giảm nguy cơ nhiều replica cùng mất theo một node. Tăng
+  PDB từ `minAvailable: 1` lên `2` để cho phép một voluntary disruption khi ba
+  replica healthy; PDB không phải quorum.
 
 ## Implementation Details
 
@@ -42,7 +50,8 @@ During a recent `techx-corp` release sync, admission requests saturated the sing
    - Merged `webhook` settings for `replicaCount: 3`, `priorityClass: system-cluster-critical`, CPU/memory requests (`250m`/`256Mi`) and limits (`1`/`512Mi`), hostname and zone pod anti-affinity, PDB (`minAvailable: 2`), and Prometheus scrape annotations.
    - Retained chart version `0.10.5`, `failurePolicy: Fail`, IRSA annotations, and COSIGN_REPOSITORY environment configuration.
 2. Updated `docs/adr/ADR-M10-secure-delivery-kms-cosign.md`:
-   - Documented the 3-replica HA architecture, critical node placement, PDB quorum requirements, and GitOps-only recovery posture under accepted design decisions.
+   - Documented the 3-replica HA architecture, critical node placement,
+     strengthened PDB behavior and GitOps-managed configuration.
 3. Added file change records and change trail comments across all modified files.
 
 ## Files Changed
@@ -51,7 +60,9 @@ During a recent `techx-corp` release sync, admission requests saturated the sing
 * `gitops/clusters/prod/supply-chain-application.yaml` — Configured HA valuesObject (3 replicas, critical node selector, system-cluster-critical priority, anti-affinity, PDB, Prometheus metrics annotations).
 
 **Documentation:**
-* `docs/adr/ADR-M10-secure-delivery-kms-cosign.md` — Updated ADR-M10 with 3-replica admission HA, critical-node placement, PDB behavior, and GitOps-only recovery principles.
+* `docs/adr/ADR-M10-secure-delivery-kms-cosign.md` — Updated ADR-M10 with
+  3-replica admission HA, critical-node placement, PDB behavior and
+  GitOps-managed durable configuration.
 * `docs/changes/2026-07-29-harden-policy-controller-webhook-availability.md` — This change record.
 
 ## Dependencies and Cross-Repository Impact
@@ -62,12 +73,12 @@ None. This change is fully self-contained within `techx-corp-chart`.
 
 | Dimension | Impact |
 |---|---|
-| **Application behavior** | Prevents admission timeouts and probe failure restarts during burst image verification calls. |
+| **Application behavior** | Giảm nguy cơ admission timeout và probe failure restart khi verification burst. |
 | **Infrastructure** | Increases requested resources from 1× 100m/128Mi to 3× 250m/256Mi on critical workload nodes. No new AWS resources required. |
 | **Deployment** | Reconciled via Argo CD `supply-chain` application without direct mutating helm/kubectl commands. |
-| **Performance** | Multi-replica load distribution eliminates log-saturation latency and liveness probe failures. |
+| **Performance** | Multi-replica load distribution giảm nguy cơ log-saturation latency và liveness probe failures; cần burst retest để định lượng. |
 | **Security** | Retains strict `failurePolicy: Fail` and zero-trust image admission enforcement. |
-| **Reliability** | Multi-node anti-affinity and PDB (`minAvailable: 2`) ensure continuous admission availability. |
+| **Reliability** | Multi-node anti-affinity và PDB (`minAvailable: 2`) tăng khả năng duy trì admission khi có một voluntary disruption; không bảo đảm availability tuyệt đối. |
 | **Cost** | Minimal increment in node capacity allocation for requested pod resources. |
 | **Backward compatibility** | Fully backward-compatible; existing signed workloads admit seamlessly. |
 | **Observability** | Exposes Prometheus metrics annotations on port 9090 (`/metrics`) across all 3 replicas. |
