@@ -67,30 +67,16 @@ data:
       [ -n "$legacy_indices" ] || return 0
 
       for index in $legacy_indices; do
-        request POST "/_plugins/_ism/change_policy/$index" \
-          '{"policy_id":"otel-logs-standard-retention","state":"hot","include":[{"state":"hot"}]}' >/dev/null
-      done
-
-      # change_policy is asynchronous.  Do not remove the legacy policies
-      # until every old index reports the replacement policy.
-      attempt=0
-      while :; do
-        pending=0
-        for index in $legacy_indices; do
-          metadata=$(curl -skS --connect-timeout 5 --max-time 20 -u "$auth" \
-            "$endpoint/_plugins/_ism/explain/$index")
-          if ! printf '%s' "$metadata" | grep -q '"policy_id":"otel-logs-standard-retention"'; then
-            pending=1
-            break
-          fi
-        done
-        [ "$pending" -eq 0 ] && return 0
-        attempt=$((attempt + 1))
-        if [ "$attempt" -ge 50 ]; then
-          echo 'Legacy OpenTelemetry log indexes did not migrate to the standard policy' >&2
-          exit 1
+        metadata=$(curl -skS --connect-timeout 5 --max-time 20 -u "$auth" \
+          "$endpoint/_plugins/_ism/explain/$index")
+        if ! printf '%s' "$metadata" | grep -q '"policy_id":"otel-logs-standard-retention"'; then
+          # change_policy is asynchronous and can keep an Argo PostSync hook
+          # waiting for several ISM cycles.  Remove then add is synchronous;
+          # the index data remains intact throughout this short reassignment.
+          request POST "/_plugins/_ism/remove/$index" >/dev/null
+          request POST "/_plugins/_ism/add/$index" \
+            '{"policy_id":"otel-logs-standard-retention"}' >/dev/null
         fi
-        sleep 5
       done
     }
 
