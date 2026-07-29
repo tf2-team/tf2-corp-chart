@@ -1,5 +1,11 @@
 # Báo cáo triển khai và kiểm thử Self-heal Executor
 
+> Historical guarded-image result only. The pinned digest in this report
+> predates the executor contract, HPA-safe scaling, approval, idempotency, and
+> readiness fixes on `feat/aio/excuter`. It must not be used as acceptance
+> evidence for a live rollout. Secure delivery must publish a new immutable
+> digest and the guarded/live dev test must be repeated before promotion.
+
 Ngày: 2026-07-29
 
 ## Tóm tắt

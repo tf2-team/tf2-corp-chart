@@ -59,6 +59,11 @@ rules:
     resourceNames:
       - {{ .Values.aiopsLiveExecutor.rbac.targetDeployment | quote }}
     verbs: ["get", "patch", "update"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    resourceNames:
+      - {{ .Values.aiopsLiveExecutor.rbac.targetDeployment | quote }}
+    verbs: ["get", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -144,11 +149,20 @@ spec:
               value: {{ .Values.aiopsLiveExecutor.config.policyExpiresAt | quote }}
             - name: AIOPS_LIVE_EXECUTOR_ALLOW_LIVE_APPLY
               value: {{ .Values.aiopsLiveExecutor.config.allowLiveApply | quote }}
+            - name: AIOPS_LIVE_EXECUTOR_COOLDOWN_SECONDS
+              value: {{ .Values.aiopsLiveExecutor.config.cooldownSeconds | quote }}
             - name: AIOPS_LIVE_EXECUTOR_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.aiopsLiveExecutor.auth.existingSecret | quote }}
                   key: {{ .Values.aiopsLiveExecutor.auth.tokenKey | quote }}
+            {{- if eq .Values.aiopsLiveExecutor.config.allowLiveApply "true" }}
+            - name: AIOPS_LIVE_EXECUTOR_APPROVAL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aiopsLiveExecutor.auth.existingSecret | quote }}
+                  key: {{ .Values.aiopsLiveExecutor.auth.approvalIdKey | quote }}
+            {{- end }}
             - name: AIOPS_KUBERNETES_API_URL
               value: https://kubernetes.default.svc
             - name: AIOPS_KUBERNETES_BEARER_TOKEN_FILE
@@ -239,6 +253,9 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   policyTypes:
     - Ingress
+    {{- if .Values.networkPolicy.enforceEgress }}
+    - Egress
+    {{- end }}
   ingress:
     - from:
         - podSelector:
@@ -252,6 +269,15 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.aiopsLiveExecutor.service.containerPort }}
+  {{- if .Values.networkPolicy.enforceEgress }}
+  egress:
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicy.kubernetesApiCidr }}
+      ports:
+        - protocol: TCP
+          port: 443
+  {{- end }}
 {{- end }}
 {{- end }}
 

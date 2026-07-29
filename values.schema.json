@@ -873,6 +873,82 @@
             },
             "prometheusBaseUrl": {
               "type": "string"
+            },
+            "selfHeal": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "executorUrl": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "executorAccount": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "policyId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "policyExpiresAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "verificationDeadlineSeconds": {
+                  "type": "integer",
+                  "minimum": 30
+                },
+                "minFreshSamples": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "consecutivePasses": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "failureSamples": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "auth": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "existingSecret": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "tokenKey": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "approvalIdKey": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "existingSecret",
+                    "tokenKey",
+                    "approvalIdKey"
+                  ]
+                }
+              },
+              "required": [
+                "enabled",
+                "executorUrl",
+                "executorAccount",
+                "policyId",
+                "policyExpiresAt",
+                "verificationDeadlineSeconds",
+                "minFreshSamples",
+                "consecutivePasses",
+                "failureSamples",
+                "auth"
+              ]
             }
           },
           "required": [
@@ -880,7 +956,8 @@
             "policyMode",
             "autoRunEnabled",
             "autoRunIntervalSeconds",
-            "prometheusBaseUrl"
+            "prometheusBaseUrl",
+            "selfHeal"
           ]
         },
         "resources": {
@@ -987,11 +1064,16 @@
             "tokenKey": {
               "type": "string",
               "minLength": 1
+            },
+            "approvalIdKey": {
+              "type": "string",
+              "minLength": 1
             }
           },
           "required": [
             "existingSecret",
-            "tokenKey"
+            "tokenKey",
+            "approvalIdKey"
           ]
         },
         "persistence": {
@@ -1050,6 +1132,10 @@
                 "false",
                 "true"
               ]
+            },
+            "cooldownSeconds": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "required": [
@@ -1057,7 +1143,8 @@
             "storePath",
             "policyId",
             "policyExpiresAt",
-            "allowLiveApply"
+            "allowLiveApply",
+            "cooldownSeconds"
           ]
         },
         "networkPolicy": {
@@ -1676,7 +1763,7 @@
         },
         "name": {
           "type": "string",
-          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames \u2026/<component> to \u2026/<name>."
+          "description": "ECR service path segment override (imageOverride only). Keeps default.image.repository and tag; renames …/<component> to …/<name>."
         },
         "tag": {
           "type": "string"
@@ -1690,7 +1777,7 @@
         },
         "digest": {
           "type": "string",
-          "description": "Immutable image digest pin (sha256:\u2026). When set, templates render image@digest instead of :tag. Written under service-digest/ by platform CI.",
+          "description": "Immutable image digest pin (sha256:…). When set, templates render image@digest instead of :tag. Written under service-digest/ by platform CI.",
           "pattern": "^sha256:[0-9a-f]{64}$"
         }
       },

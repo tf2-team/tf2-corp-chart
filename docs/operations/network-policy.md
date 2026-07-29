@@ -89,7 +89,7 @@ The table below is the authoritative source of truth; the Helm template encodes 
 | **prometheus** | otel-collector, grafana, jaeger, prometheus-adapter, aiops-runtime | all pods (scrape), kube-system nodes |
 | **jaeger** | otel-collector (:4317), frontend-proxy, grafana | prometheus |
 | **grafana** | frontend-proxy | prometheus, jaeger, opensearch, aiops-runtime |
-| **aiops-runtime** | grafana (:8000 webhook), prometheus (:8000 scrape) | prometheus (:9090), Kubernetes API and approved HTTPS enrichment (:443) |
+| **aiops-runtime** | grafana (:8000 webhook), prometheus (:8000 scrape) | prometheus (:9090), live executor (:8000 when self-heal is enabled), Kubernetes API and approved HTTPS enrichment (:443) |
 
 ---
 

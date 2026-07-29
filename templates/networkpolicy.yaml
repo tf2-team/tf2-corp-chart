@@ -2282,6 +2282,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
+    {{- if and .Values.aiops.config.selfHeal.enabled .Values.aiopsLiveExecutor.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aiops-live-executor
+      ports:
+        - protocol: TCP
+          port: {{ .Values.aiopsLiveExecutor.service.containerPort }}
+    {{- end }}
     - to:
         - ipBlock:
             cidr: {{ $kubernetesApiCidr }}

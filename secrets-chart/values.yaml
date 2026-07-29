@@ -60,6 +60,12 @@ rdsPostgresql:
   # Full ASM secret containing endpoint metadata; credentials stay in postgresql-app.
   remoteKey: ""
 
+# Enable only after the approved policy decision is stored in the existing
+# executor ASM JSON as {"approval_id":"<signed-approval-id>"}.
+aiopsLiveExecutor:
+  approvalEnabled: false
+  approvalProperty: approval_id
+
 # Mem0 self-hosted: runtime app secret + RDS-managed master secret for migrate.
 # remoteKey may be an ASM name or full ARN (ESO accepts both for Secrets Manager).
 mem0:
