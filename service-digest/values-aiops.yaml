@@ -1,0 +1,7 @@
+# Managed by tf2-corp-platform secure delivery pipeline.
+# Change trail: @hungxqt - 2026-07-20 - Selective service digest promote into service-digest/.
+aiops:
+  enabled: true
+  existingSecret: techx-corp-aiops-grafana-webhook
+  image:
+    digest: "sha256:a71682a5987bc17870316ea835dcc90d56ee1861b94ad512b2ee71f67da3a04c"

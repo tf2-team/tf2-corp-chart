@@ -138,6 +138,19 @@ mem0:
     archiveName: fastembed-paraphrase-multilingual-MiniLM-L12-v2-faf4aa422582.tar.gz
     mountPath: /models/fastembed
 components:
+  accounting:
+    replicas: 2
+  # OpenSearch is bound to an EBS volume in us-east-1b. Keep it on the
+  # dedicated data-observability node; it cannot
+  # share the observability-1a node with the AZ-bound Prometheus volume.
+  opensearch:
+    schedulingRules:
+      nodeSelector:
+        workload-tier: data-observability
+      affinity: {}
+      tolerations: []
+      topologySpreadConstraints: []
+
   yace:
     enabled: true
     replicas: 1
@@ -335,6 +348,39 @@ components:
                     statistics: [Average]
                     period: 300
                     length: 600
+              # M21 current ALB target-group contract. If Terraform recreates
+              # the ALB/TG, Person 1 must update these two dimensions from its
+              # outputs before the drill preflight is allowed to pass.
+              - name: frontend-alb-1a
+                regions: [us-east-1]
+                namespace: AWS/ApplicationELB
+                dimensions:
+                  - name: LoadBalancer
+                    value: app/k8s-techxcor-frontend-ae4ef3a99c/67565bb9a2abe1fb
+                  - name: TargetGroup
+                    value: targetgroup/k8s-techxcor-frontend-a8455610b8/2ab4985888ffc34b
+                  - name: AvailabilityZone
+                    value: us-east-1a
+                metrics: &alb_target_metrics
+                  - name: HealthyHostCount
+                    statistics: [Minimum]
+                    period: 60
+                    length: 600
+                  - name: UnHealthyHostCount
+                    statistics: [Maximum]
+                    period: 60
+                    length: 600
+              - name: frontend-alb-1b
+                regions: [us-east-1]
+                namespace: AWS/ApplicationELB
+                dimensions:
+                  - name: LoadBalancer
+                    value: app/k8s-techxcor-frontend-ae4ef3a99c/67565bb9a2abe1fb
+                  - name: TargetGroup
+                    value: targetgroup/k8s-techxcor-frontend-a8455610b8/2ab4985888ffc34b
+                  - name: AvailabilityZone
+                    value: us-east-1b
+                metrics: *alb_target_metrics
               - name: kafka-broker-1
                 regions: [us-east-1]
                 namespace: AWS/Kafka
@@ -491,6 +537,15 @@ components:
     initContainers: []
   
   accounting:
+    migration:
+      # The promoted .NET 10 image handles --migrate-only before Kafka startup.
+      # Keep this enabled until the order_id primary-key migration has succeeded.
+      enabled: true
+    # M21: Accounting persists the durable order path and must survive either AZ.
+    replicas: 2
+    pdb:
+      maxUnavailable: 1
+    schedulingRules: *directive03-hard-spread
     serviceAccount:
       create: true
       name: accounting
@@ -499,6 +554,8 @@ components:
     envOverrides:
       - name: CHECKOUT_OUTBOX_TABLE
         value: techx-prod-tf2-checkout-outbox
+      - name: AWS_REGION
+        value: us-east-1
       - name: OUTBOX_RECONCILE_INTERVAL_SECONDS
         value: "300"
       - name: OUTBOX_PUBLISHED_STALE_SECONDS
@@ -545,7 +602,40 @@ components:
       minReplicas: 2
     schedulingRules: *directive03-hard-spread
   email:
-    replicas: 2
+    # The Ruby email service reached its previous 128Mi limit and both pods
+    # were repeatedly OOMKilled during the 1,000-user checkout load test.
+    # Keep a two-pod HA floor and allow CPU-driven horizontal scaling while
+    # preserving enough memory headroom for Ruby, OpenTelemetry, and bursts.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 60
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Pods
+              value: 2
+              periodSeconds: 30
+            - type: Percent
+              value: 100
+              periodSeconds: 60
+          selectPolicy: Max
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+          selectPolicy: Max
     schedulingRules: *directive03-hard-spread
 
   flagd:
@@ -586,12 +676,19 @@ components:
 
   frontend:
     optionalDependencyTimeoutMs: 500
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
     autoscaling:
       # Keep enough storefront headroom for a node drain without letting noisy
       # RPS metrics drive the Deployment past the current Karpenter envelope.
       minReplicas: 3
       maxReplicas: 18
-      targetCPUUtilizationPercentage: 80
+      targetCPUUtilizationPercentage: 70
       # Spanmetrics counts all frontend server spans; production incidents saw
       # the previous 80 RPS/pod target double desired replicas into Pending.
       # 180 keeps the target aligned with observed 150-200 user steady load.
@@ -638,8 +735,9 @@ components:
       minReplicas: 2
     podAnnotations:
       cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
-    # Preserve the critical MNG pin from values.yaml, but prefer separate AZs
-    # and hosts. Hard spread prevents both ingress replicas sharing one node/AZ.
+    # Preserve the critical MNG pin and soft zone spread so replicas can collapse
+    # into the surviving AZ. The M21 wrapper blocks the drill unless baseline
+    # skew is <= 1; hostname spread remains hard.
     schedulingRules: *directive03-hard-spread
 
   image-provider:
@@ -764,6 +862,8 @@ components:
 # Arrays replace under Helm merge — keep the full attributes list.
 prometheus:
   server:
+    nodeSelector:
+      workload-tier: observability
     podAnnotations:
       linkerd.io/inject: disabled
     global:
@@ -788,9 +888,13 @@ prometheus:
     podAnnotations:
       linkerd.io/inject: disabled
     nodeSelector:
-      workload-class: critical
+      workload-tier: observability
 
 grafana:
+  # The existing EBS-backed PVC is bound to us-east-1b, so Grafana must run
+  # on the data-observability pool in the same Availability Zone.
+  nodeSelector:
+    workload-tier: data-observability
   podAnnotations:
     linkerd.io/inject: disabled
     cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
@@ -821,6 +925,9 @@ prometheus-adapter:
     linkerd.io/inject: disabled
 
 jaeger:
+  jaeger:
+    nodeSelector:
+      workload-tier: observability
   podAnnotations:
     linkerd.io/inject: disabled
 
@@ -928,4 +1035,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-27 - Widen YACE managed metric lookback window to two periods.
+# Change trail: Person 3 - 2026-07-29 - Re-enable the DB-only Accounting migration after the fixed .NET 10 image promotion.

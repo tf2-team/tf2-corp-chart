@@ -1,0 +1,42 @@
+EV-08 — failurePolicy Fail preflight
+Captured at: 2026-07-29 01:00:02 +07:00
+Kubernetes context: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+
+Live preflight:
+- Argo application supply-chain: Synced / Healthy
+- Argo application techx-corp: Synced / Healthy
+- deployment policy-controller-webhook: Ready 1/1, Available 1
+- ClusterImagePolicy ecr-signature-policy: present
+- validating webhook policy.sigstore.dev: failurePolicy=Ignore
+- namespace techx-corp-prod: policy.sigstore.dev/include is not set
+- namespaces with policy.sigstore.dev/include=true: none
+
+Behavioral preconditions:
+- EV-06 signed Accounting digest: ALLOW
+- EV-07 internal digest without exact .sig/.att: DENY
+
+Local configuration change:
+gitops/clusters/prod/supply-chain-application.yaml
+
+-            failurePolicy: Ignore
++            failurePolicy: Fail
+
+Validation:
+kubectl apply --dry-run=server \
+  -f gitops/clusters/prod/supply-chain-application.yaml \
+  -o name
+
+Result:
+application.argoproj.io/supply-chain
+
+Diff validation:
+- git diff --check: PASS
+- 1 file changed, 1 insertion, 1 deletion
+
+Deployment state:
+NOT DEPLOYED. The live webhook remains failurePolicy=Ignore until the change is
+committed, reviewed, merged and reconciled by Argo CD.
+
+Rollback:
+Revert failurePolicy from Fail to Ignore and let Argo CD reconcile the
+supply-chain application.

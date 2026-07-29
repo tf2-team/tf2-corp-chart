@@ -101,6 +101,7 @@ bash scripts/smoke-test.sh -n techx-corp-dev
 | Root app-of-apps | `root-prod` / `root-dev` | `gitops/clusters/{prod,dev}` (dir) | n/a |
 | App + observability chart | `techx-corp` / `techx-corp-dev` | `.` | `techx-corp` / `techx-corp-dev` |
 | ExternalSecrets (SEC-05) | `techx-corp-secrets` / `techx-corp-secrets-dev` | `secrets-chart` | `techx-corp-secrets` |
+| Kubecost FinOps dashboard (prod) | `kubecost` | OCI chart `public.ecr.aws/kubecost/kubecost` | `kubecost` |
 | Gatekeeper controller (prod) | `gatekeeper` | `gatekeeper-chart` | `gatekeeper` |
 | Gatekeeper policy (prod) | `gatekeeper-policy` | `gitops/gatekeeper` | n/a (manual until cutover) |
 

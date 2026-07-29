@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mandate10-unsigned-accounting
+  namespace: mandate10-validation
+  labels:
+    app.kubernetes.io/name: mandate10-unsigned-test
+    app.kubernetes.io/part-of: mandate10-evidence
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: unsigned-accounting
+      image: 493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:3c0c64d3690fcc569fa85c86288f8993548f0f617d7db60506a0972b285e7d6f
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65532
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

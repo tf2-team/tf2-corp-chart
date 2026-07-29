@@ -10,5 +10,5 @@ datasources:
     editable: false
     isDefault: false
     jsonData:
-      authType: default
-      defaultRegion: us-east-1
+    authType: default
+    defaultRegion: us-east-1

@@ -17,6 +17,7 @@
   Webstore             http://localhost:8080/
   Jaeger UI            http://localhost:8080/jaeger/ui/
   Grafana              http://localhost:8080/grafana/
+  Kubecost             http://localhost:8080/kubecost/ (requires the kubecost Application)
   Load Generator UI    http://localhost:8080/loadgen/
   Feature Flags UI     http://localhost:8080/feature/
 

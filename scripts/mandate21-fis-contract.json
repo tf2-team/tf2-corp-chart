@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "region": "us-east-1",
+  "clusterContext": "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod",
+  "namespace": "techx-corp-prod",
+  "storefrontUrl": "https://hungtran.id.vn",
+  "rdsInstanceIdentifier": "techx-prod-tf2-postgresql",
+  "zones": {
+    "us-east-1a": {
+      "primaryInZoneTemplateId": "EXT33xYmxJVCDMiQ",
+      "primaryOutsideZoneTemplateId": "EXTvCVv3L4aYWBa"
+    },
+    "us-east-1b": {
+      "primaryInZoneTemplateId": "EXT3V4aApSKJaBnp",
+      "primaryOutsideZoneTemplateId": "EXT2eK437rucfP5a"
+    }
+  }
+}

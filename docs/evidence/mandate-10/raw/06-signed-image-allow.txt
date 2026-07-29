@@ -1,0 +1,39 @@
+EV-06 — Signed image server-side admission test
+Captured at: 2026-07-29 00:42:27 +07:00
+Kubernetes context: arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod
+Namespace: mandate10-validation
+Namespace label: policy.sigstore.dev/include=true
+Sigstore validating webhook failurePolicy: Ignore
+ClusterImagePolicy: ecr-signature-policy
+ClusterImagePolicy mode: enforce
+ClusterImagePolicy Ready: True
+
+Signed image:
+493499579600.dkr.ecr.us-east-1.amazonaws.com/techx-prod-corp/accounting@sha256:91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420
+
+Exact artifact lookup before test:
+- sha256-91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420.sig
+  artifact digest: sha256:5eff773f0f499c524dbed81b4840b98dcb0c22ec7f8d8338783e54b17e0a9839
+  pushed: 2026-07-29 00:16:43.593 +07:00
+- sha256-91a01e9af100061be8d6334dd1ab9d0bad810edc3a743b580db61bea150ab420.att
+  artifact digest: sha256:a2380fba0d5f56c58a18988add1c4e1cb42c82f44990bcc6c7766421b8c0c37b
+  pushed: 2026-07-29 00:17:01.542 +07:00
+
+Manifest:
+docs/evidence/mandate-10/manifests/ev-06-signed-accounting-pod.yaml
+
+Command:
+kubectl apply --dry-run=server -f docs/evidence/mandate-10/manifests/ev-06-signed-accounting-pod.yaml -o name
+
+Result:
+pod/mandate10-signed-accounting
+
+Post-test command:
+kubectl get pods -n mandate10-validation
+
+Post-test result:
+No resources found in mandate10-validation namespace.
+
+Assessment:
+PASS — The opted-in validation namespace admitted the signed Accounting digest
+using server-side dry-run. No Pod was persisted.

@@ -1,0 +1,217 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Mandate 21 live operational dashboard tracking order durability, outbox state, Linkerd HA health, FIS stop alarm heartbeat, and Karpenter capacity.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth" },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 99.9 },
+              { "color": "green", "value": 100 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Accepted Order Durability (%)",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(rate(checkout_durability_success_total[5m])) / (sum(rate(checkout_durability_success_total[5m])) + sum(rate(checkout_durability_failure_total[5m]))) * 100",
+          "legendFormat": "Durability %",
+          "range": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Ambiguous Requests & Payment Without Record",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "sum(increase(checkout_ambiguous_requests_total[5m])) + sum(increase(checkout_payment_without_record_total[5m]))",
+          "legendFormat": "Anomalies",
+          "range": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "FIS Stop Alarm Metric Heartbeat",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "editorMode": "code",
+          "expr": "aws_cloudwatch_AcceptedOrderWithoutDurableRecord_Average{namespace=\"TechX/Mandate21\"}",
+          "legendFormat": "Heartbeat (0=healthy, 1=breach)",
+          "range": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "title": "DynamoDB Outbox Size by Status",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "checkout_outbox_items_count{status=\"prepared\"}",
+          "legendFormat": "Prepared",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "checkout_outbox_items_count{status=\"pending\"}",
+          "legendFormat": "Pending",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "checkout_outbox_items_count{status=\"published\"}",
+          "legendFormat": "Published",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "title": "Linkerd Control Plane Health & Replicas",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "sum(kube_deployment_status_replicas_available{namespace=\"linkerd\"})",
+          "legendFormat": "Available Replicas",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"linkerd\"}[5m]))",
+          "legendFormat": "CPU Usage (cores)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "webstore-metrics"
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "id": 6,
+      "title": "Karpenter NodePool Instance Count & Spot vs On-Demand Ratio",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "sum(karpenter_nodepool_usage{capacity_type=\"spot\"})",
+          "legendFormat": "Spot Nodes",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+          "expr": "sum(karpenter_nodepool_usage{capacity_type=\"on-demand\"})",
+          "legendFormat": "On-Demand Nodes",
+          "refId": "B"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["mandate-21", "durability", "linkerd", "karpenter", "fis"],
+  "time": { "from": "now-30m", "to": "now" },
+  "title": "Mandate 21 - Order Durability & Infrastructure Health",
+  "uid": "mandate-21-durability"
+}

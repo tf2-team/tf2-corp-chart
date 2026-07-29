@@ -47,7 +47,7 @@ egressProxy:
     - product-reviews
     - shopping-copilot
     - yace
-  noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana"
+  noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana,kubecost,kubecost-frontend"
   allowedDomains:
     # Envoy matches the CONNECT target, which includes the destination port.
     - api.groq.com:443
@@ -679,6 +679,8 @@ components:
 
   accounting:
     enabled: true
+    migration:
+      enabled: false
     useDefault:
       env: true
     securityContext:
@@ -687,6 +689,8 @@ components:
     env:
       - name: KAFKA_ADDR
         value: kafka:9092
+      - name: AWS_REGION
+        value: us-east-1
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://$(OTEL_COLLECTOR_NAME):4318
       # SEC-05: sourced from ESO-synced Secret (see secrets-chart / docs/operations/external-secrets.md)
@@ -1233,6 +1237,7 @@ components:
         - /loadgen
         - /feature
         - /argocd
+        - /kubecost
         # /otlp-http and /flagservice are not listed: public browser OTLP + flagd EventStream
     podAnnotations:
       io.opentelemetry.discovery.metrics/enabled: "true"
@@ -1263,6 +1268,11 @@ components:
         value: grafana
       - name: GRAFANA_PORT
         value: "80"
+      # Kubecost FinOps UI (separate Argo CD Application in kubecost NS).
+      - name: KUBECOST_HOST
+        value: kubecost-frontend.kubecost.svc.cluster.local
+      - name: KUBECOST_PORT
+        value: "9090"
       - name: IMAGE_PROVIDER_HOST
         value: image-provider
       - name: IMAGE_PROVIDER_PORT
@@ -3092,6 +3102,17 @@ prometheus:
       static_configs:
         - targets:
             - karpenter.kube-system.svc.cluster.local:8080
+    # M21: YACE is the single, bounded bridge for managed-service DR signals.
+    # Scrape it directly so RDS/Valkey/ALB panels do not depend on an indirect
+    # OTel discovery path. The Service exists only when the prod overlay enables
+    # the component; a missing target is therefore harmless outside production.
+    - job_name: yace
+      metrics_path: /metrics
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      static_configs:
+        - targets:
+            - yace.techx-corp-prod.svc.cluster.local:5000
     # M16: scrape Linkerd's L7 proxy metrics from every injected workload pod.
     # Linkerd exposes Prometheus metrics on :4191.  Restrict discovery to pods
     # created by proxy-injector so this job neither probes nor labels arbitrary
@@ -3476,4 +3497,4 @@ prometheus-adapter:
       memory: 512Mi
   replicas: 2
 
-# Change trail: @hungxqt - 2026-07-24 - Raise otel-collector agent memory after OTLP refuse/checkout latency.
+# Change trail: @hungxqt - 2026-07-28 - Add AWS_REGION env and set accounting.migration.enabled to false to temporarily disable migration job.

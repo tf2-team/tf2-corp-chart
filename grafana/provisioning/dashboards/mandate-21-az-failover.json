@@ -1,0 +1,142 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "name": "Mandate 21 fault window",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Browse success (>= 99.5%)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 99.5 }] } } },
+      "targets": [{ "refId": "A", "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval])) > 0)" }]
+    },
+    {
+      "id": 2,
+      "title": "Cart success (>= 99.5%)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 99.5 }] } } },
+      "targets": [{ "refId": "A", "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\"}[$__rate_interval])) > 0)" }]
+    },
+    {
+      "id": 3,
+      "title": "Checkout success (>= 99%)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 99 }] } } },
+      "targets": [{ "refId": "A", "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\"}[$__rate_interval])) > 0)" }]
+    },
+    {
+      "id": 4,
+      "title": "Storefront p95 (< 1s)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [{ "color": "green" }, { "color": "red", "value": 1 }] } } },
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval]))) / 1000" }]
+    },
+    {
+      "id": 5,
+      "title": "Ready nodes by AZ",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 5 },
+      "targets": [{ "refId": "A", "legendFormat": "{{label_topology_kubernetes_io_zone}}", "expr": "sum by (label_topology_kubernetes_io_zone) ((kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1) * on(node) group_left(label_topology_kubernetes_io_zone) kube_node_labels)" }]
+    },
+    {
+      "id": 6,
+      "title": "Ready money-path pods by AZ",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 5 },
+      "targets": [{ "refId": "A", "legendFormat": "{{label_topology_kubernetes_io_zone}}", "expr": "sum by (label_topology_kubernetes_io_zone) ((kube_pod_status_ready{namespace=\"techx-corp-prod\",condition=\"true\",pod=~\"accounting-.*|cart-.*|checkout-.*|currency-.*|frontend-.*|frontend-proxy-.*|payment-.*|product-catalog-.*|quote-.*|shipping-.*\"} == 1) * on(namespace,pod) group_left(node) kube_pod_info * on(node) group_left(label_topology_kubernetes_io_zone) kube_node_labels)" }]
+    },
+    {
+      "id": 7,
+      "title": "ALB healthy targets by AZ",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 5 },
+      "targets": [{ "refId": "A", "legendFormat": "{{dimension_AvailabilityZone}}", "expr": "aws_applicationelb_healthy_host_count_minimum" }]
+    },
+    {
+      "id": 8,
+      "title": "Managed-store failover signals",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        { "refId": "A", "legendFormat": "RDS CPU", "expr": "aws_rds_cpuutilization_average{dimension_DBInstanceIdentifier=\"techx-prod-tf2-postgresql\"}" },
+        { "refId": "B", "legendFormat": "RDS connections", "expr": "aws_rds_database_connections_average{dimension_DBInstanceIdentifier=\"techx-prod-tf2-postgresql\"}" },
+        { "refId": "C", "legendFormat": "Valkey {{dimension_CacheClusterId}} connections", "expr": "aws_elasticache_curr_connections_average{dimension_CacheClusterId=~\"techx-prod-tf2-cart-00[12]\"}" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Outbox age and Accounting errors",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        { "refId": "A", "legendFormat": "prepared age", "expr": "checkout_outbox_oldest_prepared_age_seconds or vector(0)" },
+        { "refId": "B", "legendFormat": "pending age", "expr": "checkout_outbox_oldest_pending_age_seconds or vector(0)" },
+        { "refId": "C", "legendFormat": "published age", "expr": "checkout_outbox_oldest_published_age_seconds or vector(0)" },
+        { "refId": "D", "legendFormat": "persistence errors/s", "expr": "sum(rate(accounting_persistence_errors_total[$__rate_interval])) or vector(0)" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Order reconciliation counters",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        { "refId": "A", "legendFormat": "accepted", "expr": "sum(checkout_orders_accepted_total) or vector(0)" },
+        { "refId": "B", "legendFormat": "durable", "expr": "sum(checkout_orders_durable_total) or vector(0)" },
+        { "refId": "C", "legendFormat": "persisted", "expr": "sum(accounting_orders_persisted_total) or vector(0)" },
+        { "refId": "D", "legendFormat": "ambiguous", "expr": "sum(checkout_ambiguous_requests_total) or vector(0)" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Money-flow request rate",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 19 },
+      "targets": [{ "refId": "A", "legendFormat": "{{span_name}}", "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=~\"GET /|POST /api/cart|POST /api/checkout\"}[$__rate_interval]))" }]
+    },
+    {
+      "id": 12,
+      "title": "Money-path pod placement",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+      "targets": [{ "refId": "A", "format": "table", "instant": true, "expr": "max by (pod, node) (kube_pod_info{namespace=\"techx-corp-prod\",pod=~\"accounting-.*|cart-.*|checkout-.*|currency-.*|frontend-.*|frontend-proxy-.*|payment-.*|product-catalog-.*|quote-.*|shipping-.*\"})" }]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["mandate-21", "dr", "fis", "az-failover"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "baseline", "value": "baseline" },
+        "hide": 0,
+        "label": "Fault ID",
+        "name": "fault_id",
+        "options": [],
+        "query": "baseline",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "timezone": "browser",
+  "title": "Mandate 21 - AZ Failover",
+  "uid": "mandate-21-az-failover",
+  "version": 1
+}

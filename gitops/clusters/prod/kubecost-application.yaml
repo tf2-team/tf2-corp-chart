@@ -1,0 +1,110 @@
+# Kubecost FinOps dashboard - private operator path:
+#   https://internal.hungtran.id.vn/kubecost/
+#
+# Exposed only through frontend-proxy on the internal ALB / Client VPN path.
+# CloudFront must block /kubecost for the public storefront edge.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubecost
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: techx-corp
+
+  source:
+    repoURL: public.ecr.aws/kubecost
+    chart: kubecost
+    targetRevision: 3.2.1
+    helm:
+      releaseName: kubecost
+      # AppProject techx-corp intentionally does not allow CRD creation.
+      # Kubecost renders turndownschedules.kubecost.com even with clusterController disabled.
+      skipCrds: true
+      # The chart test pod has no resources override and is blocked by runtime hardening.
+      skipTests: true
+      valuesObject:
+        global:
+          clusterId: techx-tf2-prod
+          acknowledged: true
+          imageRegistry: public.ecr.aws
+          defaultStorageClass: gp3-encrypted
+        ingress:
+          enabled: false
+        httpRoute:
+          enabled: false
+        frontend:
+          service:
+            type: ClusterIP
+            port: 9090
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        localStore:
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          persistentVolume:
+            storageClass: gp3-encrypted
+            size: 32Gi
+        aggregator:
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          aggregatorDbStorage:
+            storageClass: gp3-encrypted
+            storageRequest: 32Gi
+          persistentConfigsStorage:
+            storageClass: gp3-encrypted
+            storageRequest: 1Gi
+        cloudCost:
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          persistentConfigsStorage:
+            storageClass: gp3-encrypted
+            size: 1Gi
+        finopsagent:
+          image:
+            repository: kubecost/agent
+        networkCosts:
+          enabled: false
+        forecasting:
+          enabled: false
+        clusterController:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubecost
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Do NOT enable ServerSideApply in v1 baseline.
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
