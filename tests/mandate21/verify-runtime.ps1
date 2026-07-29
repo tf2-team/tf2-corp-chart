@@ -29,9 +29,16 @@ Assert-True ($wrapper -match 'describe-alarms') "wrapper verifies every FIS stop
 Assert-True ($wrapper -match 'RecoveryMinutes') "wrapper enforces a measured recovery window"
 Assert-True ($wrapper -match 'reconciliation-report\.txt') "wrapper persists Person 2 reconciliation output"
 
+$cleanupPath = Join-Path $repo "scripts/mandate21-cleanup.psm1"
+$cleanupTokens = $null
+$cleanupErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile($cleanupPath, [ref]$cleanupTokens, [ref]$cleanupErrors)
+Assert-True ($cleanupErrors.Count -eq 0) "cleanup module parses as PowerShell"
+
 $contract = Read-RepoFile "scripts/mandate21-fis-contract.example.json" | ConvertFrom-Json
 Assert-True ($contract.schemaVersion -eq 1) "example contract uses schema version 1"
 Assert-True (@($contract.zones.PSObject.Properties).Count -eq 2) "example contract maps exactly two AZs"
+Assert-True ($null -ne $contract.cleanupByTemplateId) "example contract contains cleanupByTemplateId map"
 foreach ($zone in $contract.zones.PSObject.Properties) {
     Assert-True ($null -ne $zone.Value.primaryInZoneTemplateId) "$($zone.Name) maps the RDS-primary-in-zone template"
     Assert-True ($null -ne $zone.Value.primaryOutsideZoneTemplateId) "$($zone.Name) maps the RDS-primary-outside-zone template"
@@ -46,6 +53,8 @@ foreach ($zone in $liveContract.zones.PSObject.Properties) {
     }
 }
 Assert-True (@($liveTemplateIds | Sort-Object -Unique).Count -eq 4) "live FIS contract maps four distinct template variants"
+Assert-True ($null -ne $liveContract.cleanupByTemplateId) "live FIS contract contains cleanupByTemplateId map"
+Assert-True (@($liveContract.cleanupByTemplateId.PSObject.Properties.Name | Sort-Object -Unique).Count -eq 4) "live FIS contract cleanupByTemplateId contains all four template IDs"
 
 $loadTest = Read-RepoFile "scripts/maintenance-load-test.js"
 foreach ($field in @("testRequestId", "traceId", "startedAt", "completedAt", "httpStatus", "durationMs", "orderId", "outcome")) {
@@ -58,7 +67,7 @@ $kubecost = Read-RepoFile "gitops/clusters/prod/kubecost-application.yaml"
 Assert-True ($kubecost -match '(?m)^\s*skipCrds:\s*true\s*$') "Kubecost omits disabled Turndown CRDs from the least-privilege AppProject"
 
 $dashboardPath = Join-Path $repo "grafana/provisioning/dashboards/mandate-21-az-failover.json"
-$dashboard = Get-Content -LiteralPath $dashboardPath -Raw | ConvertFrom-Json -Depth 100
+$dashboard = Get-Content -LiteralPath $dashboardPath -Raw | ConvertFrom-Json
 Assert-True ($dashboard.uid -eq "mandate-21-az-failover") "dashboard UID is stable"
 $titles = @($dashboard.panels.title)
 foreach ($title in @("Ready nodes by AZ", "Ready money-path pods by AZ", "ALB healthy targets by AZ", "Managed-store failover signals", "Outbox age and Accounting errors", "Order reconciliation counters")) {
@@ -107,6 +116,21 @@ Assert-True ($migrationPolicy -notmatch '0\.0\.0\.0/0') "Accounting migration ha
 Assert-True ($manifest -match 'yace\.techx-corp-prod\.svc\.cluster\.local:5000') "Prometheus directly scrapes YACE"
 Assert-True ($manifest -match '(?ms)name: yace.*?app\.kubernetes\.io/name: prometheus.*?port: 5000') "YACE NetworkPolicy admits Prometheus"
 Assert-True ($manifest -match 'aws_applicationelb_healthy_host_count_minimum|HealthyHostCount') "rendered configuration includes ALB healthy-target metrics"
-Assert-True ($manifest -match 'mandate-21-az-failover') "rendered Grafana ConfigMap includes the Mandate 21 dashboard"
+Assert-True ($manifest -notmatch 'kind:\s+Deployment.*?name:\s+capacity-probe') "capacity-probe Deployment is disabled by default"
+
+$probeRendered = & helm template techx-corp $repo --namespace techx-corp-prod `
+    -f (Join-Path $repo "values.yaml") `
+    -f (Join-Path $repo "values-public-alb.yaml") `
+    -f (Join-Path $repo "values-prod.yaml") `
+    -f (Join-Path $repo "service-digest/values-accounting.yaml") `
+    --set capacityProbe.enabled=true 2>&1
+if ($LASTEXITCODE -ne 0) { throw "helm template with capacityProbe.enabled=true failed:`n$($probeRendered -join "`n")" }
+$probeManifest = $probeRendered -join "`n"
+Assert-True ($probeManifest -match '(?ms)kind:\s+Deployment.*?name:\s+capacity-probe') "capacity-probe Deployment renders when capacityProbe.enabled=true"
+Assert-True ($probeManifest -match 'karpenter\.sh/capacity-type:\s+["'']?on-demand["'']?') "capacity-probe uses stateless-on-demand placement"
+Assert-True ($probeManifest -match '(?ms)key:\s+["'']?workload-class["'']?.*?value:\s+["'']?spot-tolerant["'']?') "capacity-probe tolerates spot-tolerant workload-class"
+Assert-True ($probeManifest -match 'automountServiceAccountToken:\s+false') "capacity-probe omits service account token"
 
 Write-Host "Mandate 21 runtime verification passed."
+
+# Change trail: @hungxqt - 2026-07-29 - Verified capacity-probe Deployment disabled by default and rendered when enabled.

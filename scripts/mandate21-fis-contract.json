@@ -14,5 +14,43 @@
       "primaryInZoneTemplateId": "EXT3V4aApSKJaBnp",
       "primaryOutsideZoneTemplateId": "EXT2eK437rucfP5a"
     }
+  },
+  "cleanupByTemplateId": {
+    "EXT33xYmxJVCDMiQ": {
+      "variant": "1a-primary-in",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": true
+    },
+    "EXTvCVv3L4aYWBa": {
+      "variant": "1a-primary-outside",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": false
+    },
+    "EXT3V4aApSKJaBnp": {
+      "variant": "1b-primary-in",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": true
+    },
+    "EXT2eK437rucfP5a": {
+      "variant": "1b-primary-outside",
+      "policyVersion": 1,
+      "mode": "verify-only",
+      "timeoutMinutes": 45,
+      "pollIntervalSeconds": 15,
+      "requiredAlarmWindows": 2,
+      "rdsFailoverExpected": false
+    }
   }
 }
