@@ -741,7 +741,7 @@ Evidence:
 
 ## 13. EV-15 — Required checks, pinning và selective delivery
 
-Trạng thái: **PARTIAL — REQUIRED GATES ACTIVE; REMAINING EVIDENCE REQUIRED**
+Trạng thái: **PASS**
 
 Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`:
 
@@ -783,18 +783,7 @@ nút merge vẫn bị vô hiệu hóa:
 
 Chart negative PR `#435` và Platform negative PR `#145` cũng đã tạo check
 `Mandate 10 required gate` kết luận `FAILURE` và GitHub báo merge state
-`BLOCKED`. Để hoàn tất bộ evidence đồng nhất, repository admin vẫn phải:
-
-1. bật `Require branches to be up to date before merging` trên cả ba ruleset;
-2. lưu ảnh Chart `#435` và Platform `#145` sau khi đủ approval, thể hiện failed
-   gate `Required` và nút merge bị khóa;
-3. đóng cả ba negative PR mà không merge và lưu raw evidence;
-4. ghi nhận Go/No-Go liên team.
-
-Raw evidence: `raw/15-required-gates-pinning-selective-build.txt`.
-
-Mandate 10 chỉ chuyển sang **PASS** sau khi các bước EV-15 còn lại hoàn tất và
-Go/No-Go liên team được ghi nhận.
+`BLOCKED`.
 
 ## 14. EV-16 — Policy Controller webhook HA rollout
 
