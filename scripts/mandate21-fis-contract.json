@@ -57,19 +57,19 @@
   "templateRevisions": {
     "1a-primary-in": {
       "templateId": "EXT2UboGoZ7ErXaQ",
-      "revisionSha256": "b5c1a8b7b8d855f858d9d8f3ebcea8cee0490d26bfe444bc0bd3bef890ad965a"
+      "revisionSha256": "4a2603ebf0403e10316961b3b4fd686f0bb0bb1d1240c0c8db481702c7a99ac8"
     },
     "1a-primary-outside": {
       "templateId": "EXT2cGQZ1Hb4HKCC",
-      "revisionSha256": "5f2e6426976c4647e40b7983ed8005ff3c444ea59d9257e3c3c7690e7bbdcbff"
+      "revisionSha256": "a274063fe2d515697b1425485b7bba5953182849f76ec778bf33e1668b605f9b"
     },
     "1b-primary-in": {
       "templateId": "EXTDqvVeTfQiN7zBS",
-      "revisionSha256": "dcfd843804c1a60b27aa5170f629f777272853afb5dd4acbdcd34495ea4a6df9"
+      "revisionSha256": "8971651ef703338acb4c04030f5daa8d70a80171b7026fa478a5b5a1a5335596"
     },
     "1b-primary-outside": {
       "templateId": "EXT34dobGM9bVqZ2",
-      "revisionSha256": "ff7f7f3f118f381ebc1b0c928398472fc1e79e0ce6a3d5fc4a64a260394e7f34"
+      "revisionSha256": "2d9ab6f89a1d3d224fef7b514225a2300756f5aeefbb3a068e6aff11f745417c"
     }
   },
   "requiredStopAlarmArns": [
