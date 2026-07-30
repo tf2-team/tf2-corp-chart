@@ -1,17 +1,17 @@
 # Mandate 10 — Secure Delivery, Image Integrity & KMS Cosign Evidence Report
 
 - Trạng thái: **IN PROGRESS — SUPPLY-CHAIN/ADMISSION CONTROLS PASS;
-  MERGE ENFORCEMENT AND APPROVAL PENDING**
-- Ngày rà soát gần nhất: 2026-07-29
+  REQUIRED MERGE GATES ACTIVE; CROSS-REPO NEGATIVE EVIDENCE PENDING**
+- Ngày rà soát gần nhất: 2026-07-31
 - Phạm vi: image ứng dụng do đội ngũ tự xây dựng bằng `tf2-corp-platform` và lưu
   trong `techx-prod-corp/**`
 - Ngoài phạm vi: image do nhà cung cấp bên ngoài phát hành, không do platform
   build
 
-> External allowlist đã được deploy và Production đã opt-in thành công. Báo cáo
-> chưa chuyển sang `PASS`: required status check đang chờ repository admin gắn
-> context ổn định vào ba ruleset `main`, sau đó phải thu bằng chứng một PR cố
-> tình đỏ bị chặn merge. Go/No-Go liên team chỉ diễn ra sau bước này.
+> External allowlist đã được deploy và Production đã opt-in thành công. Context
+> `Mandate 10 required gate` hiện đã được require trong ruleset `main` của cả ba
+> repository. Infra negative PR `#174` chứng minh gate đỏ vẫn chặn merge sau khi
+> đủ approval.
 
 ## 1. Phạm vi và tiêu chí nghiệm thu
 
@@ -55,8 +55,8 @@ external allowlist tiếp tục bị từ chối.
 | Chuyển `failurePolicy: Fail` | DONE | Argo Synced/Healthy; signed ALLOW và unsigned DENY đã retest dưới fail-closed |
 | Pod supply-chain traceability | DONE | EV-09 `PASS` |
 | Live Production admission | PASS | Signed internal canary chạy thật; hai CREATE request không hợp lệ bị DENY |
-| Stable required-check contexts | PR OPEN | Platform `#128`, chart `#372`, infra `#154`; cả ba gate đã PASS |
-| Default-branch required checks | ADMIN PENDING | Ruleset active chưa require context; update request bằng credential hiện tại trả HTTP `404`, ruleset không đổi |
+| Stable required-check contexts | DONE | Platform, Chart và Infra đều phát hành context ổn định `Mandate 10 required gate`; positive runs đã PASS |
+| Default-branch required checks | ACTIVE — EVIDENCE PARTIAL | Cả ba ruleset `main` đã require context; Infra PR `#174` đã được approve nhưng vẫn bị gate đỏ chặn merge; strict branch update và negative screenshots Chart/Platform còn pending |
 | Action/base-image pinning | PR OPEN | Platform `#128` pin hai action cuối; inventory không còn third-party action tag trôi |
 | Selective build/deploy | PASS | `BUILD_SET`, selective digest promotion; full/requested rebuild bắt buộc lý do |
 
@@ -734,14 +734,14 @@ Evidence:
 | Production image inventory và allowlist | Container/initContainer/sidecar đã kiểm kê; 17 managed external repositories | EV-11 |
 | Current release ECR integrity | Runtime digest và `.sig/.att` `24/24`; lifecycle preview không đánh dấu current digest | EV-04, EV-12 |
 | Webhook HA rollout | 3/3 Ready, ba node, hai AZ, ba ready endpoints, PDB `minAvailable: 2` | EV-16 — raw transcript pending |
-| Required merge checks | Stable context trên cả ba repo, ruleset bắt buộc context, PR đỏ bị chặn bởi failed check | **ADMIN PENDING — EV-15** |
+| Required merge checks | Stable context trên cả ba repo, ruleset bắt buộc context, PR đỏ bị chặn bởi failed check | **PARTIAL — EV-15**; Infra negative proof PASS, Chart/Platform negative screenshots và strict update pending |
 | Image/IaC/SAST/secret gates | Image Trivy trước push; release/sign/promotion phụ thuộc Trivy IaC, Semgrep và TruffleHog | EV-01, EV-15 |
 | Action và base-image pinning | Third-party actions pin commit SHA; external Docker `FROM` pin digest | **PR OPEN — EV-15** |
 | Selective build và promotion | Chỉ build/scan/promote service đổi; full rebuild hẹp và có lý do | EV-15 |
 
 ## 13. EV-15 — Required checks, pinning và selective delivery
 
-Trạng thái: **PARTIAL — ADMIN ACTION REQUIRED**
+Trạng thái: **PARTIAL — REQUIRED GATES ACTIVE; REMAINING EVIDENCE REQUIRED**
 
 Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`:
 
@@ -752,30 +752,49 @@ Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`
 - infra `#154`: aggregate Terraform validation, TFLint, Checkov và plan cho
   development/production.
 
-Platform HEAD run `30425835764`, Chart captured HEAD `63b7220` run
-`30432108931` và infra run `30424348766` đều đã PASS context
-`Mandate 10 required gate`.
+Positive path được chụp từ ba successful workflow runs:
 
-Ruleset `mandate-10-main-protection` đang active trên cả ba default branch nhưng
-chưa chứa `required_status_checks`. Các update request bằng credential hiện tại
-đều trả HTTP `404`; ruleset chưa thay đổi và cần repository administrator xử
-lý. Phản hồi này phù hợp với thiếu quyền nhưng không được dùng để khẳng định
-permission là nguyên nhân duy nhất.
+![Platform aggregate gate passed](./images/15a-platform-required-gate-pass.jpg)
 
-Repository admin phải:
+*Hình EV-15a: Platform run `30553659031`; toàn bộ test, image, IaC, SAST và
+secret-scan dependencies xanh trước khi `Mandate 10 required gate` PASS.*
 
-1. merge ba PR sau review và CI xanh;
-2. thêm required context `Mandate 10 required gate` vào cả ba ruleset;
-3. bật strict branch update;
-4. mở một negative PR nhỏ trên từng repo, cố tình làm gate tương ứng đỏ;
-5. chụp Ruleset/PR UI của cả ba repo, chứng minh merge bị chặn bởi failed
-   required check;
-6. đóng cả ba negative PR mà không merge và lưu raw evidence.
+![Infra aggregate gate passed](./images/15b-infra-required-gate-pass.jpg)
+
+*Hình EV-15b: Infra run `30565411178`; static checks, TFLint, Checkov và hai
+Terraform plans xanh trước khi aggregate gate PASS.*
+
+![Chart aggregate gate passed](./images/15c-chart-required-gate-pass.jpg)
+
+*Hình EV-15c: Chart run `30527338997`; Helm dependency, lint và immutable
+Production render hoàn tất trước khi gate PASS.*
+
+Ruleset `mandate-10-main-protection` hiện active trên cả ba default branch và
+đều chứa `required_status_checks` với context `Mandate 10 required gate`.
+Negative PR Infra `#174` cố tình đưa Terraform syntax không hợp lệ vào
+`environments/development`; reviewer `datpn02` đã approve nhưng gate vẫn đỏ và
+nút merge vẫn bị vô hiệu hóa:
+
+![Infra failed required gate blocks merge after approval](./images/15d-infra-required-gate-blocked-after-approval.jpg)
+
+*Hình EV-15d: Infra PR `#174` đã đủ một approval, nhưng
+`Terraform CI / Mandate 10 required gate` ở trạng thái failing và có nhãn
+`Required`; nút `Squash and merge` bị khóa.*
+
+Chart negative PR `#435` và Platform negative PR `#145` cũng đã tạo check
+`Mandate 10 required gate` kết luận `FAILURE` và GitHub báo merge state
+`BLOCKED`. Để hoàn tất bộ evidence đồng nhất, repository admin vẫn phải:
+
+1. bật `Require branches to be up to date before merging` trên cả ba ruleset;
+2. lưu ảnh Chart `#435` và Platform `#145` sau khi đủ approval, thể hiện failed
+   gate `Required` và nút merge bị khóa;
+3. đóng cả ba negative PR mà không merge và lưu raw evidence;
+4. ghi nhận Go/No-Go liên team.
 
 Raw evidence: `raw/15-required-gates-pinning-selective-build.txt`.
 
-Mandate 10 chỉ chuyển sang **PASS** sau khi EV-15 hoàn tất và Go/No-Go liên team
-được ghi nhận.
+Mandate 10 chỉ chuyển sang **PASS** sau khi các bước EV-15 còn lại hoàn tất và
+Go/No-Go liên team được ghi nhận.
 
 ## 14. EV-16 — Policy Controller webhook HA rollout
 
