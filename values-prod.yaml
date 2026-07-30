@@ -831,7 +831,9 @@ components:
       cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     envOverrides:
       - name: LOCUST_EXPECT_WORKERS
-        value: "0"
+        # Locust accepts only a positive worker count. Keep the master UI
+        # available, then enable workers explicitly in a load-test overlay.
+        value: "1"
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
 
@@ -874,7 +876,7 @@ components:
         value: ai
     # Keep in-cluster Locust idle; Mandate 21 uses external k6 as the primary
     # measurement source so an AZ fault cannot remove the load generator.
-    replicas: 0
+    replicas: 4
     pdb:
       minAvailable: 3
     autoscaling:
