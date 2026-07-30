@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 2,
+  "runId": "md21-cap-1b-to-1a-20260730-1250",
+  "evidenceId": "md21-cap-1b-to-1a-20260730-1250-capacity",
+  "sourceRevision": "db8c7c630cd4928fb3da106f6456df51538d3154",
+  "direction": "1b-to-1a",
+  "lostAz": "us-east-1b",
+  "survivingAz": "us-east-1a",
+  "baselineAt": "2026-07-30T05:51:11.1191748Z",
+  "baselineNodeClaims": [
+    {
+      "name": "stateless-on-demand-rl4pv",
+      "uid": "2b1ee019-6ea1-4158-b6c5-d39b85c42a5c",
+      "createdAt": "2026-07-30T05:16:31Z",
+      "availabilityZone": "us-east-1b",
+      "nodeName": "ip-10-0-39-125.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-spot-59bzb",
+      "uid": "74c4e3be-073f-482b-b6af-ae7064226ead",
+      "createdAt": "2026-07-28T16:22:14Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-30-194.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-spot-glbmq",
+      "uid": "b37c1b6e-ecef-4cec-9d78-90a84cb4444c",
+      "createdAt": "2026-07-27T17:54:06Z",
+      "availabilityZone": "us-east-1b",
+      "nodeName": "ip-10-0-44-233.ec2.internal",
+      "ready": true
+    }
+  ],
+  "lostLoad": {
+    "pods": 54,
+    "cpuMilli": 4812,
+    "memoryBytes": 12738101248
+  },
+  "requestedLoad": {
+    "replicas": 54,
+    "cpuMilli": 5775,
+    "memoryBytes": 15288238080,
+    "headroomPercent": 20
+  }
+}

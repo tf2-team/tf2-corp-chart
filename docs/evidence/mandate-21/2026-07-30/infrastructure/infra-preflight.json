@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 2,
+  "startedAt": "2026-07-30T08:52:10.6686969Z",
+  "completedAt": "2026-07-30T08:53:25.3028982Z",
+  "accountId": "493499579600",
+  "region": "us-east-1",
+  "cluster": {
+    "name": "techx-tf2-prod",
+    "arn": "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod",
+    "vpcId": "vpc-0eef6ab7c99ef3bf4"
+  },
+  "revision": "014db653714138d16fa8424ab46d63a73d262229",
+  "resourceIds": {
+    "rds": "techx-prod-tf2-postgresql",
+    "valkey": "techx-prod-tf2-cart",
+    "dynamoDb": "techx-prod-tf2-checkout-outbox",
+    "msk": "techx-prod-tf2-msk"
+  },
+  "observedStores": {
+    "rds": [
+      {
+        "id": "techx-prod-tf2-postgresql",
+        "status": "available",
+        "multiAz": true,
+        "storageEncrypted": true,
+        "deletionProtection": true,
+        "backupRetentionDays": 7
+      }
+    ],
+    "valkey": [
+      {
+        "id": "techx-prod-tf2-cart",
+        "status": "available",
+        "multiAz": "enabled",
+        "automaticFailover": "enabled",
+        "transitEncryption": true,
+        "atRestEncryption": true
+      }
+    ],
+    "dynamoDb": {
+      "name": "techx-prod-tf2-checkout-outbox",
+      "status": "ACTIVE",
+      "deletionProtection": true,
+      "sseStatus": "ENABLED",
+      "sseType": "KMS",
+      "kmsKeyArn": "arn:aws:kms:us-east-1:493499579600:key/34015827-9a84-495c-8919-65bfc9ccc8c6",
+      "pitrStatus": "ENABLED"
+    },
+    "msk": [
+      {
+        "name": "techx-prod-tf2-msk",
+        "arn": "arn:aws:kafka:us-east-1:493499579600:cluster/techx-prod-tf2-msk/8fee4056-59bc-4b3a-8128-2ec5a83d56fc-5",
+        "status": "ACTIVE",
+        "brokerCount": 2,
+        "clientBrokerEncryption": "TLS"
+      }
+    ]
+  },
+  "overallStatus": "PASS",
+  "privateRouteEvidence": [
+    {
+      "subnetId": "subnet-07599236e4979c4b2",
+      "availabilityZone": "us-east-1a",
+      "routeTableId": "rtb-0cec0db5d4a189896",
+      "defaultRoutes": [
+        {
+          "natGatewayId": "nat-0b043c6cb1b44c240",
+          "state": "active"
+        }
+      ],
+      "natGatewayId": "nat-0b043c6cb1b44c240",
+      "natAvailabilityZone": "us-east-1a",
+      "status": "PASS"
+    },
+    {
+      "subnetId": "subnet-0ee04e7bc69e247a3",
+      "availabilityZone": "us-east-1b",
+      "routeTableId": "rtb-09bfd614874994f6c",
+      "defaultRoutes": [
+        {
+          "natGatewayId": "nat-0f857f477664c05af",
+          "state": "active"
+        }
+      ],
+      "natGatewayId": "nat-0f857f477664c05af",
+      "natAvailabilityZone": "us-east-1b",
+      "status": "PASS"
+    },
+    {
+      "subnetId": "subnet-0ab17749536b34693",
+      "availabilityZone": "us-east-1b",
+      "routeTableId": "rtb-09bfd614874994f6c",
+      "defaultRoutes": [
+        {
+          "natGatewayId": "nat-0f857f477664c05af",
+          "state": "active"
+        }
+      ],
+      "natGatewayId": "nat-0f857f477664c05af",
+      "natAvailabilityZone": "us-east-1b",
+      "status": "PASS"
+    },
+    {
+      "subnetId": "subnet-0d1f0d1de6b352021",
+      "availabilityZone": "us-east-1a",
+      "routeTableId": "rtb-0cec0db5d4a189896",
+      "defaultRoutes": [
+        {
+          "natGatewayId": "nat-0b043c6cb1b44c240",
+          "state": "active"
+        }
+      ],
+      "natGatewayId": "nat-0b043c6cb1b44c240",
+      "natAvailabilityZone": "us-east-1a",
+      "status": "PASS"
+    }
+  ],
+  "checks": [
+    {
+      "check": "cluster.unique",
+      "status": "PASS",
+      "detail": "Configured EKS cluster must resolve exactly once."
+    },
+    {
+      "check": "cluster.vpc",
+      "status": "PASS",
+      "detail": "VPC is derived from the configured EKS cluster."
+    },
+    {
+      "check": "cluster.subnets",
+      "status": "PASS",
+      "detail": "EKS must expose at least one configured subnet."
+    },
+    {
+      "check": "network.privateSubnet.subnet-07599236e4979c4b2.sameAzNat",
+      "status": "PASS",
+      "detail": "Exactly one active IPv4 default route must target an available NAT gateway in the same AZ."
+    },
+    {
+      "check": "network.privateSubnet.subnet-0ee04e7bc69e247a3.sameAzNat",
+      "status": "PASS",
+      "detail": "Exactly one active IPv4 default route must target an available NAT gateway in the same AZ."
+    },
+    {
+      "check": "network.privateSubnet.subnet-0ab17749536b34693.sameAzNat",
+      "status": "PASS",
+      "detail": "Exactly one active IPv4 default route must target an available NAT gateway in the same AZ."
+    },
+    {
+      "check": "network.privateSubnet.subnet-0d1f0d1de6b352021.sameAzNat",
+      "status": "PASS",
+      "detail": "Exactly one active IPv4 default route must target an available NAT gateway in the same AZ."
+    },
+    {
+      "check": "network.subnetCoverage",
+      "status": "PASS",
+      "detail": "Every EKS-configured subnet must have route evidence."
+    },
+    {
+      "check": "rds.unique",
+      "status": "PASS",
+      "detail": "RDS identifier must resolve exactly once."
+    },
+    {
+      "check": "rds.available",
+      "status": "PASS",
+      "detail": "RDS must be available."
+    },
+    {
+      "check": "rds.multiAz",
+      "status": "PASS",
+      "detail": "RDS Multi-AZ must be enabled."
+    },
+    {
+      "check": "rds.encrypted",
+      "status": "PASS",
+      "detail": "RDS storage encryption must be enabled."
+    },
+    {
+      "check": "rds.deletionProtection",
+      "status": "PASS",
+      "detail": "RDS deletion protection must be enabled."
+    },
+    {
+      "check": "rds.backupRetention",
+      "status": "PASS",
+      "detail": "RDS backup retention must be at least seven days."
+    },
+    {
+      "check": "valkey.unique",
+      "status": "PASS",
+      "detail": "Valkey replication group must resolve exactly once."
+    },
+    {
+      "check": "valkey.available",
+      "status": "PASS",
+      "detail": "Valkey must be available."
+    },
+    {
+      "check": "valkey.multiAz",
+      "status": "PASS",
+      "detail": "Valkey Multi-AZ must be enabled."
+    },
+    {
+      "check": "valkey.automaticFailover",
+      "status": "PASS",
+      "detail": "Valkey automatic failover must be enabled."
+    },
+    {
+      "check": "valkey.transitEncryption",
+      "status": "PASS",
+      "detail": "Valkey transit encryption must be enabled."
+    },
+    {
+      "check": "valkey.atRestEncryption",
+      "status": "PASS",
+      "detail": "Valkey at-rest encryption must be enabled."
+    },
+    {
+      "check": "dynamodb.unique",
+      "status": "PASS",
+      "detail": "DynamoDB table must resolve exactly once."
+    },
+    {
+      "check": "dynamodb.active",
+      "status": "PASS",
+      "detail": "DynamoDB must be ACTIVE."
+    },
+    {
+      "check": "dynamodb.deletionProtection",
+      "status": "PASS",
+      "detail": "DynamoDB deletion protection must be enabled."
+    },
+    {
+      "check": "dynamodb.kms",
+      "status": "PASS",
+      "detail": "DynamoDB KMS encryption must be enabled with a key identifier."
+    },
+    {
+      "check": "dynamodb.pitr",
+      "status": "PASS",
+      "detail": "DynamoDB PITR must be ENABLED."
+    },
+    {
+      "check": "msk.unique",
+      "status": "PASS",
+      "detail": "MSK cluster name must resolve exactly once."
+    },
+    {
+      "check": "msk.active",
+      "status": "PASS",
+      "detail": "MSK must be ACTIVE."
+    },
+    {
+      "check": "msk.brokers",
+      "status": "PASS",
+      "detail": "MSK must have at least two brokers."
+    },
+    {
+      "check": "msk.tls",
+      "status": "PASS",
+      "detail": "MSK client-to-broker encryption must be TLS-only."
+    }
+  ]
+}

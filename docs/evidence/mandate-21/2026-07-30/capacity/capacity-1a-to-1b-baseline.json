@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "runId": "md21-cap-1a-to-1b-20260730-1152",
+  "evidenceId": "md21-cap-1a-to-1b-20260730-1152-capacity",
+  "sourceRevision": "8fccc3b299787b7d7f49ab33a0cec5c98ff08fd2",
+  "direction": "1a-to-1b",
+  "lostAz": "us-east-1a",
+  "survivingAz": "us-east-1b",
+  "baselineAt": "2026-07-30T04:51:09.3923958Z",
+  "baselineNodeClaims": [
+    {
+      "name": "stateless-spot-59bzb",
+      "uid": "74c4e3be-073f-482b-b6af-ae7064226ead",
+      "createdAt": "2026-07-28T16:22:14Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-30-194.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-spot-glbmq",
+      "uid": "b37c1b6e-ecef-4cec-9d78-90a84cb4444c",
+      "createdAt": "2026-07-27T17:54:06Z",
+      "availabilityZone": "us-east-1b",
+      "nodeName": "ip-10-0-44-233.ec2.internal",
+      "ready": true
+    }
+  ],
+  "lostLoad": {
+    "pods": 56,
+    "cpuMilli": 3772,
+    "memoryBytes": 14554234880
+  },
+  "requestedLoad": {
+    "replicas": 56,
+    "cpuMilli": 4527,
+    "memoryBytes": 17498636288,
+    "headroomPercent": 20
+  }
+}

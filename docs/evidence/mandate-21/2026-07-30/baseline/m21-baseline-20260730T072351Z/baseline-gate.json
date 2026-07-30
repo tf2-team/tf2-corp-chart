@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "runId": "m21-baseline-20260730T072351Z",
+  "capturedAt": "2026-07-30T08:01:45.8326895Z",
+  "baseUrl": "https://shop.hungtran.id.vn",
+  "duration": "15m",
+  "ratePerSecond": 2,
+  "status": "FAIL",
+  "metrics": {
+    "iterations": 1799,
+    "droppedIterations": 1,
+    "browseSuccessRate": 0.9988882712618121,
+    "cartSuccessRate": 1,
+    "checkoutSuccessRate": 1,
+    "browseP95Ms": 1344.6030149999983,
+    "accepted": 1799,
+    "ambiguous": 0,
+    "rejected": 0,
+    "uniqueOrderIds": 1799,
+    "accountingErrors": 0,
+    "stalePendingOver60Seconds": 0,
+    "stalePublishedOver60Seconds": 1243
+  },
+  "failedGates": [
+    "dropped_iterations must equal 0",
+    "browse p95 must be below 1000 ms",
+    "published outbox items older than 60 seconds must equal 0"
+  ]
+}

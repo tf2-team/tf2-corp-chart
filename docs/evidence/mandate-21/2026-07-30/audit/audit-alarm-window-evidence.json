@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "capturedAt": "2026-07-30T07:55:24.0165709Z",
+  "accountId": "493499579600",
+  "region": "us-east-1",
+  "alarms": [
+    {
+      "name": "techx-prod-tf2-mandate12-immutable-audit-health-check-errors",
+      "state": "OK",
+      "windowStatus": "PASS",
+      "periodSeconds": 300,
+      "evaluationPeriods": 2,
+      "okDatapoints": 4
+    },
+    {
+      "name": "techx-prod-tf2-mandate12-immutable-audit-health-lambda-dlq-visible",
+      "state": "OK",
+      "windowStatus": "PASS",
+      "periodSeconds": 300,
+      "evaluationPeriods": 2,
+      "okDatapoints": 4
+    },
+    {
+      "name": "techx-prod-tf2-mandate12-immutable-audit-control-health",
+      "state": "OK",
+      "windowStatus": "PASS",
+      "periodSeconds": 300,
+      "evaluationPeriods": 2,
+      "okDatapoints": 4
+    }
+  ]
+}
