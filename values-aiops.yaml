@@ -8,3 +8,14 @@ aiops:
   notificationSecretRef:
     name: techx-corp-grafana-discord
     key: webhook-url
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Change trail: @hungxqt - 2026-07-30 - Set aiops-runtime resource requests to 200m/512Mi and limits to 1000m/1Gi.
+
+
