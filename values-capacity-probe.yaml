@@ -1,17 +1,17 @@
-# Approved Mandate 21 capacity window: simulate the load lost with us-east-1a.
+# Resting desired state after the approved 1a-to-1b capacity probe passed.
 capacityProbe:
-  enabled: true
-  runId: "md21-cap-1a-to-1b-20260730-1152"
-  evidenceId: "md21-cap-1a-to-1b-20260730-1152-capacity"
-  sourceRevision: "8fccc3b299787b7d7f49ab33a0cec5c98ff08fd2"
-  targetZone: "us-east-1b"
-  replicas: 56
+  enabled: false
+  runId: disabled
+  evidenceId: disabled
+  sourceRevision: pending
+  targetZone: us-east-1b
+  replicas: 2
   resources:
     requests:
-      cpu: "81m"
-      memory: "298Mi"
+      cpu: "1000m"
+      memory: "2Gi"
     limits:
-      cpu: "81m"
-      memory: "298Mi"
+      cpu: "1000m"
+      memory: "2Gi"
 
-# Change trail: @hungxqt - 2026-07-30 - Enable the approved 1a-to-1b capacity probe window.
+# Change trail: @hungxqt - 2026-07-30 - Restore disabled state after the 1a-to-1b capacity probe passed.
