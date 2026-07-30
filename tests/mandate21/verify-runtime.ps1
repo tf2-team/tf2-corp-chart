@@ -149,10 +149,12 @@ $probeRendered = & helm template techx-corp $repo --namespace techx-corp-prod `
     -f (Join-Path $repo "values-public-alb.yaml") `
     -f (Join-Path $repo "values-prod.yaml") `
     -f (Join-Path $repo "service-digest/values-accounting.yaml") `
+    -f (Join-Path $repo "service-digest/values-load-generator.yaml") `
     --set capacityProbe.enabled=true 2>&1
 if ($LASTEXITCODE -ne 0) { throw "helm template with capacityProbe.enabled=true failed:`n$($probeRendered -join "`n")" }
 $probeManifest = $probeRendered -join "`n"
 Assert-True ($probeManifest -match '(?ms)kind:\s+Deployment.*?name:\s+capacity-probe') "capacity-probe Deployment renders when capacityProbe.enabled=true"
+Assert-True ($probeManifest -match '493499579600\.dkr\.ecr\.us-east-1\.amazonaws\.com/techx-prod-corp/load-generator@sha256:[0-9a-f]{64}') "capacity-probe uses a signed immutable production image"
 Assert-True ($probeManifest -match 'karpenter\.sh/capacity-type:\s+["'']?on-demand["'']?') "capacity-probe uses stateless-on-demand placement"
 Assert-True ($probeManifest -match '(?ms)key:\s+["'']?workload-class["'']?.*?value:\s+["'']?spot-tolerant["'']?') "capacity-probe tolerates spot-tolerant workload-class"
 Assert-True ($probeManifest -match 'automountServiceAccountToken:\s+false') "capacity-probe omits service account token"
