@@ -47,6 +47,8 @@ Assert-True ($preflight -match '\[string\]\$OutputPath\s*=\s*\(Join-Path\s+\$PSS
 Assert-True ($preflight -match 'Import-Module.*mandate21-evidence\.psm1') "preflight uses the shared fail-closed evaluator"
 Assert-True ($preflight -match '&\s*aws\s+@Arguments') "preflight invokes AWS with an argument array"
 Assert-True ($preflight -match '"eks",\s*"describe-cluster"') "preflight derives network scope from the configured EKS cluster"
+Assert-True ($preflight -match 'PSObject\.Properties\["DestinationCidrBlock"\]') "preflight handles route objects without an IPv4 destination under StrictMode"
+Assert-True ($preflight -match 'PSObject\.Properties\["NatGatewayId"\]') "preflight handles non-NAT route objects under StrictMode"
 Assert-True ($preflight -match '\$ValkeyReplicationGroupId\s*=\s*"techx-prod-tf2-cart"') "preflight targets the production Valkey replication group"
 Assert-True ($preflight -match '\$MskClusterName\s*=\s*"techx-prod-tf2-msk"') "preflight targets the production MSK cluster"
 
@@ -132,6 +134,15 @@ Assert-True ($manifest -match 'yace\.techx-corp-prod\.svc\.cluster\.local:5000')
 Assert-True ($manifest -match '(?ms)name: yace.*?app\.kubernetes\.io/name: prometheus.*?port: 5000') "YACE NetworkPolicy admits Prometheus"
 Assert-True ($manifest -match 'aws_applicationelb_healthy_host_count_minimum|HealthyHostCount') "rendered configuration includes ALB healthy-target metrics"
 Assert-True ($manifest -notmatch 'kind:\s+Deployment.*?name:\s+capacity-probe') "capacity-probe Deployment is disabled by default"
+$locustWorker = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?ms)kind:\s+Deployment.*?name:\s+load-generator-worker'
+})[0]
+Assert-True ($locustWorker -match '(?m)^\s*replicas:\s+0\s*$') "production keeps in-cluster Locust workers idle for external k6 baseline"
+$locustPdb = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?m)^kind:\s+PodDisruptionBudget\s*$' -and
+        $_ -match '(?m)^\s*name:\s+load-generator-worker\s*$'
+})
+Assert-True ($locustPdb.Count -eq 0) "idle Locust worker does not render an unsatisfiable PDB"
 
 $probeRendered = & helm template techx-corp $repo --namespace techx-corp-prod `
     -f (Join-Path $repo "values.yaml") `
