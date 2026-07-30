@@ -25,12 +25,15 @@ spec:
         - values.yaml
         - values-public-alb.yaml
         - values-prod.yaml
-        # Self-heal executor is enabled in prod in guarded mode
-        # (AIOPS_LIVE_EXECUTOR_ALLOW_LIVE_APPLY=false).
+        # AIOps Engine-driven self-heal is enabled only with live-approved
+        # policy, ESO-managed auth/notification secrets, and immutable digest pins.
+        - values-aiops.yaml
+        - values-aiops-live-approved.yaml
         - values-aiops-live-executor.yaml
         # Selective immutable digests from platform secure-delivery promote.
         - service-digest/values-accounting.yaml
         - service-digest/values-ad.yaml
+        - service-digest/values-aiops.yaml
         - service-digest/values-cart.yaml
         - service-digest/values-checkout.yaml
         - service-digest/values-currency.yaml
