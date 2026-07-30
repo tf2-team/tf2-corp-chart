@@ -1957,6 +1957,15 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
+{{- if .Values.aiops.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aiops-runtime
+      ports:
+        - protocol: TCP
+          port: 9090
+{{- end }}
     {{- range .Values.networkPolicy.albIngressCidrs }}
     - from:
         - ipBlock:
@@ -2383,4 +2392,4 @@ spec:
 
 {{- end }}{{/* end networkPolicy.enabled */}}
 
-# Change trail: @hungxqt - 2026-07-21 - Mandate 17 three-state enforcement and allowlisted egress proxy.
+# Change trail: @hungxqt - 2026-07-30 - Allow aiops-runtime ingress to prometheus port 9090.
