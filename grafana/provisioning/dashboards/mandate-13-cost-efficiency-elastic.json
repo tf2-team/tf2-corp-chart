@@ -1,0 +1,208 @@
+{
+  "annotations": { "list": [{ "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": false, "iconColor": "red", "name": "Mandate 13 test window", "type": "dashboard" }] },
+  "description": "Live evidence for Mandate 13. Run the same low-to-high-to-low load curve and keep every SLO panel healthy while Spot capacity scales up and down.",
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "1. Customer SLO — must remain healthy while compute scales",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "title": "Browse success (SLO >= 99.5%)",
+      "description": "Successful frontend browse spans divided by all browse spans in the selected window.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 3, "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 99.5 }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval])) > 0)" }]
+    },
+    {
+      "id": 3,
+      "title": "Storefront p95 latency (SLO < 1 s)",
+      "description": "p95 of frontend GET / spans.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 3, "thresholds": { "mode": "absolute", "steps": [{ "color": "green" }, { "color": "red", "value": 1 }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\",span_name=\"GET /\"}[$__rate_interval]))) / 1000" }]
+    },
+    {
+      "id": 4,
+      "title": "Cart success (SLO >= 99.5%)",
+      "description": "Successful frontend cart spans divided by all cart spans in the selected window.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 3, "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 99.5 }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/cart\"}[$__rate_interval])) > 0)" }]
+    },
+    {
+      "id": 5,
+      "title": "Checkout success (SLO >= 99.0%)",
+      "description": "Successful frontend checkout spans divided by all checkout spans in the selected window.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 3, "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 99 }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "expr": "(100 * (1 - ((sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\"}[$__rate_interval])), 0.000001)))) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=\"POST /api/checkout\"}[$__rate_interval])) > 0)" }]
+    },
+    {
+      "id": 6,
+      "title": "2. Load curve and elastic response",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Customer request rate — low → high → low load curve",
+      "description": "Use this as the shared demand signal while comparing node scale-up and scale-down.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "none", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull", "max", "mean"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "refId": "A", "legendFormat": "{{span_name}}", "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=~\"GET /|POST /api/cart|POST /api/checkout\"}[$__rate_interval]))" }]
+    },
+    {
+      "id": 8,
+      "title": "HPA replicas — demand creates pod capacity",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "none", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "refId": "A", "legendFormat": "{{horizontalpodautoscaler}}", "expr": "max by (horizontalpodautoscaler) (kube_horizontalpodautoscaler_status_current_replicas{namespace=\"techx-corp-prod\",horizontalpodautoscaler=~\"frontend|frontend-proxy|cart|checkout|product-catalog|product-reviews|recommendation|quote|shipping\"})" }]
+    },
+    {
+      "id": 9,
+      "title": "3. Compute capacity — Spot, Graviton and node-hours",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "title": "Spot allocatable CPU share (target > 50%)",
+      "description": "Share of allocatable CPU on Karpenter Spot nodes. This measures compute capacity, not merely node count.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 50 }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "expr": "100 * ((sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"} * on(node) group_left() kube_node_labels{label_karpenter_sh_capacity_type=\"spot\"}) or vector(0)) / clamp_min(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"}), 0.001))" }]
+    },
+    {
+      "id": 11,
+      "title": "Total node-hours — selected window",
+      "description": "Approximate node-hours from one-minute samples. Use the same time window for baseline and after measurements.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "hours", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue" }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum_over_time((sum(kube_node_info))[$__range:1m]) / 60" }]
+    },
+    {
+      "id": 12,
+      "title": "Spot node-hours — selected window",
+      "description": "Approximate Spot node-hours from one-minute samples in the selected window.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "hours", "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green" }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "sum_over_time((sum(kube_node_labels{label_karpenter_sh_capacity_type=\"spot\"} or vector(0))[$__range:1m]) / 60" }]
+    },
+    {
+      "id": 13,
+      "title": "Graviton allocatable CPU share",
+      "description": "Share of allocatable CPU on arm64 nodes. Mandate 13 requires Graviton capacity to be visible.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "red" }, { "color": "green", "value": 50 }] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "refId": "A", "expr": "100 * (sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"} * on(node) group_left() kube_node_labels{label_kubernetes_io_arch=\"arm64\"}) / clamp_min(sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"}), 0.001))" }]
+    },
+    {
+      "id": 14,
+      "title": "Ready nodes — total, Spot and inferred On-Demand",
+      "description": "An unlabeled managed node is counted as On-Demand; Karpenter Spot nodes carry capacity-type=spot.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "none", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull", "min", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "Total ready nodes", "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1)" },
+        { "refId": "B", "legendFormat": "Spot nodes", "expr": "sum((kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1) * on(node) group_left() kube_node_labels{label_karpenter_sh_capacity_type=\"spot\"}) or vector(0)" },
+        { "refId": "C", "legendFormat": "On-Demand nodes", "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1) - (sum((kube_node_status_condition{condition=\"Ready\",status=\"true\"} == 1) * on(node) group_left() kube_node_labels{label_karpenter_sh_capacity_type=\"spot\"}) or vector(0))" }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Spot allocatable CPU — scale up and scale down",
+      "description": "Shows whether low demand returns Spot capacity after the high-load phase.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "cores", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "none", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull", "min", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "Spot allocatable CPU", "expr": "sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"} * on(node) group_left() kube_node_labels{label_karpenter_sh_capacity_type=\"spot\"}) or vector(0)" },
+        { "refId": "B", "legendFormat": "Total allocatable CPU", "expr": "sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"})" }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "4. Spot interruption — customer flow must not drop",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 17,
+      "title": "Ready replicas on the customer path",
+      "description": "Keep this visible while draining one Spot node. A temporary reschedule must not remove all ready replicas for any customer-facing service.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "decimals": 0, "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "none", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull", "min"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "refId": "A", "legendFormat": "{{deployment}}", "expr": "max by (deployment) (kube_deployment_status_replicas_available{namespace=\"techx-corp-prod\",deployment=~\"frontend|frontend-proxy|cart|checkout|product-catalog|product-reviews|recommendation|quote|shipping\"})" }]
+    },
+    {
+      "id": 18,
+      "title": "Customer-flow errors during Spot interruption",
+      "description": "All three series must remain at zero while the Spot node is drained or interrupted.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "webstore-metrics" },
+      "fieldConfig": { "defaults": { "unit": "ops", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "none", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "refId": "A", "legendFormat": "{{span_name}} errors/s", "expr": "sum by (span_name) (rate(traces_span_metrics_calls_total{service_name=\"frontend\",span_name=~\"GET /|POST /api/cart|POST /api/checkout\",status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) or vector(0)" }]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["mandate-13", "cost", "spot", "karpenter", "slo"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Mandate 13 — Elastic Compute Cost and SLO",
+  "uid": "mandate-13-cost-efficiency-elastic",
+  "version": 1
+}
