@@ -3,4 +3,4 @@
 components:
   fraud-detection:
     imageOverride:
-      digest: "sha256:0595ce24a34fe07f53fcd961d087db1b078857bd80c7c6a3c89f6be8ca93398c"
+      digest: "sha256:6ca216da266aec37ed45a59f93f66ed40f9e1a1439157ad89b5227bb33afbff7"

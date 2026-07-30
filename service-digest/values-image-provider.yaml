@@ -3,4 +3,4 @@
 components:
   image-provider:
     imageOverride:
-      digest: "sha256:f3810caf92cfd79aeef25ffd6d50973389353424311095620885d07853fac4f9"
+      digest: "sha256:eccf3d02aca354849bfac8b0adea2785a328fe7d591d599b995c8024fb7caa4b"
