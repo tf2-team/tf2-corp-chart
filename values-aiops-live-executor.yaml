@@ -6,7 +6,7 @@ aiopsLiveExecutor:
   podAnnotations:
     config.linkerd.io/skip-outbound-ports: "443,10000,9901"
   image:
-    digest: sha256:0a97968c58545b1b5a10a708a9aae184e4eb3d056d927b48ffc7d52c89619e7c
+    digest: sha256:80e5cb5686b7805bfc966205c6fa596e321213e5cefc600fed211244604ad060
   auth:
     existingSecret: aiops-live-executor-token
     tokenKey: token
