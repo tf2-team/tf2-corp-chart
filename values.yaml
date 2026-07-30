@@ -1183,7 +1183,7 @@ components:
       - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
         value: /otlp-http/v1/traces # This allows local development and production/ALB relative routing
       - name: JAEGER_QUERY_URL
-        value: http://jaeger:16686
+        value: http://jaeger:16686/jaeger/ui
     resources:
       # Burstable QoS. Under the 700–800-user M16 run, all 20 replicas were
       # reachable and received balanced Linkerd traffic, but 200m caused CFS
