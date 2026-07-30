@@ -756,7 +756,7 @@
         "existingSecret": {
           "type": "string"
         },
-        "notificationSecretRef": {
+        "notificationDevSecretRef": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -772,6 +772,29 @@
             "name",
             "key"
           ]
+        },
+        "notificationUserSecretRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "key"
+          ]
+        },
+        "notificationDevWebhookUrl": {
+          "type": "string"
+        },
+        "notificationUserWebhookUrl": {
+          "type": "string"
         },
         "service": {
           "type": "object",

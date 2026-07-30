@@ -187,14 +187,25 @@ spec:
               value: /var/run/secrets/kubernetes.io/serviceaccount/token
             - name: AIOPS_KUBERNETES_CA_CERT_PATH
               value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-            {{- with .Values.aiops.notificationSecretRef }}
-            {{- if .name }}
-            - name: AIOPS_NOTIFICATION_WEBHOOK_URL
+            {{- if and .Values.aiops.notificationDevSecretRef .Values.aiops.notificationDevSecretRef.name }}
+            - name: AIOPS_NOTIFICATION_DEV_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .name | quote }}
-                  key: {{ .key | quote }}
+                  name: {{ .Values.aiops.notificationDevSecretRef.name | quote }}
+                  key: {{ default "webhook-url" .Values.aiops.notificationDevSecretRef.key | quote }}
+            {{- else if .Values.aiops.notificationDevWebhookUrl }}
+            - name: AIOPS_NOTIFICATION_DEV_WEBHOOK_URL
+              value: {{ .Values.aiops.notificationDevWebhookUrl | quote }}
             {{- end }}
+            {{- if and .Values.aiops.notificationUserSecretRef .Values.aiops.notificationUserSecretRef.name }}
+            - name: AIOPS_NOTIFICATION_USER_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aiops.notificationUserSecretRef.name | quote }}
+                  key: {{ default "webhook-url" .Values.aiops.notificationUserSecretRef.key | quote }}
+            {{- else if .Values.aiops.notificationUserWebhookUrl }}
+            - name: AIOPS_NOTIFICATION_USER_WEBHOOK_URL
+              value: {{ .Values.aiops.notificationUserWebhookUrl | quote }}
             {{- end }}
             {{- if .Values.egressProxy.enabled }}
             - name: HTTPS_PROXY
@@ -279,3 +290,5 @@ spec:
       targetPort: http
       protocol: TCP
 {{- end }}
+
+# Change trail: @hungxqt - 2026-07-30 - Replace AIOPS_NOTIFICATION_WEBHOOK_URL with dev and user webhook environment variables.

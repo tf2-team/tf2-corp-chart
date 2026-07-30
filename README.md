@@ -29,8 +29,7 @@ the current store is SQLite.
 
 Sensitive inbound `AIOPS_*` values come from the ESO-managed
 `techx-corp-aiops-grafana-webhook` Secret referenced by `aiops.existingSecret`.
-Outbound incident summaries use `aiops.notificationSecretRef`; the AIOps
-overlay points it at the ESO-managed `techx-corp-grafana-discord` Secret.
+Outbound incident summaries use dev and user notification channels (`aiops.notificationDevWebhookUrl` / `aiops.notificationDevSecretRef` and `aiops.notificationUserWebhookUrl` / `aiops.notificationUserSecretRef`).
 The runtime is exposed only inside the cluster as `aiops-runtime:8080`, backed
 by the FastAPI container on port 8000. The default policy remains `dry-run`;
 supported modes are `observe`, `dry-run`, and `live-approved`. Switching to
@@ -107,4 +106,6 @@ This chart has been hardened to conform to restricted Pod Security Standards. Fo
 
 ## License
 Apache License 2.0.
+
+<!-- Change trail: @hungxqt - 2026-07-30 - Document dev and user Discord webhook notification settings for aiops runtime. -->
 

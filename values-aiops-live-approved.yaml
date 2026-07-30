@@ -2,9 +2,8 @@
 # Apply only with reviewed immutable aiops image digest and required ESO secrets.
 aiops:
   enabled: true
-  notificationSecretRef:
-    name: techx-corp-grafana-discord
-    key: webhook-url
+  notificationDevWebhookUrl: "https://discord.com/api/webhooks/1531986048685703348/17hieSzN40cxifBPI-yhVIbJI_1-FMnTbAXikntk8bWiVCPhp0VouF9Xe4tR1yaGyDFz"
+  notificationUserWebhookUrl: "https://discord.com/api/webhooks/1531993217912803460/QYKjstHAUW_rH_gn2x5toS-Xk31IviGf5KsDNaNuOdv-8kRZB8UBw-rY7jKM9vDEvCej"
   config:
     policyMode: live-approved
     selfHeal:
@@ -27,3 +26,6 @@ aiopsLiveExecutor:
     cooldownSeconds: 900
     actionBudgetWindowSeconds: 3600
     actionBudgetMaxExecutions: 10
+
+# Change trail: @hungxqt - 2026-07-30 - Replace notificationSecretRef with dev and user notification webhook URLs.
+
