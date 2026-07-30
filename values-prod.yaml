@@ -44,7 +44,6 @@ egressProxy:
     - shopping-copilot
     - yace
   allowedDomains:
-    - api.groq.com:443
     - bedrock-runtime.us-east-1.amazonaws.com:443
     - sts.us-east-1.amazonaws.com:443
     - monitoring.us-east-1.amazonaws.com:443
@@ -772,10 +771,14 @@ components:
       minReplicas: 2
     schedulingRules: *directive03-hard-spread
     envOverrides:
-      - name: LLM_BASE_URL
-        value: https://api.groq.com/openai/v1
-      - name: LLM_MODEL
-        value: openai/gpt-oss-20b
+      - name: LLM_PROVIDER
+        value: bedrock
+      - name: AWS_REGION
+        value: us-east-1
+      - name: BEDROCK_MODEL_ID
+        value: global.amazon.nova-2-lite-v1:0
+      - name: BEDROCK_MAX_TOKENS
+        value: "1024"
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::493499579600:role/techx-prod-tf2-product-reviews-model-read
