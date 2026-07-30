@@ -130,7 +130,8 @@ $egressProxyPolicy = @($manifest -split '(?m)^---\s*$' | Where-Object {
     $_ -match '(?m)^  name:\s+egress-proxy\s*$'
 })[0]
 foreach ($proxyEnv in @('HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy')) {
-    Assert-True ($accountingDeployment -match "(?m)^\s*-\s+name:\s+$proxyEnv\s*$") "Accounting renders $proxyEnv for AWS API access"
+    $proxyEnvCount = [regex]::Matches($accountingDeployment, "(?m)^\s*-\s+name:\s+$proxyEnv\s*$").Count
+    Assert-True ($proxyEnvCount -eq 1) "Accounting renders $proxyEnv exactly once for AWS API access"
 }
 Assert-True ($accountingDeployment -match [regex]::Escape('http://egress-proxy:10000')) "Accounting routes HTTPS through the allowlisted proxy"
 Assert-True ($accountingPolicy -match '(?ms)app\.kubernetes\.io/name:\s+egress-proxy.*?protocol:\s+TCP.*?port:\s+10000') "Accounting NetworkPolicy permits only the proxy listener for external HTTPS"
