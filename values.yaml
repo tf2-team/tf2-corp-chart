@@ -459,7 +459,7 @@ aiops:
   persistence:
     enabled: true
     existingClaim: ""
-    storageClass: gp2
+    storageClass: gp3-encrypted
     accessMode: ReadWriteOnce
     size: 2Gi
   config:
