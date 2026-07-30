@@ -57,7 +57,6 @@ egressProxy:
   noProxy: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8,accounting,ad,cart,checkout,currency,email,flagd,fraud-detection,frontend,frontend-proxy,image-provider,llm,payment,product-catalog,product-reviews,quote,recommendation,shipping,shopping-copilot,otel-collector,prometheus,jaeger,grafana,kubecost,kubecost-frontend"
   allowedDomains:
     # Envoy matches the CONNECT target, which includes the destination port.
-    - api.groq.com:443
     - bedrock-runtime.us-east-1.amazonaws.com:443
     - sts.us-east-1.amazonaws.com:443
     # Grafana CloudWatch datasource uses the regional metrics and logs APIs.
@@ -2980,6 +2979,13 @@ opentelemetry-collector:
                   type: latency
                   latency:
                     threshold_ms: 1000
+          # M24: AI traces are an audit artifact, not sampled web traffic.
+          # Each model call carries this bounded surface attribute.
+          - name: retain-ai-traces
+            type: string_attribute
+            string_attribute:
+              key: app.ai.surface
+              values: [copilot, summary]
           # A small baseline sample preserves representative healthy traces.
           - name: baseline-success
             type: probabilistic
