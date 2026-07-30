@@ -556,17 +556,6 @@ components:
         value: techx-prod-tf2-checkout-outbox
       - name: AWS_REGION
         value: us-east-1
-      # The Accounting outbox reconciler uses IRSA (STS) and DynamoDB. Route
-      # only HTTPS AWS API calls through the existing allowlisted proxy instead
-      # of granting the workload direct Internet egress.
-      - name: HTTPS_PROXY
-        value: "http://egress-proxy:10000"
-      - name: https_proxy
-        value: "http://egress-proxy:10000"
-      - name: NO_PROXY
-        value: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8"
-      - name: no_proxy
-        value: ".svc,.svc.cluster.local,localhost,127.0.0.1,10.0.0.0/8"
       - name: OUTBOX_RECONCILE_INTERVAL_SECONDS
         value: "300"
       - name: OUTBOX_PUBLISHED_STALE_SECONDS
