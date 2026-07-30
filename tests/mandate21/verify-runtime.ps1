@@ -107,7 +107,7 @@ foreach ($title in @("Ready nodes by AZ", "Ready money-path pods by AZ", "ALB he
 }
 
 $linkerd = Read-RepoFile "gitops/linkerd/linkerd-control-plane.yaml"
-Assert-True ($linkerd -match '(?m)^\s*controllerReplicas:\s*2\s*$') "Linkerd controller replica floor is two"
+Assert-True ($linkerd -match '(?m)^\s*controllerReplicas:\s*3\s*$') "Linkerd controller replica floor is three"
 Assert-True ($linkerd -match '(?m)^\s*enablePodAntiAffinity:\s*true\s*$') "Linkerd controller anti-affinity is enabled"
 Assert-True ($linkerd -match '(?m)^\s*enablePodDisruptionBudget:\s*true\s*$') "Linkerd controller PDB is enabled"
 

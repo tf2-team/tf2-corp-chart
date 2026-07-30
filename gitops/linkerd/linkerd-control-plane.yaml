@@ -44,10 +44,11 @@ spec:
         # -----------------------------------------------------------------------
         cniEnabled: true
         disableHeartBeat: true
-        # M21: all three controller Deployments use this replica count. The
-        # chart's anti-affinity keeps replicas off the same node; runtime
-        # preflight additionally proves that they span both production AZs.
-        controllerReplicas: 2
+        # M21: three replicas plus hostname anti-affinity guarantee that a
+        # controller remains outside the selected us-east-1a fault domain.
+        # Zone anti-affinity stays soft so two replicas can recover in the
+        # surviving AZ during an outage.
+        controllerReplicas: 3
         enablePodAntiAffinity: true
         enablePodDisruptionBudget: true
 
@@ -216,3 +217,4 @@ spec:
         - .metadata.annotations
 
 # Change trail: @hungxqt - 2026-07-28 - Set Linkerd controllerReplicas: 2, enablePodAntiAffinity: true, and enablePodDisruptionBudget: true.
+# Change trail: @MinhKhoa2209 - 2026-07-30 - Keep one Linkerd controller outside the fixed Mandate 21 us-east-1a fault domain.
