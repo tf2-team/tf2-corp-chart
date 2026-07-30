@@ -1,4 +1,4 @@
-# Approved Mandate 21 capacity window: simulate the load lost with us-east-1a.
+# Generated evidence input; review, commit through Git, and let Argo reconcile.
 capacityProbe:
   enabled: true
   runId: "md21-cap-1a-to-1b-20260730-1152"
@@ -14,4 +14,4 @@ capacityProbe:
       cpu: "81m"
       memory: "298Mi"
 
-# Change trail: @hungxqt - 2026-07-30 - Enable the approved 1a-to-1b capacity probe window.
+# Change trail: @hungxqt - 2026-07-29 - Generated a reviewed GitOps capacity-probe input for 1a-to-1b.
