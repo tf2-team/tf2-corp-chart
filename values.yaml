@@ -483,11 +483,11 @@ aiops:
         approvalIdKey: approval-id
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
+      cpu: 200m
       memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
 
 # Self-heal live executor is disabled by default. It must only be enabled in a
 # dev/demo namespace approved for the golden `scale_product_catalog` action.
@@ -3681,4 +3681,4 @@ capacityProbe:
       cpu: "2000m"
       memory: "4Gi"
 
-# Change trail: @hungxqt - 2026-07-29 - Added traceable run and revision fields for capacity evidence.
+# Change trail: @hungxqt - 2026-07-30 - Set aiops-runtime resource requests to 200m/512Mi and limits to 1000m/1Gi.
