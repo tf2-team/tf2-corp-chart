@@ -11,9 +11,12 @@ param(
     [ValidateRange(5,60)][int]$TimeoutMinutes = 30
 )
 $ErrorActionPreference="Stop"; Set-StrictMode -Version Latest
-Import-Module (Join-Path $PSScriptRoot "mandate21-fis-contract.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "mandate21-fis-approval.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "mandate21-fis-orchestration.psm1") -Force
+# The approval module imports the contract dependency in module scope. Import
+# the contract last as well so its helpers remain available to this wrapper's
+# script scope during both read-only validation and execution.
+Import-Module (Join-Path $PSScriptRoot "mandate21-fis-contract.psm1") -Force
 function Invoke-AwsJson([string[]]$Arguments) { $out=& aws @Arguments 2>&1; if($LASTEXITCODE -ne 0){throw "AWS command failed: $($Arguments[0..1] -join ' ')"}; try{return (($out -join "`n")|ConvertFrom-Json -Depth 100)}catch{throw "AWS returned invalid JSON."} }
 function Read-BoundedJson([string]$Path,[int64]$MaxBytes=10MB) { $item=Get-Item -LiteralPath $Path -ErrorAction Stop; if($item.PSIsContainer -or $item.Length -gt $MaxBytes){throw "JSON input is not a bounded regular file."}; return (Get-Content -Raw -LiteralPath $item.FullName|ConvertFrom-Json -Depth 100) }
 $contract=Read-BoundedJson $ContractPath 1MB; Assert-Mandate21Contract $contract|Out-Null
