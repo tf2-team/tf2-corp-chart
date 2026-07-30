@@ -59,7 +59,6 @@ spec:
         - values-capacity-probe.yaml
         # Keep values-aiops-long-run-1000.yaml out of the default prod path.
         # Re-add it only for an approved Locust/AIOps long-run test window.
-        - values-loadgen-worker-4.yaml
       releaseName: techx-corp
 
   destination:
