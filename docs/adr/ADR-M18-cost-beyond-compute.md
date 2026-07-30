@@ -3,9 +3,9 @@
 | Trường | Nội dung |
 | --- | --- |
 | **Mandate** | MANDATE-18 — Cost Beyond Compute |
-| **Trạng thái** | Đang triển khai |
+| **Trạng thái** | Đang hoàn thành |
 | **Team** | CDO-03 / TF 2 |
-| **Ngày** | 2026-07-28 |
+| **Ngày** | 2026-07-30 |
 
 ## 1. Bối cảnh
 
@@ -274,4 +274,4 @@ processing.
 
 
 
-*Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-28*
+*Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-30*
