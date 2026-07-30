@@ -1,0 +1,29 @@
+# Production overlay for Engine-driven AIOps self-heal.
+# Apply only with reviewed immutable aiops image digest and required ESO secrets.
+aiops:
+  enabled: true
+  notificationSecretRef:
+    name: techx-corp-grafana-discord
+    key: webhook-url
+  config:
+    policyMode: live-approved
+    selfHeal:
+      enabled: true
+      executorUrl: http://aiops-live-executor:8080
+      executorAccount: aiops-runtime
+      policyId: phase3-scale-policy-v1
+      policyExpiresAt: "2026-08-31T23:59:59Z"
+      auth:
+        existingSecret: aiops-live-executor-token
+        tokenKey: token
+        approvalIdKey: approval-id
+
+aiopsLiveExecutor:
+  enabled: true
+  config:
+    policyId: phase3-scale-policy-v1
+    policyExpiresAt: "2026-08-31T23:59:59Z"
+    allowLiveApply: "true"
+    cooldownSeconds: 900
+    actionBudgetWindowSeconds: 3600
+    actionBudgetMaxExecutions: 10
