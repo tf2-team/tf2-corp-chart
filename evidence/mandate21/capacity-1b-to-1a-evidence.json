@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 2,
+  "runId": "md21-cap-1b-to-1a-20260730-1250",
+  "evidenceId": "md21-cap-1b-to-1a-20260730-1250-capacity",
+  "sourceRevision": "db8c7c630cd4928fb3da106f6456df51538d3154",
+  "deployedRevision": "78dd0754f4b71143c93d62623d269e13ec36b890",
+  "argoRevision": "78dd0754f4b71143c93d62623d269e13ec36b890",
+  "direction": "1b-to-1a",
+  "lostAz": "us-east-1b",
+  "survivingAz": "us-east-1a",
+  "baselineAt": "2026-07-30T05:51:11.1191748Z",
+  "completedAt": "2026-07-30T06:16:21.2321882Z",
+  "baselineNodeClaims": [
+    {
+      "name": "stateless-on-demand-rl4pv",
+      "uid": "2b1ee019-6ea1-4158-b6c5-d39b85c42a5c",
+      "createdAt": "2026-07-30T05:16:31Z",
+      "availabilityZone": "us-east-1b",
+      "nodeName": "ip-10-0-39-125.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-spot-59bzb",
+      "uid": "74c4e3be-073f-482b-b6af-ae7064226ead",
+      "createdAt": "2026-07-28T16:22:14Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-30-194.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-spot-glbmq",
+      "uid": "b37c1b6e-ecef-4cec-9d78-90a84cb4444c",
+      "createdAt": "2026-07-27T17:54:06Z",
+      "availabilityZone": "us-east-1b",
+      "nodeName": "ip-10-0-44-233.ec2.internal",
+      "ready": true
+    }
+  ],
+  "newNodeClaims": [
+    {
+      "name": "stateless-on-demand-2n9bw",
+      "uid": "73419ffe-3520-4724-992b-351bd7eb4e40",
+      "createdAt": "2026-07-30T06:01:33Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-25-6.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-on-demand-f94m8",
+      "uid": "5b80ef1a-ee3f-45b1-853a-f8a234fa2966",
+      "createdAt": "2026-07-30T06:01:53Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-25-210.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-on-demand-ggdv6",
+      "uid": "d89a226a-7033-41b6-b8d5-1765bfbff54b",
+      "createdAt": "2026-07-30T06:02:17Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-27-54.ec2.internal",
+      "ready": true
+    },
+    {
+      "name": "stateless-on-demand-hgk9w",
+      "uid": "c75aaf43-a898-49fa-8a27-f219585e67a0",
+      "createdAt": "2026-07-30T06:02:01Z",
+      "availabilityZone": "us-east-1a",
+      "nodeName": "ip-10-0-18-110.ec2.internal",
+      "ready": true
+    }
+  ],
+  "requestedLoad": {
+    "replicas": 54,
+    "cpuMilli": 5775,
+    "memoryBytes": 15288238080,
+    "headroomPercent": 20
+  },
+  "samples": [
+    {
+      "timestamp": "2026-07-30T06:11:15.1283845Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:11:45.1525193Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:12:15.1323549Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:12:45.1319962Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:13:15.1299796Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:13:45.1434223Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:14:15.1382945Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:14:45.1302970Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:15:15.1438958Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:15:45.1388283Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    },
+    {
+      "timestamp": "2026-07-30T06:16:15.1469543Z",
+      "desiredReplicas": 54,
+      "readyReplicas": 54,
+      "readyCpuMilli": 6318,
+      "readyMemoryBytes": 16420700160,
+      "readyNodeNames": [
+        "ip-10-0-27-54.ec2.internal",
+        "ip-10-0-25-210.ec2.internal",
+        "ip-10-0-18-110.ec2.internal",
+        "ip-10-0-25-6.ec2.internal"
+      ]
+    }
+  ],
+  "status": "PASS",
+  "checks": [
+    {
+      "check": "nodeclaim.new",
+      "status": "PASS",
+      "detail": "At least one NodeClaim must be created after the recorded baseline."
+    },
+    {
+      "check": "nodeclaim.survivingAz",
+      "status": "PASS",
+      "detail": "At least one new Ready NodeClaim must be in the surviving AZ."
+    },
+    {
+      "check": "soak.fullDuration",
+      "status": "PASS",
+      "detail": "Soak evidence must span the full duration at the configured sampling cadence."
+    },
+    {
+      "check": "probe.readyLoad",
+      "status": "PASS",
+      "detail": "Every soak sample must show all replicas Ready and at least the requested CPU and memory load."
+    },
+    {
+      "check": "probe.newNodeClaimAttribution",
+      "status": "PASS",
+      "detail": "Every Ready probe pod must run on a node owned by a new Ready NodeClaim in the surviving AZ."
+    }
+  ]
+}
