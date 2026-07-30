@@ -823,10 +823,10 @@ components:
       - -c
       - max_wal_senders=4
 
-  # Keep in-cluster Locust idle. Mandate 21 uses external k6 so the load source
-  # remains outside the failure domain during an AZ fault.
+  # Keep the Locust UI available for controlled in-cluster tests. It produces no
+  # traffic until an operator starts a run; distributed workers remain disabled.
   load-generator:
-    replicas: 0
+    replicas: 1
     podAnnotations:
       cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     envOverrides:
