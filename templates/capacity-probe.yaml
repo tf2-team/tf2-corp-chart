@@ -1,4 +1,6 @@
 {{- if .Values.capacityProbe.enabled }}
+{{- $loadGenerator := index .Values.components "load-generator" | default dict -}}
+{{- $probeImage := dict "name" "load-generator" "imageOverride" (default dict $loadGenerator.imageOverride) "defaultValues" .Values.default "Chart" .Chart -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -41,7 +43,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: capacity-probe
-          image: "public.ecr.aws/docker/library/busybox:1.36.1"
+          image: '{{ include "techx-corp.containerImage" $probeImage }}'
           command: ["sleep", "3600"]
           resources:
             {{- toYaml .Values.capacityProbe.resources | nindent 12 }}
@@ -54,4 +56,4 @@ spec:
               drop:
                 - ALL
 {{- end }}
-# Change trail: @hungxqt - 2026-07-29 - Hardened and labeled the capacity probe for revision-bound evidence.
+# Change trail: @hungxqt - 2026-07-30 - Reuse the signed production load-generator image for admission-safe capacity probes.
