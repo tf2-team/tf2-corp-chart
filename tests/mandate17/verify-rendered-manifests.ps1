@@ -138,6 +138,10 @@ if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
 }
 $prometheusIngressPolicy = $ingress | Where-Object { $_ -match '(?m)^  name: prometheus$' }
 if ($prometheusIngressPolicy.Count -ne 1) { throw "ingress state must render one prometheus policy" }
+$aiopsPrometheusIngressRule = '(?ms)operator:\s+In\s+values:.*?-\s+aiops-runtime\s+ports:\s+- protocol:\s+TCP\s+port:\s+9090'
+if ($prometheusIngressPolicy -notmatch $aiopsPrometheusIngressRule) {
+    throw "Prometheus policy must allow aiops-runtime queries on TCP 9090"
+}
 foreach ($albCidr in @('10.0.10.0/24', '10.0.11.0/24')) {
     $prometheusLensProxyRule = '(?ms)cidr: "?' + [regex]::Escape($albCidr) + '"?\s+ports:\s+- protocol: TCP\s+port: 9090'
     if ($prometheusIngressPolicy -notmatch $prometheusLensProxyRule) {

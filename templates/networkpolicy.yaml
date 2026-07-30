@@ -1946,7 +1946,13 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [grafana, jaeger, prometheus-adapter]
+                values:
+                  - grafana
+                  - jaeger
+                  - prometheus-adapter
+                  {{ if .Values.aiops.enabled }}
+                  - aiops-runtime
+                  {{ end }}
       ports:
         - protocol: TCP
           port: 9090
