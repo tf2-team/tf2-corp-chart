@@ -92,15 +92,22 @@ $baselineAt = [datetime]$baseline.baselineAt
 $newSurvivingNodeNames = @($observedClaims | Where-Object { $baselineIds -notcontains [string]$_.uid -and [datetime]$_.createdAt -gt $baselineAt -and $_.availabilityZone -eq $survivingAz -and [bool]$_.ready } | ForEach-Object { [string]$_.nodeName } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
 $samples = @()
 $sampleCount = [int]($SoakSeconds / $SampleIntervalSeconds) + 1
+$firstSampleAt = $null
 for ($index = 0; $index -lt $sampleCount; $index++) {
-    if ($index -gt 0) { Start-Sleep -Seconds $SampleIntervalSeconds }
+    if ($index -gt 0) {
+        $targetAt = $firstSampleAt.AddSeconds($index * $SampleIntervalSeconds)
+        $remainingMilliseconds = [int][math]::Ceiling(($targetAt - (Get-Date).ToUniversalTime()).TotalMilliseconds)
+        if ($remainingMilliseconds -gt 0) { Start-Sleep -Milliseconds $remainingMilliseconds }
+    }
+    $sampleAt = (Get-Date).ToUniversalTime()
+    if ($index -eq 0) { $firstSampleAt = $sampleAt }
     $deployment = Invoke-KubeJson @("-n", $Namespace, "get", "deployment", "capacity-probe", "-o", "json")
     if ($deployment.metadata.labels.'mandate21.techx.io/run-id' -ne $RunId -or $deployment.metadata.labels.'mandate21.techx.io/source-revision' -ne $SourceRevision) { throw "Live capacity probe labels do not match the approved run." }
     $pods = Invoke-KubeJson @("-n", $Namespace, "get", "pods", "-l", "app.kubernetes.io/name=capacity-probe,mandate21.techx.io/run-id=$RunId", "-o", "json")
     $readyPods = @($pods.items | Where-Object { $_.status.phase -eq "Running" -and (Test-ReadyCondition $_.status.conditions) -and $_.spec.nodeName })
     [int64]$readyCpu = 0; [int64]$readyMemory = 0
     foreach ($pod in $readyPods) { foreach ($container in @($pod.spec.containers)) { $readyCpu += Convert-CpuMilli ([string]$container.resources.requests.cpu); $readyMemory += Convert-MemoryBytes ([string]$container.resources.requests.memory) } }
-    $samples += [pscustomobject]@{ timestamp = (Get-Date).ToUniversalTime().ToString("o"); desiredReplicas = [int]$deployment.spec.replicas; readyReplicas = $readyPods.Count; readyCpuMilli = $readyCpu; readyMemoryBytes = $readyMemory; readyNodeNames = @($readyPods | ForEach-Object { [string]$_.spec.nodeName } | Select-Object -Unique) }
+    $samples += [pscustomobject]@{ timestamp = $sampleAt.ToString("o"); desiredReplicas = [int]$deployment.spec.replicas; readyReplicas = $readyPods.Count; readyCpuMilli = $readyCpu; readyMemoryBytes = $readyMemory; readyNodeNames = @($readyPods | ForEach-Object { [string]$_.spec.nodeName } | Select-Object -Unique) }
 }
 $snapshot = [pscustomobject]@{ baselineAt = $baseline.baselineAt; baselineNodeClaims = @($baseline.baselineNodeClaims); observedNodeClaims = $observedClaims; survivingAz = $survivingAz; requestedLoad = $baseline.requestedLoad; soakSeconds = $SoakSeconds; sampleIntervalSeconds = $SampleIntervalSeconds; samples = $samples }
 $evaluation = Test-CapacityProbeSnapshot -Snapshot $snapshot
@@ -110,4 +117,4 @@ $evidence | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $EvidencePath -E
 Write-Host "Capacity evidence: $EvidencePath ($($evaluation.status))"
 if ($evaluation.status -ne "PASS") { exit 1 }
 
-# Change trail: @hungxqt - 2026-07-29 - Generate GitOps probe inputs and measure revision-bound Karpenter capacity without direct mutation.
+# Change trail: @hungxqt - 2026-07-30 - Keep capacity samples on absolute cadence instead of adding kubectl latency to each interval.
