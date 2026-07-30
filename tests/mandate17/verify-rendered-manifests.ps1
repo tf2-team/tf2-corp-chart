@@ -10,7 +10,7 @@ $baseArgs = @(
     "--values", (Join-Path $chartRoot "values-prod.yaml")
 )
 
-function Render([bool]$Enabled, [bool]$Enforce, [bool]$Proxy) {
+function Render([bool]$Enabled, [bool]$Enforce, [bool]$Proxy, [bool]$Aiops = $false) {
     $args = $baseArgs
     if ($Proxy) {
         $args += @("--values", (Join-Path $PSScriptRoot "network-policy-values.yaml"))
@@ -18,10 +18,11 @@ function Render([bool]$Enabled, [bool]$Enforce, [bool]$Proxy) {
     $args += @(
         "--set", "networkPolicy.enabled=$($Enabled.ToString().ToLowerInvariant())",
         "--set", "networkPolicy.enforceEgress=$($Enforce.ToString().ToLowerInvariant())",
-        "--set", "egressProxy.enabled=$($Proxy.ToString().ToLowerInvariant())"
+        "--set", "egressProxy.enabled=$($Proxy.ToString().ToLowerInvariant())",
+        "--set", "aiops.enabled=$($Aiops.ToString().ToLowerInvariant())"
     )
     $output = & $Helm @args
-    if ($LASTEXITCODE -ne 0) { throw "helm template failed for $Enabled/$Enforce/$Proxy" }
+    if ($LASTEXITCODE -ne 0) { throw "helm template failed for networkPolicy=$Enabled/enforceEgress=$Enforce/proxy=$Proxy/aiops=$Aiops" }
     return ($output -join "`n")
 }
 
@@ -138,8 +139,17 @@ if ($frontendIngressPolicy -match 'cidr: 10\.0\.0\.0/16') {
 }
 $prometheusIngressPolicy = $ingress | Where-Object { $_ -match '(?m)^  name: prometheus$' }
 if ($prometheusIngressPolicy.Count -ne 1) { throw "ingress state must render one prometheus policy" }
+if ($prometheusIngressPolicy -match '(?m)^\s+- aiops-runtime\s*$') {
+    throw "Prometheus policy must not allow aiops-runtime when AIOps is disabled"
+}
+
+$aiopsIngress = NetworkPolicyDocuments (Render $true $false $false $true)
+$aiopsPrometheusIngressPolicy = $aiopsIngress | Where-Object { $_ -match '(?m)^  name: prometheus$' }
+if ($aiopsPrometheusIngressPolicy.Count -ne 1) {
+    throw "AIOps-enabled ingress state must render one prometheus policy"
+}
 $aiopsPrometheusIngressRule = '(?ms)operator:\s+In\s+values:.*?-\s+aiops-runtime\s+ports:\s+- protocol:\s+TCP\s+port:\s+9090'
-if ($prometheusIngressPolicy -notmatch $aiopsPrometheusIngressRule) {
+if ($aiopsPrometheusIngressPolicy -notmatch $aiopsPrometheusIngressRule) {
     throw "Prometheus policy must allow aiops-runtime queries on TCP 9090"
 }
 foreach ($albCidr in @('10.0.10.0/24', '10.0.11.0/24')) {
