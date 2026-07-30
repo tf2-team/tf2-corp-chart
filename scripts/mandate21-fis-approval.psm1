@@ -3,6 +3,22 @@ Import-Module (Join-Path $PSScriptRoot "mandate21-fis-contract.psm1") -Force
 function Assert-ExactProperties($Object, [string[]]$Allowed, [string]$Name) { $actual = @($Object.PSObject.Properties.Name); $missing = @($Allowed | Where-Object { $actual -notcontains $_ }); $extra = @($actual | Where-Object { $Allowed -notcontains $_ }); if ($missing.Count -gt 0 -or $extra.Count -gt 0) { throw "$Name has missing or unknown fields." } }
 function Read-BoundedJson([string]$Path, [int64]$MaxBytes = 10MB) { $item = Get-Item -LiteralPath $Path -ErrorAction Stop; if ($item.PSIsContainer -or $item.Length -gt $MaxBytes) { throw "Bounded JSON evidence is invalid." }; return (Get-Content -Raw -LiteralPath $item.FullName | ConvertFrom-Json -Depth 100) }
 function Assert-EvidenceStatus($Evidence, [string]$ExpectedDirection = "") { $statusProperty=$Evidence.PSObject.Properties["status"]; $overallProperty=$Evidence.PSObject.Properties["overallStatus"]; $values=@(); if ($null -ne $statusProperty){$values+=[string]$statusProperty.Value}; if($null -ne $overallProperty){$values+=[string]$overallProperty.Value}; if($values.Count -eq 0 -or @($values | Where-Object { $_ -ne "PASS" }).Count -gt 0){throw "Evidence status is missing, conflicting, or not PASS."}; if ($ExpectedDirection -and $Evidence.direction -ne $ExpectedDirection) { throw "Capacity evidence direction mismatch." } }
+function ConvertTo-Mandate21UtcDateTime($Value, [string]$Name) {
+    if ($Value -is [datetimeoffset]) { return $Value.UtcDateTime }
+    if ($Value -is [datetime]) {
+        if ($Value.Kind -eq [DateTimeKind]::Unspecified) { throw "$Name must include a timezone." }
+        return $Value.ToUniversalTime()
+    }
+    try {
+        return [datetimeoffset]::Parse(
+            [string]$Value,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind
+        ).UtcDateTime
+    } catch {
+        throw "$Name is not a valid timezone-qualified timestamp."
+    }
+}
 function Test-Mandate21Approval {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Approval, [Parameter(Mandatory)][string]$ExpectedAccountId, [Parameter(Mandatory)][string]$ExpectedRegion, [Parameter(Mandatory)][string]$ExpectedClusterContext, [Parameter(Mandatory)][string]$ExpectedChartGitSha, [Parameter(Mandatory)][string]$ExpectedInfraGitSha, [Parameter(Mandatory)][string]$ExpectedContractSha256, [Parameter(Mandatory)][object[]]$LiveTemplates, [Parameter(Mandatory)][string]$InfraPreflightPath, [Parameter(Mandatory)][string]$Capacity1aTo1bPath, [Parameter(Mandatory)][string]$Capacity1bTo1aPath, [Parameter(Mandatory)][string]$AuditEvidencePath, [datetime]$Now = (Get-Date).ToUniversalTime())
@@ -12,7 +28,8 @@ function Test-Mandate21Approval {
     if ($Approval.accountId -ne $ExpectedAccountId -or $Approval.region -ne $ExpectedRegion -or $Approval.clusterContext -ne $ExpectedClusterContext) { throw 'Approval AWS context mismatch.' }
     if ($Approval.chartGitSha -ne $ExpectedChartGitSha -or $Approval.infraGitSha -ne $ExpectedInfraGitSha -or $Approval.contractSha256 -ne $ExpectedContractSha256) { throw 'Approval revision binding mismatch.' }
     if ($Approval.chartGitSha -notmatch '^[0-9a-f]{40}$' -or $Approval.infraGitSha -notmatch '^[0-9a-f]{40}$' -or $Approval.contractSha256 -notmatch '^[0-9a-f]{64}$') { throw 'Approval hashes are invalid.' }
-    $approvedAt = [datetime]::Parse([string]$Approval.approvedAt).ToUniversalTime(); $expiresAt = [datetime]::Parse([string]$Approval.expiresAt).ToUniversalTime()
+    $approvedAt = ConvertTo-Mandate21UtcDateTime $Approval.approvedAt 'approvedAt'
+    $expiresAt = ConvertTo-Mandate21UtcDateTime $Approval.expiresAt 'expiresAt'
     if ($approvedAt -gt $Now.AddMinutes(5) -or $Now -lt $approvedAt -or $Now -ge $expiresAt -or $expiresAt -le $approvedAt -or ($expiresAt - $approvedAt).TotalHours -gt 24) { throw 'Approval is stale, future-dated, expired, or exceeds 24 hours.' }
     if ([string]::IsNullOrWhiteSpace([string]$Approval.approvedBy) -or [string]::IsNullOrWhiteSpace([string]$Approval.changeReference)) { throw 'Approval identity or change reference is missing.' }
     if (@($Approval.templates).Count -ne 4 -or @($LiveTemplates).Count -ne 4) { throw 'Exactly four template revisions are required.' }
@@ -26,7 +43,27 @@ function Test-Mandate21Approval {
     if ([string]$infra.accountId -ne $ExpectedAccountId -or [string]$infra.region -ne $ExpectedRegion -or [string]$infra.cluster.arn -ne $ExpectedClusterContext -or [string]$infra.revision -ne $ExpectedInfraGitSha) { throw 'Infrastructure evidence context or revision mismatch.' }
     foreach ($capacity in @($capA, $capB)) {
         $runId = [string]$capacity.runId; $evidenceId = [string]$capacity.evidenceId
-        if ($runId -notmatch '^[0-9A-Za-z._-]{3,80}$' -or $evidenceId -cne "$runId-capacity" -or [string]$capacity.deployedRevision -ne $ExpectedChartGitSha -or [string]$capacity.argoRevision -ne $ExpectedChartGitSha) { throw 'Capacity evidence identity or deployed revision mismatch.' }
+        $sourceRevision = [string]$capacity.sourceRevision
+        $deployedRevision = [string]$capacity.deployedRevision
+        $argoRevision = [string]$capacity.argoRevision
+        if ([int]$capacity.schemaVersion -ne 2 -or
+            $runId -notmatch '^[0-9A-Za-z._-]{3,80}$' -or
+            $evidenceId -cne "$runId-capacity" -or
+            $sourceRevision -notmatch '^[0-9a-f]{40}$' -or
+            $deployedRevision -notmatch '^[0-9a-f]{40}$' -or
+            $argoRevision -cne $deployedRevision) {
+            throw 'Capacity evidence identity or GitOps revision binding mismatch.'
+        }
+        # Each direction is enabled and cleaned up through a separate reviewed
+        # GitOps revision, so their deployed SHAs are expected to differ. Bind
+        # each result to the exact Argo revision that produced it, its immutable
+        # file hash above, and a bounded evidence window instead of requiring
+        # both sequential probes to claim the current application SHA.
+        $capacityCompletedAt = ConvertTo-Mandate21UtcDateTime $capacity.completedAt 'capacity completedAt'
+        if ($capacityCompletedAt -gt $approvedAt -or
+            ($approvedAt - $capacityCompletedAt).TotalHours -gt 72) {
+            throw 'Capacity evidence is future-dated or older than 72 hours at approval time.'
+        }
     }
     if ([string]$capA.runId -eq [string]$capB.runId) { throw 'Capacity directions must use distinct run identifiers.' }    $expectedAlarms = @('techx-prod-tf2-mandate12-immutable-audit-health-check-errors','techx-prod-tf2-mandate12-immutable-audit-health-lambda-dlq-visible','techx-prod-tf2-mandate12-immutable-audit-control-health')
     if ($audit.status -ne 'PASS' -or @($audit.alarms).Count -ne 3) { throw 'Audit evidence is incomplete.' }
