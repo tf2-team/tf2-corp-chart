@@ -93,6 +93,7 @@ foreach ($field in @("testRequestId", "traceId", "startedAt", "completedAt", "ht
     Assert-True ($loadTest.Contains($field)) "k6 ledger contains $field"
 }
 Assert-True ($loadTest -match 'LEDGER_ENABLED') "k6 ledger is explicitly opt-in"
+Assert-True ($loadTest.Contains('streetAddress: `${requestId} Amphitheatre Parkway`')) "k6 uses a unique synthetic address per request to avoid fraud velocity cancellation"
 Assert-True ($loadTest -notmatch 'console\.log\([^)]*(creditCard|email|address)') "k6 never logs customer or payment payload"
 
 $kubecost = Read-RepoFile "gitops/clusters/prod/kubecost-application.yaml"
