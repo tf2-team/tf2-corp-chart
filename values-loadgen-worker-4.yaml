@@ -1,0 +1,11 @@
+# Temporary production load-test overlay: enable four in-cluster Locust workers.
+# Keep this out of the resting production baseline.
+components:
+  load-generator:
+    envOverrides:
+      - name: LOCUST_EXPECT_WORKERS
+        value: "4"
+      - name: LOCUST_EXCLUDE_TAGS
+        value: ai
+  load-generator-worker:
+    replicas: 4
