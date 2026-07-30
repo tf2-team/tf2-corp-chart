@@ -1,30 +1,41 @@
-﻿# Mandate 21 Infrastructure Preflight Report
+# Mandate 21 Infrastructure Preflight
 
-**Collected At:** 2026-07-29T13:25:10.1915846Z
-**Region:** us-east-1
-**Overall Status:** PASS
+Account: 493499579600
+Region: us-east-1
+Cluster: techx-tf2-prod
+Revision: 28abcd91383ca0df3c463b994a75801d03f706b1
+Status: PASS
 
-## Validation Summary
+| Check | Status | Detail |
+|---|---|---|
+| cluster.unique | PASS | Configured EKS cluster must resolve exactly once. |
+| cluster.vpc | PASS | VPC is derived from the configured EKS cluster. |
+| cluster.subnets | PASS | EKS must expose at least one configured subnet. |
+| network.privateSubnet.subnet-07599236e4979c4b2.sameAzNat | PASS | Exactly one active IPv4 default route must target an available NAT gateway in the same AZ. |
+| network.privateSubnet.subnet-0ee04e7bc69e247a3.sameAzNat | PASS | Exactly one active IPv4 default route must target an available NAT gateway in the same AZ. |
+| network.privateSubnet.subnet-0ab17749536b34693.sameAzNat | PASS | Exactly one active IPv4 default route must target an available NAT gateway in the same AZ. |
+| network.privateSubnet.subnet-0d1f0d1de6b352021.sameAzNat | PASS | Exactly one active IPv4 default route must target an available NAT gateway in the same AZ. |
+| network.subnetCoverage | PASS | Every EKS-configured subnet must have route evidence. |
+| rds.unique | PASS | RDS identifier must resolve exactly once. |
+| rds.available | PASS | RDS must be available. |
+| rds.multiAz | PASS | RDS Multi-AZ must be enabled. |
+| rds.encrypted | PASS | RDS storage encryption must be enabled. |
+| rds.deletionProtection | PASS | RDS deletion protection must be enabled. |
+| rds.backupRetention | PASS | RDS backup retention must be at least seven days. |
+| valkey.unique | PASS | Valkey replication group must resolve exactly once. |
+| valkey.available | PASS | Valkey must be available. |
+| valkey.multiAz | PASS | Valkey Multi-AZ must be enabled. |
+| valkey.automaticFailover | PASS | Valkey automatic failover must be enabled. |
+| valkey.transitEncryption | PASS | Valkey transit encryption must be enabled. |
+| valkey.atRestEncryption | PASS | Valkey at-rest encryption must be enabled. |
+| dynamodb.unique | PASS | DynamoDB table must resolve exactly once. |
+| dynamodb.active | PASS | DynamoDB must be ACTIVE. |
+| dynamodb.deletionProtection | PASS | DynamoDB deletion protection must be enabled. |
+| dynamodb.kms | PASS | DynamoDB KMS encryption must be enabled with a key identifier. |
+| dynamodb.pitr | PASS | DynamoDB PITR must be ENABLED. |
+| msk.unique | PASS | MSK cluster name must resolve exactly once. |
+| msk.active | PASS | MSK must be ACTIVE. |
+| msk.brokers | PASS | MSK must have at least two brokers. |
+| msk.tls | PASS | MSK client-to-broker encryption must be TLS-only. |
 
-| Check | Status |
-|---|---|
-| Private subnet subnet-07599236e4979c4b2 in us-east-1a has available NAT Gateway in same AZ | PASS |
-| Private subnet subnet-0ee04e7bc69e247a3 in us-east-1b has available NAT Gateway in same AZ | PASS |
-| Private subnet subnet-0d1f0d1de6b352021 in us-east-1a has available NAT Gateway in same AZ | PASS |
-| Private subnet subnet-0ab17749536b34693 in us-east-1b has available NAT Gateway in same AZ | PASS |
-| RDS techx-prod-tf2-postgresql is available | PASS |
-| RDS techx-prod-tf2-postgresql is Multi-AZ | PASS |
-| RDS techx-prod-tf2-postgresql storage encryption is enabled | PASS |
-| RDS techx-prod-tf2-postgresql deletion protection is enabled | PASS |
-| RDS techx-prod-tf2-postgresql backup retention is >=7 days | PASS |
-| Valkey techx-prod-tf2-cart status is available | PASS |
-| Valkey techx-prod-tf2-cart automatic failover is enabled | PASS |
-| Valkey techx-prod-tf2-cart at-rest encryption is enabled | PASS |
-| Valkey techx-prod-tf2-cart transit encryption is enabled | PASS |
-| DynamoDB table techx-prod-tf2-checkout-outbox status is ACTIVE | PASS |
-| DynamoDB table techx-prod-tf2-checkout-outbox deletion protection is enabled | PASS |
-| DynamoDB table techx-prod-tf2-checkout-outbox PITR is ENABLED | PASS |
-| MSK cluster techx-prod-tf2-msk status is ACTIVE | PASS |
-| MSK cluster techx-prod-tf2-msk has >=2 broker nodes across AZs | PASS |
-
-<!-- Change trail: @hungxqt - 2026-07-29 - Generated fail-closed infrastructure preflight summary report. -->
+<!-- Change trail: @hungxqt - 2026-07-29 - Generated revision-bound fail-closed infrastructure preflight evidence. -->

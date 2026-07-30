@@ -52,7 +52,18 @@ foreach ($subnet in @($subnetResponse.Subnets)) {
         $tables = @($main.RouteTables)
     }
     $table = Require-One $tables "Route table for subnet $($subnet.SubnetId)"
-    $defaults = @($table.Routes | Where-Object { $_.DestinationCidrBlock -eq "0.0.0.0/0" -and -not [string]::IsNullOrWhiteSpace([string]$_.NatGatewayId) })
+    # AWS route objects are heterogeneous: IPv6 and prefix-list routes do not
+    # expose DestinationCidrBlock, while Internet Gateway routes may not expose
+    # NatGatewayId. Inspect optional properties explicitly so StrictMode does
+    # not abort the preflight before the IPv4 NAT route can be evaluated.
+    $defaults = @($table.Routes | Where-Object {
+        $destination = $_.PSObject.Properties["DestinationCidrBlock"]
+        $natGateway = $_.PSObject.Properties["NatGatewayId"]
+        $null -ne $destination -and
+            [string]$destination.Value -eq "0.0.0.0/0" -and
+            $null -ne $natGateway -and
+            -not [string]::IsNullOrWhiteSpace([string]$natGateway.Value)
+    })
     $nat = $null
     if ($defaults.Count -eq 1) {
         $natResponse = Invoke-Json @("ec2", "describe-nat-gateways", "--region", $Region, "--nat-gateway-ids", $defaults[0].NatGatewayId, "--output", "json")
