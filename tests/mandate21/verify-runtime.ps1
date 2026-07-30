@@ -52,6 +52,15 @@ Assert-True ($preflight -match 'PSObject\.Properties\["NatGatewayId"\]') "prefli
 Assert-True ($preflight -match '\$ValkeyReplicationGroupId\s*=\s*"techx-prod-tf2-cart"') "preflight targets the production Valkey replication group"
 Assert-True ($preflight -match '\$MskClusterName\s*=\s*"techx-prod-tf2-msk"') "preflight targets the production MSK cluster"
 
+$capacityRunnerPath = Join-Path $repo "scripts/run-capacity-probe.ps1"
+$capacityRunnerTokens = $null
+$capacityRunnerErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile($capacityRunnerPath, [ref]$capacityRunnerTokens, [ref]$capacityRunnerErrors)
+Assert-True ($capacityRunnerErrors.Count -eq 0) "capacity probe runner parses as PowerShell"
+$capacityRunner = Read-RepoFile "scripts/run-capacity-probe.ps1"
+Assert-True ($capacityRunner -match '\$firstSampleAt\.AddSeconds\(\$index \* \$SampleIntervalSeconds\)') "capacity probe samples use absolute cadence"
+Assert-True ($capacityRunner -notmatch 'Start-Sleep -Seconds \$SampleIntervalSeconds') "capacity probe cadence does not accumulate kubectl latency"
+
 $contract = Read-RepoFile "scripts/mandate21-fis-contract.example.json" | ConvertFrom-Json
 Assert-True ($contract.schemaVersion -eq 1) "example contract uses schema version 1"
 Assert-True (@($contract.zones.PSObject.Properties).Count -eq 2) "example contract maps exactly two AZs"
