@@ -439,9 +439,14 @@ aiops:
     tag: ""
     pullPolicy: IfNotPresent
   existingSecret: ""
-  notificationSecretRef:
+  notificationDevSecretRef:
     name: ""
     key: webhook-url
+  notificationUserSecretRef:
+    name: ""
+    key: webhook-url
+  notificationDevWebhookUrl: ""
+  notificationUserWebhookUrl: ""
   service:
     port: 8080
     containerPort: 8000
@@ -3681,4 +3686,4 @@ capacityProbe:
       cpu: "2000m"
       memory: "4Gi"
 
-# Change trail: @hungxqt - 2026-07-30 - Set aiops-runtime resource requests to 200m/512Mi and limits to 1000m/1Gi.
+# Change trail: @hungxqt - 2026-07-30 - Replace notificationSecretRef with dev and user notification webhook references.

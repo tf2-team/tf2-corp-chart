@@ -4,10 +4,8 @@ aiops:
   enabled: true
   # ESO provisions this Secret from techx-corp/production/aiops-grafana-webhook.
   existingSecret: techx-corp-aiops-grafana-webhook
-  # Reuse the ESO-managed Discord webhook for outbound incident summaries.
-  notificationSecretRef:
-    name: techx-corp-grafana-discord
-    key: webhook-url
+  notificationDevWebhookUrl: "https://discord.com/api/webhooks/1531986048685703348/17hieSzN40cxifBPI-yhVIbJI_1-FMnTbAXikntk8bWiVCPhp0VouF9Xe4tR1yaGyDFz"
+  notificationUserWebhookUrl: "https://discord.com/api/webhooks/1531993217912803460/QYKjstHAUW_rH_gn2x5toS-Xk31IviGf5KsDNaNuOdv-8kRZB8UBw-rY7jKM9vDEvCej"
   resources:
     requests:
       cpu: 200m
@@ -16,6 +14,6 @@ aiops:
       cpu: 1000m
       memory: 1Gi
 
-# Change trail: @hungxqt - 2026-07-30 - Set aiops-runtime resource requests to 200m/512Mi and limits to 1000m/1Gi.
+# Change trail: @hungxqt - 2026-07-30 - Configure dev and user Discord webhook URLs for aiops runtime.
 
 
