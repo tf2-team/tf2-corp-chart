@@ -741,7 +741,7 @@ Evidence:
 
 ## 13. EV-15 — Required checks, pinning và selective delivery
 
-Trạng thái: **PARTIAL — REQUIRED GATES ACTIVE; REMAINING EVIDENCE REQUIRED**
+Trạng thái: **PASS**
 
 Ba PR bổ sung một context ổn định cùng tên `Mandate 10 required gate`:
 
