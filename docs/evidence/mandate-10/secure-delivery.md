@@ -793,9 +793,6 @@ Chart negative PR `#435` và Platform negative PR `#145` cũng đã tạo check
 
 Raw evidence: `raw/15-required-gates-pinning-selective-build.txt`.
 
-Mandate 10 chỉ chuyển sang **PASS** sau khi các bước EV-15 còn lại hoàn tất và
-Go/No-Go liên team được ghi nhận.
-
 ## 14. EV-16 — Policy Controller webhook HA rollout
 
 Trạng thái: **ROLLOUT PASS — RAW TERMINAL TRANSCRIPT PENDING**
