@@ -30,6 +30,10 @@ Assert-True ($wrapper -notmatch '(?im)\bkubectl\b.*\b(cordon|drain|delete)\b') "
 Assert-True ($wrapper -match 'Assert-Mandate21LiveTemplate') "wrapper verifies every live FIS template revision and stop-alarm contract"
 Assert-True ($wrapper -match 'Test-Mandate21Approval') "wrapper enforces revision-bound approval and evidence gates"
 Assert-True ($wrapper -match 'Save-RunEnvelope') "wrapper atomically persists partial and terminal skip-all evidence"
+$approvalImport = $wrapper.IndexOf('mandate21-fis-approval.psm1')
+$orchestrationImport = $wrapper.IndexOf('mandate21-fis-orchestration.psm1')
+$contractImport = $wrapper.LastIndexOf('mandate21-fis-contract.psm1')
+Assert-True ($contractImport -gt $approvalImport -and $contractImport -gt $orchestrationImport) "wrapper imports the shared contract module last"
 
 $cleanupPath = Join-Path $repo "scripts/mandate21-cleanup.psm1"
 $cleanupTokens = $null
@@ -63,6 +67,7 @@ Assert-True ($capacityRunner -notmatch 'Start-Sleep -Seconds \$SampleIntervalSec
 
 $contract = Read-RepoFile "scripts/mandate21-fis-contract.example.json" | ConvertFrom-Json
 Assert-True ($contract.schemaVersion -eq 1) "example contract uses schema version 1"
+Assert-True ($contract.storefrontUrl -eq 'https://shop.hungtran.id.vn') "example contract uses the production storefront"
 Assert-True (@($contract.zones.PSObject.Properties).Count -eq 2) "example contract maps exactly two AZs"
 Assert-True ($null -ne $contract.cleanupByTemplateId) "example contract contains cleanupByTemplateId map"
 foreach ($zone in $contract.zones.PSObject.Properties) {
@@ -71,6 +76,7 @@ foreach ($zone in $contract.zones.PSObject.Properties) {
 }
 
 $liveContract = Read-RepoFile "scripts/mandate21-fis-contract.json" | ConvertFrom-Json
+Assert-True ($liveContract.storefrontUrl -eq $contract.storefrontUrl) "live and example contracts use the same storefront"
 $liveTemplateIds = @()
 foreach ($zone in $liveContract.zones.PSObject.Properties) {
     foreach ($templateId in @($zone.Value.primaryInZoneTemplateId, $zone.Value.primaryOutsideZoneTemplateId)) {

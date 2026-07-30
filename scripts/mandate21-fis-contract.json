@@ -3,7 +3,7 @@
   "region": "us-east-1",
   "clusterContext": "arn:aws:eks:us-east-1:493499579600:cluster/techx-tf2-prod",
   "namespace": "techx-corp-prod",
-  "storefrontUrl": "https://hungtran.id.vn",
+  "storefrontUrl": "https://shop.hungtran.id.vn",
   "rdsInstanceIdentifier": "techx-prod-tf2-postgresql",
   "zones": {
     "us-east-1a": {
