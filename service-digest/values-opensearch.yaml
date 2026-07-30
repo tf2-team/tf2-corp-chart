@@ -3,4 +3,4 @@
 components:
   opensearch:
     imageOverride:
-      digest: "sha256:3ba735ea6ef4f71f4f734bb7137f521dad57f5c93b2f1e29ced1eaad62148e22"
+      digest: "sha256:287da4768b4990ba49f8ed668cff53e20d49fbc0231874950405e5137d2e1fee"

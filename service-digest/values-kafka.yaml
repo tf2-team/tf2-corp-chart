@@ -3,4 +3,4 @@
 components:
   kafka:
     imageOverride:
-      digest: "sha256:d1673a7442562e1c50c080c613ab915231cda3e9e6a68a96637000158b45fdbd"
+      digest: "sha256:a73f7fea609fe5f37bb011fb130bdf6db33adc4c063fc324b9b4b5689fad3cae"

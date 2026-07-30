@@ -3,4 +3,4 @@
 components:
   frontend-proxy:
     imageOverride:
-      digest: "sha256:6f5e04266d6ec807514f769c62ccdc119a733a6f23dad7c2b5ec894e06c69edf"
+      digest: "sha256:8342db4a2eb6326825872e076a3606be092fd186dafd0272b257b959a2c16e55"
