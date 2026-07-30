@@ -117,6 +117,25 @@ $manifest = $rendered -join "`n"
 
 Assert-True ($manifest -match '(?ms)kind: Deployment.*?name: accounting.*?replicas: 2') "rendered Accounting Deployment has two replicas"
 Assert-True ($manifest -match '(?ms)kind: PodDisruptionBudget.*?name: accounting.*?maxUnavailable: 1') "rendered Accounting PDB uses maxUnavailable 1"
+$accountingDeployment = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?m)^kind:\s+Deployment\s*$' -and
+    $_ -match '(?m)^  name:\s+accounting\s*$'
+})[0]
+$accountingPolicy = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?m)^kind:\s+NetworkPolicy\s*$' -and
+    $_ -match '(?m)^  name:\s+accounting\s*$'
+})[0]
+$egressProxyPolicy = @($manifest -split '(?m)^---\s*$' | Where-Object {
+    $_ -match '(?m)^kind:\s+NetworkPolicy\s*$' -and
+    $_ -match '(?m)^  name:\s+egress-proxy\s*$'
+})[0]
+foreach ($proxyEnv in @('HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy')) {
+    Assert-True ($accountingDeployment -match "(?m)^\s*-\s+name:\s+$proxyEnv\s*$") "Accounting renders $proxyEnv for AWS API access"
+}
+Assert-True ($accountingDeployment -match [regex]::Escape('http://egress-proxy:10000')) "Accounting routes HTTPS through the allowlisted proxy"
+Assert-True ($accountingPolicy -match '(?ms)app\.kubernetes\.io/name:\s+egress-proxy.*?protocol:\s+TCP.*?port:\s+10000') "Accounting NetworkPolicy permits only the proxy listener for external HTTPS"
+Assert-True ($accountingPolicy -notmatch '0\.0\.0\.0/0') "Accounting has no direct unrestricted Internet egress"
+Assert-True ($egressProxyPolicy -match '(?ms)key:\s+opentelemetry\.io/name.*?values:.*?-\s+accounting(?:\s|$)') "egress proxy admits Accounting as an explicit caller"
 $accountingDigest = [regex]::Match(
     (Read-RepoFile "service-digest/values-accounting.yaml"),
     'sha256:[0-9a-f]{64}'
