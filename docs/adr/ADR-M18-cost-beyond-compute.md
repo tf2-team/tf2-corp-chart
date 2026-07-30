@@ -3,7 +3,7 @@
 | Trường | Nội dung |
 | --- | --- |
 | **Mandate** | MANDATE-18 — Cost Beyond Compute |
-| **Trạng thái** | Đang hoàn thành |
+| **Trạng thái** | Đã hoàn thành |
 | **Team** | CDO-03 / TF 2 |
 | **Ngày** | 2026-07-30 |
 
