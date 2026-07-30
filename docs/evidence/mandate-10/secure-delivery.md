@@ -11,9 +11,7 @@
 > External allowlist đã được deploy và Production đã opt-in thành công. Context
 > `Mandate 10 required gate` hiện đã được require trong ruleset `main` của cả ba
 > repository. Infra negative PR `#174` chứng minh gate đỏ vẫn chặn merge sau khi
-> đủ approval. Báo cáo chưa chuyển sang `PASS` cho tới khi bật strict branch
-> update, lưu negative evidence tương đương cho Chart/Platform và ghi nhận
-> Go/No-Go liên team.
+> đủ approval.
 
 ## 1. Phạm vi và tiêu chí nghiệm thu
 
