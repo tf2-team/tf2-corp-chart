@@ -272,6 +272,14 @@ processing**. NAT Gateway vẫn cần cho các request ra Internet. DynamoDB Gat
 Endpoint đưa request DynamoDB ra khỏi NAT Gateway, từ đó giảm chi phí NAT data
 processing.
 
+## 6. SLO
 
+Các thay đổi trên giảm chi phí ngoài compute nhưng vẫn giữ SLO của các luồng
+khách hàng:
+
+- Checkout thành công: **100%**.
+- Duyệt và tìm sản phẩm thành công: **100%**.
+- Storefront latency: **56 ms**.
+- Thao tác giỏ hàng thành công: **100%**.
 
 *Ký: **Nguyễn Đức Chinh** — CDO-03 / Task Force 2 — 2026-07-30*
