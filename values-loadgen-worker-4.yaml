@@ -2,6 +2,7 @@
 # Keep this out of the resting production baseline.
 components:
   load-generator:
+    replicas: 1
     envOverrides:
       - name: LOCUST_EXPECT_WORKERS
         value: "4"
@@ -9,3 +10,5 @@ components:
         value: ai
   load-generator-worker:
     replicas: 4
+
+# Change trail: @hungxqt - 2026-07-31 - Configure 4 Locust workers and 1 master replica in loadgen overlay.
