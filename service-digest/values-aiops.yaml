@@ -4,4 +4,4 @@ aiops:
   enabled: true
   existingSecret: techx-corp-aiops-grafana-webhook
   image:
-    digest: "sha256:c33d09bb237a1df277baca8a8e371a5e88846623842557629ad1094170e7d31e"
+    digest: "sha256:077bdfe6d1d67bbda5e0dd43e513ef5448f7b5c9e2b2a48e84e32b46dc8113f4"
