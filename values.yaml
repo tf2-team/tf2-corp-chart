@@ -1431,7 +1431,7 @@ components:
   load-generator:
     enabled: true
     # Fixed single master (not HPA). Default 0 saves cost when idle; scale to 1 for tests.
-    replicas: 0
+    replicas: 1
     useDefault:
       env: true
     # Locust master control plane → Critical MNG (system-*); workers stay on Karpenter Spot.
@@ -1463,9 +1463,9 @@ components:
         value: "false"
       - name: LOCUST_AUTOSTART
         value: "true"
-      # Wait for at least HPA minReplicas workers before autostart (avoids empty swarm race).
+      # Wait for expected workers before autostart (avoids empty swarm race).
       - name: LOCUST_EXPECT_WORKERS
-        value: "1"
+        value: "4"
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: "false"
       - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
@@ -1514,7 +1514,7 @@ components:
   load-generator-worker:
     enabled: true
     # HPA owns replica count when autoscaling.enabled; fixed replicas only when HPA off.
-    replicas: 0
+    replicas: 4
     useDefault:
       env: true
     # Same Locust image as load-generator master. ECR catalog has only "load-generator"
@@ -3673,4 +3673,4 @@ capacityProbe:
       cpu: "2000m"
       memory: "4Gi"
 
-# Change trail: @hungxqt - 2026-07-30 - Replace notificationSecretRef with dev and user notification webhook references.
+# Change trail: @hungxqt - 2026-07-31 - Increase Locust master to 1 replica (4 expected workers) and worker to 4 replicas.

@@ -826,14 +826,12 @@ components:
   # Keep the Locust UI available for controlled in-cluster tests. It produces no
   # traffic until an operator starts a run; distributed workers remain disabled.
   load-generator:
-    replicas: 0
+    replicas: 1
     podAnnotations:
       cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
     envOverrides:
       - name: LOCUST_EXPECT_WORKERS
-        # Locust accepts only a positive worker count. Keep the master UI
-        # available, then enable workers explicitly in a load-test overlay.
-        value: "1"
+        value: "4"
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
 
@@ -874,9 +872,7 @@ components:
     envOverrides:
       - name: LOCUST_EXCLUDE_TAGS
         value: ai
-    # Keep in-cluster Locust idle; Mandate 21 uses external k6 as the primary
-    # measurement source so an AZ fault cannot remove the load generator.
-    replicas: 0
+    replicas: 4
     pdb:
       minAvailable: 3
     autoscaling:
@@ -1106,4 +1102,4 @@ opentelemetry-collector:
         metrics:
           receivers: [otlp, kafkametrics, spanmetrics, redis/valkey-cart, postgresql/rds, receiver_creator/metrics]
 
-# Change trail: @hungxqt - 2026-07-29 - Retain container_oom_events_total in cAdvisor metric allowlist.
+# Change trail: @hungxqt - 2026-07-31 - Increase Locust master to 1 replica (4 expected workers) and worker to 4 replicas.
